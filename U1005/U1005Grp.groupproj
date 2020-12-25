@@ -1,0 +1,60 @@
+﻿	<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+		<PropertyGroup>
+			<ProjectGuid>{7D92F9FA-8A49-4DCD-8D8B-00A439DEE681}</ProjectGuid>
+		</PropertyGroup>
+		<ItemGroup>
+			<Projects Include="U1005.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="U1005DisAsm.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="U1005Asm.dproj">
+				<Dependencies/>
+			</Projects>
+		</ItemGroup>
+		<ProjectExtensions>
+			<Borland.Personality>Default.Personality.12</Borland.Personality>
+			<Borland.ProjectType/>
+			<BorlandProject>
+				<Default.Personality/>
+			</BorlandProject>
+		</ProjectExtensions>
+		<Target Name="U1005">
+			<MSBuild Projects="U1005.dproj"/>
+		</Target>
+		<Target Name="U1005:Clean">
+			<MSBuild Targets="Clean" Projects="U1005.dproj"/>
+		</Target>
+		<Target Name="U1005:Make">
+			<MSBuild Targets="Make" Projects="U1005.dproj"/>
+		</Target>
+		<Target Name="U1005DisAsm">
+			<MSBuild Projects="U1005DisAsm.dproj"/>
+		</Target>
+		<Target Name="U1005DisAsm:Clean">
+			<MSBuild Targets="Clean" Projects="U1005DisAsm.dproj"/>
+		</Target>
+		<Target Name="U1005DisAsm:Make">
+			<MSBuild Targets="Make" Projects="U1005DisAsm.dproj"/>
+		</Target>
+		<Target Name="U1005Asm">
+			<MSBuild Projects="U1005Asm.dproj"/>
+		</Target>
+		<Target Name="U1005Asm:Clean">
+			<MSBuild Targets="Clean" Projects="U1005Asm.dproj"/>
+		</Target>
+		<Target Name="U1005Asm:Make">
+			<MSBuild Targets="Make" Projects="U1005Asm.dproj"/>
+		</Target>
+		<Target Name="Build">
+			<CallTarget Targets="U1005;U1005DisAsm;U1005Asm"/>
+		</Target>
+		<Target Name="Clean">
+			<CallTarget Targets="U1005:Clean;U1005DisAsm:Clean;U1005Asm:Clean"/>
+		</Target>
+		<Target Name="Make">
+			<CallTarget Targets="U1005:Make;U1005DisAsm:Make;U1005Asm:Make"/>
+		</Target>
+		<Import Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')" Project="$(BDS)\Bin\CodeGear.Group.Targets"/>
+	</Project>

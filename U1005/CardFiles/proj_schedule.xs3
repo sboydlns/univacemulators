@@ -1,0 +1,50 @@
+     DA    $R1
+DATE -     9         9
+DAY  -     13        3
+NAME -     20        6
+TIME -     25        4
+FILM -     78        52
+     DA    $PR
+HDR  -     40        40
+PDAY -     3         3
+PDTE -     13        9
+PTME -     19        5
+PNME -     26        6
+PFLM -     80        52
+     .
+STRT SBRTN PAGE      EPAG
+NEXT READ
+     MVALF DATE      PDTE
+     MVALF DAY       PDAY
+     MVALF NAME      PNME
+     MVALF FILM      PFLM
+     MVEDT TIME      PTME      ETME          
+     PRINT
+     ADD   ONE       LINE
+     COMPN LINE      SXTY
+     IFGT  OVFL
+     GOTO  NEXT
+     .
+OVFL SBRTN PAGE      EPAG      NEXT
+     .
+PAGE BEGIN
+     SKIP  7
+     MVALF HD1       HDR
+     PRINT
+     SPACE
+     MVALF HD2       HDR
+     PRINT
+     SPACE
+     MVALF FOUR      LINE
+EPAG EXIT
+     .
+LINE DC    3     001
+ONE  DC    3     001
+FOUR DC    3     004
+SXTY DC    3     060
+     .
+ETME DC    6     {{:{{~               
+HD1  DC    40      PROJECTIONIST WORK SCHEDULE
+HD2  DC    40    DAY   DATE    TIME   NAME  FILM
+     .
+     END   STRT

@@ -1,0 +1,114 @@
+       .
+       . LIST CONTROL BLOCK. A LINKED LIST OF PACKETS
+       .
+       . No parameters.
+       .
+       P           PROC
+       LCB$DEF*    NAME
+       LCB$        EQU       0
+       LCB$HEAD    EQU       0                   . HEAD OF QUEUE
+       LCB$TAIL    EQU       1D                  . TAIL OF QUEUE
+       LCB$LEN     EQU       LCB$TAIL-LCB$HEAD+1
+                   END
+       .
+       . LIST ITEM DEFINTION
+       .
+       . ALL PACKETS AND CONTROL BLOCKS THAT GET PLACED ONTO A LIST
+       . MUST RESERVED THE FIRST 3 WORDS AS DEFINED BELOW.
+       .
+       .
+       . No parameters.
+       .
+       P           PROC
+       L$ITEM$DEF* NAME
+       LIST$ITEM   EQU       0
+       LI$LIST     EQU       0                   . PTR TO CURRENT LIST
+       LI$NEXT     EQU       1D                  . PTR TO NEXT ITEM ON LIST
+       LI$PRIOR    EQU       2D                  . PTR TO PRIOR ITEM ON LIST
+       LI$LEN      EQU       LI$PRIOR-LI$LIST+1
+                   END
+       .
+       . A collection of PROCs related to linked lists.
+       .
+       . Define a 2 word list container.
+       .  Word 1 = list head
+       .  Word 2 = list tail
+       .
+       .
+       P           PROC
+       L$IST*      NAME
+                   RES       2D
+                   END
+       .
+       . Define a 3 word header the must comprise the first 3
+       . words of any buffer that is to be a member of a list.
+       .
+       .   Word 1 = pointer to the list
+       .   Word 2 = pointer to next item on the list
+       .   Word 3 = pointer to prior item om the list
+       .   
+       P           PROC
+       L$HEADER*   NAME
+                   RES       3D
+                   END
+       .
+       . Add an item to the tail of queue.
+       .
+       . Takes a single paramter with 2 fields: queue_name,item
+       .                   
+       P           PROC
+       ENQUEUE*    NAME
+                   LBPJB6    L$INSERT
+                   +P(1,1)
+                   +P(1,2)
+                   +0
+                   END
+       .
+       . Dequeue an item. i.e. remove the first item from the head
+       . of the queue.
+       .
+       . Takes a single paramter: queue_name
+       .                   
+       P           PROC
+       DEQUEUE*    NAME         
+                   LBPJB6    L$DEQUEUE
+                   +P(1,1)
+                   END
+       .
+       . Add an item to the end of a list.
+       .                   
+       . Takes a single paramter with 2 fields: queue_name,item
+       .
+       P           PROC
+       LADD*       NAME
+                   LBPJB6    L$INSERT
+                   +P(1,1)
+                   +P(1,2)
+                   +0
+                   END                                               
+       .
+       . Insert an item into a list.
+       .                   
+       . Takes a single paramter with 3 fields: queue_name,item,insb4
+       .
+       P           PROC
+       LINS*       NAME
+                   LBPJB6    L$INSERT
+                   +P(1,1)
+                   +P(1,2)
+                   +P(1,3)
+                   END                                               
+       .
+       . Delete an item from a list.
+       .                   
+       . Takes a single paramter with 2 fields: queue_name,item
+       .
+       P           PROC
+       LDEL*       NAME
+                   LBPJB6    L$DELETE
+                   +P(1,1)
+                   +P(1,2)
+                   END                                               
+                   
+                          
+                          

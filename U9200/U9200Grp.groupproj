@@ -1,0 +1,108 @@
+﻿	<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+		<PropertyGroup>
+			<ProjectGuid>{00AA2820-98C3-4FE0-8DB5-1D61BFB2B18F}</ProjectGuid>
+		</PropertyGroup>
+		<ItemGroup>
+			<Projects Include="U9200.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="U9200Asm.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="H2B.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="U9200CardView.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="U9200DisAsm.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="TapeTest.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="ReverseCardFile.dproj">
+				<Dependencies/>
+			</Projects>
+		</ItemGroup>
+		<ProjectExtensions>
+			<Borland.Personality>Default.Personality.12</Borland.Personality>
+			<Borland.ProjectType/>
+			<BorlandProject>
+				<Default.Personality/>
+			</BorlandProject>
+		</ProjectExtensions>
+		<Target Name="U9200">
+			<MSBuild Projects="U9200.dproj"/>
+		</Target>
+		<Target Name="U9200:Clean">
+			<MSBuild Targets="Clean" Projects="U9200.dproj"/>
+		</Target>
+		<Target Name="U9200:Make">
+			<MSBuild Targets="Make" Projects="U9200.dproj"/>
+		</Target>
+		<Target Name="U9200Asm">
+			<MSBuild Projects="U9200Asm.dproj"/>
+		</Target>
+		<Target Name="U9200Asm:Clean">
+			<MSBuild Targets="Clean" Projects="U9200Asm.dproj"/>
+		</Target>
+		<Target Name="U9200Asm:Make">
+			<MSBuild Targets="Make" Projects="U9200Asm.dproj"/>
+		</Target>
+		<Target Name="H2B">
+			<MSBuild Projects="H2B.dproj"/>
+		</Target>
+		<Target Name="H2B:Clean">
+			<MSBuild Targets="Clean" Projects="H2B.dproj"/>
+		</Target>
+		<Target Name="H2B:Make">
+			<MSBuild Targets="Make" Projects="H2B.dproj"/>
+		</Target>
+		<Target Name="U9200CardView">
+			<MSBuild Projects="U9200CardView.dproj"/>
+		</Target>
+		<Target Name="U9200CardView:Clean">
+			<MSBuild Targets="Clean" Projects="U9200CardView.dproj"/>
+		</Target>
+		<Target Name="U9200CardView:Make">
+			<MSBuild Targets="Make" Projects="U9200CardView.dproj"/>
+		</Target>
+		<Target Name="U9200DisAsm">
+			<MSBuild Projects="U9200DisAsm.dproj"/>
+		</Target>
+		<Target Name="U9200DisAsm:Clean">
+			<MSBuild Targets="Clean" Projects="U9200DisAsm.dproj"/>
+		</Target>
+		<Target Name="U9200DisAsm:Make">
+			<MSBuild Targets="Make" Projects="U9200DisAsm.dproj"/>
+		</Target>
+		<Target Name="TapeTest">
+			<MSBuild Projects="TapeTest.dproj"/>
+		</Target>
+		<Target Name="TapeTest:Clean">
+			<MSBuild Targets="Clean" Projects="TapeTest.dproj"/>
+		</Target>
+		<Target Name="TapeTest:Make">
+			<MSBuild Targets="Make" Projects="TapeTest.dproj"/>
+		</Target>
+		<Target Name="ReverseCardFile">
+			<MSBuild Projects="ReverseCardFile.dproj"/>
+		</Target>
+		<Target Name="ReverseCardFile:Clean">
+			<MSBuild Targets="Clean" Projects="ReverseCardFile.dproj"/>
+		</Target>
+		<Target Name="ReverseCardFile:Make">
+			<MSBuild Targets="Make" Projects="ReverseCardFile.dproj"/>
+		</Target>
+		<Target Name="Build">
+			<CallTarget Targets="U9200;U9200Asm;H2B;U9200CardView;U9200DisAsm;TapeTest;ReverseCardFile"/>
+		</Target>
+		<Target Name="Clean">
+			<CallTarget Targets="U9200:Clean;U9200Asm:Clean;H2B:Clean;U9200CardView:Clean;U9200DisAsm:Clean;TapeTest:Clean;ReverseCardFile:Clean"/>
+		</Target>
+		<Target Name="Make">
+			<CallTarget Targets="U9200:Make;U9200Asm:Make;H2B:Make;U9200CardView:Make;U9200DisAsm:Make;TapeTest:Make;ReverseCardFile:Make"/>
+		</Target>
+		<Import Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')" Project="$(BDS)\Bin\CodeGear.Group.Targets"/>
+	</Project>

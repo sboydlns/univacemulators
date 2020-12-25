@@ -1,0 +1,20 @@
+       .
+       . Printer peripheral definitions
+       .
+       P           PROC
+       PRN$DEF*    NAME
+       .
+       . External function codes
+       .
+       PRN$PRINT   EQU       2
+       PRN$TERM    EQU       23
+       PRN$WINT    EQU       10
+       .
+       . Status codes
+       .
+       PRN$OK      EQU       40                  . NORMAL COMPLETION
+       PRN$EOOF    EQU       44                  . OUT OF FORMS
+       PRN$EINVFNC EQU       50                  . INVALID FUNCTION
+       PRN$EINTLK  EQU       74                  . INTERLOCK
+                   END
+                                 

@@ -1,0 +1,89 @@
+;Codewright Project File (do not remove or modify this line)
+[ProjInit]
+ProjSetConfigFlags=0x04010940
+ProjCheckPath='C:\Development\Emulators\U494\Source\\'
+
+[Files]
+C:\Development\Emulators\U494\Source\Monitor6.spurt
+C:\Development\Emulators\U494\Procs\Print.proc
+C:\Development\Emulators\U494\Procs\card.proc
+C:\Development\Emulators\U494\Source\BuildMOS.bat
+C:\DEVELOPMENT\EMULATORS\U494\SOURCE\MOS.asm
+C:\DEVELOPMENT\EMULATORS\U494\PROCS\ExecReturn.proc
+C:\DEVELOPMENT\EMULATORS\U494\PROCS\FH880.proc
+C:\DEVELOPMENT\EMULATORS\U494\PROCS\files.proc
+C:\DEVELOPMENT\EMULATORS\U494\PROCS\IFR.proc
+C:\DEVELOPMENT\EMULATORS\U494\PROCS\Interrupts.proc
+C:\DEVELOPMENT\EMULATORS\U494\PROCS\IoReq.proc
+C:\DEVELOPMENT\EMULATORS\U494\PROCS\Lists.proc
+C:\DEVELOPMENT\EMULATORS\U494\PROCS\Mem.proc
+C:\DEVELOPMENT\EMULATORS\U494\PROCS\Mfd.proc
+C:\DEVELOPMENT\EMULATORS\U494\PROCS\misc.proc
+C:\DEVELOPMENT\EMULATORS\U494\PROCS\Tasks.proc
+
+[State]
+SysSetCwd='C:\Development\Emulators\U494\Source'
+SrchSetFlags=0x4410600b
+FileSortMode=0x0
+StateWindowFrame=0,1,1056,1068,0x63097f08
+_StateWindow=130,130,731,542,0x00100010,'C:\Development\Emulators\U494\Source\Monitor6.spurt',208,31,212,4,20,12,46,26,126,176,8,4294967295,4294967295,1,10,'',12,255,48,72,10,467,0,0,721,252,249,1070,2,400,0,212,214,210,220,721,721,720,729,217,80,0,223,224,14,1063,1,208,1,6
+_StateBuffer='C:\Development\Emulators\U494\Source\Monitor6.spurt',0x0400048a,1070,2,25,'6 12 17 22 27 32 37 41','',0x1,'',1,72,1
+_StateHistory=FILELIST,'C:\Development\Emulators\U494\Source\AsmTest.obj','C:\DEVELOPMENT\EMULATORS\U494\PROCS\ExecReturn.proc','C:\DEVELOPMENT\EMULATORS\U494\PROCS\Tasks.proc','C:\Development\Emulators\U494\Source\BuildMOS.bat','C:\DEVELOPMENT\EMULATORS\U494\PROCS\Lists.proc','C:\Development\Emulators\Algol\test.s','C:\Development\Emulators\Algol\test.alg','C:\DEVELOPMENT\EMULATORS\U494\SOURCE\MOS.asm','C:\Development\Emulators\U494\Source\Monitor6.spurt'
+_StateHistory=SEARCH,'.MONITOR','*MONITOR','term','term*','*66','366','#66','*SIL','#SIL','ril'
+_StateHistory=XSYMBOL,'OUTPUT','ERROR','INPUT','FILE'
+_StateHistory=EDITFILE,'C:\Development\Emulators\U494\Source\BuildDrum.bat','C:\Development\Emulators\U494\Source\AsmTest.asm','C:\Development\Emulators\U494\Source\AsmTest.obj','C:\Development\Emulators\U494\Source\BcdTest.pjt','C:\Development\Emulators\Algol\test.s','C:\Development\Emulators\Algol\test.alg','C:\Development\Emulators\Algol\test.s','C:\Development\Emulators\Algol\test.alg','C:\Development\Emulators\Algol\test.s','C:\Development\Emulators\U494\Source\Monitor6.spurt'
+_StateHistory=GOTOMARK,'1','2','1'
+
+[Editor]
+VCSProject=''
+VCSProjectPath=''
+VCSProjectLocalPath=''
+ScrapSetCount=1
+ClipboardEnableSepStr=1
+ClipboardSetSepStr='\r\n',0
+ClipboardEnableTermStr=1
+ClipboardSetTermStr='\r\n',0
+
+[Compiler]
+TagSetCmd='${HOME}${WTAGS} -oc -d -t${TAGFILE}.tag -p${TAGFILE}.ptg',0x8000060
+BrowseSetFile='C:\Development\Emulators\U494\Source\MOS.ptg'
+TagSetFile='C:\Development\Emulators\U494\Source\MOS.tag'
+CompilerAddCmd='Microsoft Assembler','c:\development\emulators\u494\win32\debug\u494asm %p%b%e -P ..\..\procs ',1073741840,'',16,'',16,'',16,'',0,'',0,'','','','',''
+CompilerAddResponse='Microsoft Assembler',
+CompilerAddCmd='Default Compiler Settings','',1073741840,'',16,'',16,'',16,'',0,'',0,'','','','',''
+CompilerAddResponse='Default Compiler Settings',
+CompilerAddCmd='RM/Cobol','rmcobol %b%e',1073741840,'rmcobol %b%e',16,'',16,'',16,'',0,'',0,'','','','',''
+CompilerAddResponse='RM/Cobol',
+CompilerAddCmd='$_cw_proj_hash_$','',1073741904,'',80,'C:\Development\Emulators\U494\Source\BuildMOS.bat',176,'${FTEE} nmake',176,'',0,'',0,'_ErrorInfoDefault','','','proj.err','%x'
+CompilerAddResponse='$_cw_proj_hash_$',
+CompilerAddCmd='U494 Assmebler','c:\development\emulators\u494\Source\BuildCave.bat',1073741840,'',16,'',16,'',16,'',0,'',0,'','','','',''
+CompilerAddResponse='U494 Assmebler',
+CompilerNewExt=.htm
+CompilerAssign='RM/Cobol','.cbl'
+CompilerAssign='RM/Cobol','.pgm'
+CompilerNewExt=.pas
+CompilerAssign='RM/Cobol','.cob'
+CompilerNewExt=.dyn
+CompilerNewExt=.ini
+CompilerNewExt=.html
+CompilerNewExt=.proc
+CompilerNewExt=.ws
+CompilerAssign='Default Compiler Settings','.*'
+CompilerNewExt=.txt
+CompilerAssign='U494 Assmebler','.asm'
+CompilerNewExt=.ecbl
+
+[VersionControl:PVCS]
+VCSSetCmd=VCS_CHECKIN_ID,'put -n -T@%Q -M@%Q %b%e',0x8000040
+VCSSetCmd=VCS_CHECKINLOCK_ID,'put -n -T@%Q -M@%Q -l %b%e',0x8000040
+VCSSetCmd=VCS_CHECKOUT_ID,'get -y %b%e',0x8000040
+VCSSetCmd=VCS_CHECKOUTLOCK_ID,'get -y -l %b%e',0x8000040
+VCSSetCmd=VCS_CHECKLOCK_ID,'vcs -l %b%e',0x8000040
+VCSSetCmd=VCS_CHECKUNLOCK_ID,'vcs -u %b%e',0x8000040
+VCSSetCmd=VCS_CHECKLABEL_ID,'vcs -v${VCSLABEL} %b%e',0x8000040
+VCSSetCmd=VCS_CHECKLOG_ID,'vlog %b%e',0x8000040
+VCSSetCmd=VCS_CHECKPROP_ID,'vlog -b %b%e',0x8000040
+VCSSetCmd=VCS_CHECKDIFF_ID,'vdiff -r %b%e',0x8000040
+VCSSetCmd=VCS_CHECKMENU_ID,'pvcswinu',0x8000000
+VCSSetCmd=VCS_ADD_ID,'vcs -i -t@%Q %b%e',0x8000040
+VCSSetCmd=VCS_REMOVE_ID,'del /f %b%{??v|___}e',0x8000040

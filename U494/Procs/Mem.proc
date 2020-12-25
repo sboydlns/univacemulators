@@ -1,0 +1,77 @@
+       .
+       . Free memory control block defintions
+       .
+       P           PROC
+       FMCB$DEF*   NAME
+       FMCB$LIST   EQU       0
+       FMCB$NEXT   EQU       1D
+       FMCB$PRIOR  EQU       2D
+       FMCB$START  EQU       3D
+       FMCB$END    EQU       4D
+       FMCB$LEN    EQU       FMCB$END-FMCB$LIST+1
+                   END
+       .
+       . Work area offsets
+       .
+       P           PROC
+       WA$DEF*     NAME
+       WA$A        EQU       0
+       WA$Q        EQU       1D
+       WA$B1       EQU       2D                   
+       WA$B2       EQU       3D                   
+       WA$B3       EQU       4D                   
+       WA$B4       EQU       5D                   
+       WA$B5       EQU       6D                   
+       WA$B6       EQU       7D                   
+       WA$B7       EQU       8D
+       WA$USER     EQU       9D                   
+                   END
+       .
+       . Free memory control block
+       .
+       . Takes 1 parameter with 2 fields: start,end
+       P           PROC
+       FM$CB*      NAME
+                   L$HEADER                      . LIST HEADER
+                   +P(1,1)
+                   +P(1,2)
+                   END
+       .
+       . Allocate a system pool block
+       .
+       . Takes 1 parameter: bregister
+       .
+       P           PROC
+       SYALLOC*    NAME
+                   SLJ       SY$ALLOC
+                   +0
+                   LB,W      P(1,1),$-1
+                   END 
+       .
+       . Free a system pool block
+       .
+       . Takes 1 parameter: bregister
+       .
+       P           PROC
+       SYFREE*     NAME
+                   SB,W      P(1,1),$+2
+                   SLJ       SY$FREE
+                   +0
+                   END
+       .
+       . Get a buffer from the main memory pool
+       .
+       . Takes 3 parameters: size bregister error_rtn
+       .
+       . Destroys A
+       .
+       P           PROC
+       GETMEM*     NAME
+                   LB        P(2,1),P(1,1)
+                   SB,W      P(2,1),$+2
+                   SLJ       FM$GETMEM
+                   +0
+                   LA,W      $-1,,ANOT
+                   J         P(3,1)
+                   LB,A      P(2,1)
+                   END                   

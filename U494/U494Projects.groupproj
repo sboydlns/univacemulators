@@ -1,0 +1,120 @@
+﻿	<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+		<PropertyGroup>
+			<ProjectGuid>{ED2309FE-4F28-4623-9E20-5E5D2F86F21A}</ProjectGuid>
+		</PropertyGroup>
+		<ItemGroup>
+			<Projects Include="U494.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="U494Asm.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="DuaneCraps.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="U494Console.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="FH880Util.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="Cave\CaveUtil.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="U494Link.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="U494Spurt.dproj">
+				<Dependencies/>
+			</Projects>
+		</ItemGroup>
+		<ProjectExtensions>
+			<Borland.Personality>Default.Personality.12</Borland.Personality>
+			<Borland.ProjectType/>
+			<BorlandProject>
+				<Default.Personality/>
+			</BorlandProject>
+		</ProjectExtensions>
+		<Target Name="U494">
+			<MSBuild Projects="U494.dproj"/>
+		</Target>
+		<Target Name="U494:Clean">
+			<MSBuild Targets="Clean" Projects="U494.dproj"/>
+		</Target>
+		<Target Name="U494:Make">
+			<MSBuild Targets="Make" Projects="U494.dproj"/>
+		</Target>
+		<Target Name="U494Asm">
+			<MSBuild Projects="U494Asm.dproj"/>
+		</Target>
+		<Target Name="U494Asm:Clean">
+			<MSBuild Targets="Clean" Projects="U494Asm.dproj"/>
+		</Target>
+		<Target Name="U494Asm:Make">
+			<MSBuild Targets="Make" Projects="U494Asm.dproj"/>
+		</Target>
+		<Target Name="DuaneCraps">
+			<MSBuild Projects="DuaneCraps.dproj"/>
+		</Target>
+		<Target Name="DuaneCraps:Clean">
+			<MSBuild Targets="Clean" Projects="DuaneCraps.dproj"/>
+		</Target>
+		<Target Name="DuaneCraps:Make">
+			<MSBuild Targets="Make" Projects="DuaneCraps.dproj"/>
+		</Target>
+		<Target Name="U494Console">
+			<MSBuild Projects="U494Console.dproj"/>
+		</Target>
+		<Target Name="U494Console:Clean">
+			<MSBuild Targets="Clean" Projects="U494Console.dproj"/>
+		</Target>
+		<Target Name="U494Console:Make">
+			<MSBuild Targets="Make" Projects="U494Console.dproj"/>
+		</Target>
+		<Target Name="FH880Util">
+			<MSBuild Projects="FH880Util.dproj"/>
+		</Target>
+		<Target Name="FH880Util:Clean">
+			<MSBuild Targets="Clean" Projects="FH880Util.dproj"/>
+		</Target>
+		<Target Name="FH880Util:Make">
+			<MSBuild Targets="Make" Projects="FH880Util.dproj"/>
+		</Target>
+		<Target Name="CaveUtil">
+			<MSBuild Projects="Cave\CaveUtil.dproj"/>
+		</Target>
+		<Target Name="CaveUtil:Clean">
+			<MSBuild Targets="Clean" Projects="Cave\CaveUtil.dproj"/>
+		</Target>
+		<Target Name="CaveUtil:Make">
+			<MSBuild Targets="Make" Projects="Cave\CaveUtil.dproj"/>
+		</Target>
+		<Target Name="U494Link">
+			<MSBuild Projects="U494Link.dproj"/>
+		</Target>
+		<Target Name="U494Link:Clean">
+			<MSBuild Targets="Clean" Projects="U494Link.dproj"/>
+		</Target>
+		<Target Name="U494Link:Make">
+			<MSBuild Targets="Make" Projects="U494Link.dproj"/>
+		</Target>
+		<Target Name="U494Spurt">
+			<MSBuild Projects="U494Spurt.dproj"/>
+		</Target>
+		<Target Name="U494Spurt:Clean">
+			<MSBuild Targets="Clean" Projects="U494Spurt.dproj"/>
+		</Target>
+		<Target Name="U494Spurt:Make">
+			<MSBuild Targets="Make" Projects="U494Spurt.dproj"/>
+		</Target>
+		<Target Name="Build">
+			<CallTarget Targets="U494;U494Asm;DuaneCraps;U494Console;FH880Util;CaveUtil;U494Link;U494Spurt"/>
+		</Target>
+		<Target Name="Clean">
+			<CallTarget Targets="U494:Clean;U494Asm:Clean;DuaneCraps:Clean;U494Console:Clean;FH880Util:Clean;CaveUtil:Clean;U494Link:Clean;U494Spurt:Clean"/>
+		</Target>
+		<Target Name="Make">
+			<CallTarget Targets="U494:Make;U494Asm:Make;DuaneCraps:Make;U494Console:Make;FH880Util:Make;CaveUtil:Make;U494Link:Make;U494Spurt:Make"/>
+		</Target>
+		<Import Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')" Project="$(BDS)\Bin\CodeGear.Group.Targets"/>
+	</Project>

@@ -1,0 +1,11 @@
+/root C:\Development\U9200\CardFiles
+/file rdr,Compilers\rpg_compiler_part1.h16
+/file rdr,Source\resequence_rpg_source_deck.rpg,HFC
+/file rdr,Compilers\rpg_compiler_part2.h16
+/file rdr,Source\resequence_rpg_source_deck.rpg,I
+/file rdr,Compilers\rpg_compiler_part3.h16
+/file rdr,Source\resequence_rpg_source_deck.rpg,O
+/file rdr,Compilers\rpg_compiler_part4.h16
+/file rdr,Compilers\rpg_compiler_part5.h16
+/file rdr,Compilers\rpg_compiler_part6.h16
+/blanks rdr,2

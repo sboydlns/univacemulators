@@ -1,0 +1,60 @@
+       .
+       . I/O REQUEST PACKET DEFINITION
+       .
+       .
+       . No parameters.
+       .
+       P           PROC
+       IO$REQ$DEF* NAME
+       IO$REQ      EQU       0
+       . NEXT 3 WORDS MUST BE THE SAME AS THE LIST ITEM DEFINITION
+       IR$QUEUE    EQU       0                   . PTR TO CURRENT QUEUE
+       IR$NEXT     EQU       1D                  . PTR TO NEXT ITEM ON QUEUE
+       IR$PRIOR    EQU       2D                  . PTR TO PRIOR ITEM ON QUEUE
+       IR$COUNT    EQU       3D                  . BFR LENGTH IN WORDS
+       IR$BFR      EQU       4D                  . BUFFER ADDRESS
+       IR$FLAGS    EQU       5D                  . MISC FLAG BITS
+       IR$CMD      EQU       6D                  . COMMAND WORD
+       IR$CMD2     EQU       7D                  . SECOND COMMAND WORD
+       IR$STAT     EQU       8D                  . I/O COMPLETION STATUS
+       . FLAG BITS
+       IR$DONE     EQU       1                   . I/O CPLT FLAG
+       IR$BUSY     EQU       2                   . REQ BEING PROCESSED FLAG
+       IR$FIN      EQU       4                   . REQ CPLT FLAG
+       IR$LEN      EQU       IR$STAT-IO$REQ+1
+                   END
+       .
+       . Allocate an I/O request packet
+       .
+       . Takes the following parameters:
+       .  1)       buffer_length,buffer_address
+       .  2)       command_form
+       .  3)       command_part1,command_part2,...
+       .  4)       second_command (search value)
+       .
+       P           PROC
+       IOREQ*      NAME
+                   L$HEADER
+                   +P(1,1)
+                   +P(1,2)
+                   +0                            . FLAGS
+                   P(2,1) P(3,1),P(3,2),P(3,3),P(3,4)
+                   +P(4,1)
+                   +0                            . STATUS
+                   END
+       .
+       . Populate an IOREQ and queue it. Destroys A.
+       .
+       . Parameters: queue ioreq blen,buffer
+       .
+       P           PROC
+       PUT*        NAME
+       GET*        NAME
+                   LA        P(3,1)
+                   SA,W      P(2,1)+IR$COUNT
+                   LA        P(3,2)
+                   SA,W      P(2,1)+IR$BFR
+                   SZ,W      P(2,1)+IR$FLAGS
+                   ENQUEUE   P(1,1),P(2,1)
+                   END                   
+                   

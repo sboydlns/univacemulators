@@ -1,0 +1,36 @@
+﻿	<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+		<PropertyGroup>
+			<ProjectGuid>{D5FD7686-1E50-4D76-AA55-2A0B54EBB7CC}</ProjectGuid>
+		</PropertyGroup>
+		<ItemGroup>
+			<Projects Include="Algol.dproj">
+				<Dependencies/>
+			</Projects>
+		</ItemGroup>
+		<ProjectExtensions>
+			<Borland.Personality>Default.Personality.12</Borland.Personality>
+			<Borland.ProjectType/>
+			<BorlandProject>
+				<Default.Personality/>
+			</BorlandProject>
+		</ProjectExtensions>
+		<Target Name="Algol">
+			<MSBuild Projects="Algol.dproj"/>
+		</Target>
+		<Target Name="Algol:Clean">
+			<MSBuild Targets="Clean" Projects="Algol.dproj"/>
+		</Target>
+		<Target Name="Algol:Make">
+			<MSBuild Targets="Make" Projects="Algol.dproj"/>
+		</Target>
+		<Target Name="Build">
+			<CallTarget Targets="Algol"/>
+		</Target>
+		<Target Name="Clean">
+			<CallTarget Targets="Algol:Clean"/>
+		</Target>
+		<Target Name="Make">
+			<CallTarget Targets="Algol:Make"/>
+		</Target>
+		<Import Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')" Project="$(BDS)\Bin\CodeGear.Group.Targets"/>
+	</Project>

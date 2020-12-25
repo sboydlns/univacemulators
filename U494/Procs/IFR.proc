@@ -1,0 +1,29 @@
+       P           PROC
+       IFR$DEF*    NAME
+       IFR$RPTACT  EQU       4000000000
+       IFR$PLRENB  EQU       1000000000
+       IFR$B17     EQU       0400000000
+       IFR$BWORK   EQU       0200000000
+       IFR$DCARRY  EQU       0100000000
+       IFR$DBORROW EQU       0040000000
+       IFR$GUARDRW EQU       0010000000
+       IFR$WRITE   EQU       0020000000
+       IFR$GUARDW  EQU       0030000000
+       IFR$RPTJ    EQU       0007000000
+                   END
+       .
+       P           PROC
+       IFR$CONST*  NAME                  
+       . Constants for all IFR bits. Used in logical
+       . instructions for masking / setting bits.
+       CIFR$RPTACT +4000000000
+       CIFR$PLRENB +1000000000
+       CIFR$B17    +0400000000
+       CIFR$BWORK  +0200000000
+       CIFR$DCARRY +0100000000
+       CIFR$DBRW   +0040000000
+       CIFR$GARDRW +0010000000
+       CIFR$WRITE  +0020000000
+       CIFR$GARDW  +0030000000
+       CIFR$RPTJ   +0007000000
+                   END

@@ -1,0 +1,28 @@
+       .
+       . MASTER FILE DIRECTORY (MFD) FILE DESCRIPTOR DEFINITION
+       .
+       P           PROC
+       MFD$DEF*    NAME
+       MFD$FNAME   EQU       0                   . FILE NAME (2 WORDS)
+       MFD$TRACKS  EQU       2D                  . H1 = # TRACKS H2 = 1ST TRACK
+       MFD$LASTLEN EQU       3D                  . # WORDS IN LAST TRACK
+       MFD$CHAN    EQU       4D                  . DRUM CHANNEL #
+       MFD$STAT    EQU       5D                  . MFD REQUEST STATUS
+       MFD$LEN     EQU       MFD$LASTLEN-MFD$FNAME+1 . DRUM FILE DESC LENGTH
+       MFD$PLEN    EQU       MFD$STAT-MFD$FNAME+1 . PARAMETER PACKET LENGTH
+       .
+       . ERROR CODES
+       .
+       MFD$ENTFND  EQU       1D                  . NOT FOUND
+       MFD$ENOMEM  EQU       2D                  . OUT OF MEMORY
+       MFD$EIO     EQU       3D                  . I/O ERROR
+       MFD$EDFULL  EQU       4D                  . DRUM FULL
+                   END
+       .
+       . ALLOCATE MFD FILE DESCRIPTOR
+       .
+       P           PROC
+       M$FD*       NAME
+                   RES       6D
+                   END
+                   

@@ -1,0 +1,7 @@
+/root C:\Development\U9200\CardFiles
+/file rdr,Compilers\9200_16k_assembler_pass1.h16
+/file rdr,Source\disasm.asm
+/file rdr,Compilers\9200_16k_assembler_pass2.h16
+/file rdr,Source\disasm.asm
+/blanks rdr,2
+

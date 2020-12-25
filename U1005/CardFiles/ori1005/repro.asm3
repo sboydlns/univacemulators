@@ -1,0 +1,12 @@
+     . CODE-IMAGE 80-80	REPRODUCE
+STOP GC2                                FEED OUT LAST CD
+BEGINSTOP  #H3
+     GC    #0301     #0000     #0000    FIRST READ (C/I)
+LOOP CA    $RC  +3   SENT               END OF FILE?
+     JT    STOP      $    +5            IF SO, HALT
+     TD    $RC       $PC                CARD TO PNCH BUF
+     GC    #0000     #0000     #0002    PUNCH TEST
+     GC    #0301     #0000     #0005    PUNCH/READ (C/I)
+     J     LOOP                         CHECK NEXT CARD
+SENT DC    4     9 &$			    CODE IMAGE /*
+     END   BEGIN

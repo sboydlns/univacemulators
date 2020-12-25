@@ -1,0 +1,103 @@
+       .
+       . Task control block (TCB) definition
+       .
+       P           PROC
+       TCB$DEF*    NAME
+       TCB$        EQU       0
+       . Area to save registers when a task is switched out
+       TCB$QUEUE   EQU       0                   . PTR TO CURRENT QUEUE
+       TCB$NEXT    EQU       1D                  . PTR TO NEXT ITEM ON QUEUE
+       TCB$PRIOR   EQU       2D                  . PTR TO PRIOR ITEM ON QUEUE
+       . THIS REGISTER SAVE AREA IS FOR USE WHEN A TASK SWITCH OCCURS.
+       . SINCE THIS ONLY HAPPENS WHEN A TASK DOES A YIELD OR WAIT,
+       . THE REGISTERS SAVE HERE WILL ALWAYS BE EXEC REGISTERS.
+       TCB$IFR     EQU       3D
+       TCB$RIR     EQU       4D
+       TCB$PLR     EQU       5D
+       TCB$P       EQU       6D
+       TCB$A       EQU       7D
+       TCB$Q       EQU       8D
+       TCB$B1      EQU       9D
+       TCB$B2      EQU       10D
+       TCB$B3      EQU       11D
+       TCB$B4      EQU       12D
+       TCB$B5      EQU       13D
+       TCB$B6      EQU       14D
+       TCB$B7      EQU       15D
+       TCB$NAME    EQU       18D                 . DOUBLE WORD TASK NAME
+       TCB$FLAGS   EQU       20D                 . U = JOB #, L = FLAGS
+       TCB$EVTDTA  EQU       21D                 . EVENT DATA
+       . THIS REGISTER SAVE AREA IS FOR USE WHEN A TASK DOES AN
+       . EXECUTIVE RETURN. THESE WILL ALWAYS BE WORKER REGISTERS SINCE
+       . AN EXEC ROUTINE SHOULD NEVER DO AN EXECUTIVE RETURN.
+       TCB$ER$IFR  EQU       22D
+       TCB$ER$RIR  EQU       23D
+       TCB$ER$P    EQU       24D                 . RELATIVE TO RIR
+       TCB$ER$A    EQU       25D
+       TCB$ER$Q    EQU       26D
+       TCB$ER$B1   EQU       27D
+       TCB$ER$B2   EQU       28D
+       TCB$ER$B3   EQU       29D
+       TCB$ER$B4   EQU       30D
+       TCB$ER$B5   EQU       31D
+       TCB$ER$B6   EQU       32D
+       TCB$ER$B7   EQU       33D
+       TCB$PLEN    EQU       34D                 . SIZE OF PGM MEMORY
+       TCB$LEN     EQU       140
+       . FLAG BITS
+       TCB$WDONE   EQU       1                   . WAIT FOR IR$DONE 
+       TCB$WFIN    EQU       2                   . WAIT FOR IR$FIN
+       TCB$WNZRO   EQU       4                   . WAIT FOR WORD TO BECOME NON-ZERO
+       TCB$WCONS   EQU       10                  . WAIT FOR CONSOLE INPUT
+       TCB$WTSET   EQU       20                  . WAIT FOR TSET TO BE RELEASED
+       TCB$ALLWAIT EQU       777                 . ALL WAIT FLAGS
+       TCB$CRASG   EQU       40000               . CARD READER ASSIGNED
+       TCB$CPASG   EQU       20000               . CARD PUNCH ASSIGNED
+       TCB$PRASG   EQU       10000               . PRINTER ASSIGNED
+                   END
+       .
+       . Create TCB.
+       .
+       . Takes 5 parameters: IFR RIR PLR entry_point name
+       .
+       . The name parameter must consist ot 10 Fieldata characters
+       .
+       P           PROC
+       T$CB*       NAME
+                   +0
+                   +0
+                   +0
+                   +P(1,1)
+                   +P(2,1)
+                   +P(3,1)
+                   +P(4,1)
+                   +0
+                   +0
+                   +0
+                   +0
+                   +0
+                   +0
+                   +0
+                   +0
+                   +0
+                   +0
+                   +0
+                   DLD       P(5,1)
+                   +0
+                   +0
+                   RES       TCB$LEN-TCB$EVTDTA-1
+                   END 
+       .
+       . Wait for an event
+       .
+       . Takes 1 parameter with 2 fields. flag,object 
+       .
+       P           PROC
+       WAITFOR*    NAME
+                   SLJ       WAIT
+                   +P(1,2)
+                   +P(1,1)
+                   END       
+       
+       
+       

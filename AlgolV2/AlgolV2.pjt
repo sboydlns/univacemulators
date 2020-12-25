@@ -1,0 +1,92 @@
+;Codewright Project File (do not remove or modify this line)
+[ProjInit]
+ProjSetConfigFlags=0x04010940
+ProjCheckPath='C:\Development\Emulators\AlgolV2\\'
+
+[Files]
+C:\Development\Emulators\AlgolV2\Tests\test4.alg
+C:\Development\Emulators\AlgolV2\Tests\test3.alg
+C:\Development\Emulators\AlgolV2\Tests\test3.s
+C:\Development\Emulators\U494\Algol\algmath.asm
+C:\Development\Emulators\AlgolV2\Tests\test2.alg
+C:\Development\Emulators\AlgolV2\Tests\test2.s
+C:\Development\Emulators\AlgolV2\Tests\test1.s
+C:\Development\Emulators\AlgolV2\Tests\test1.alg
+C:\Development\Emulators\U494\Algol\algio.asm
+C:\Development\Emulators\U494\Algol\algrt.asm
+C:\Development\Emulators\U494\Algol\RTTest.asm
+C:\Development\Emulators\U494\Algol\Buildalgrt.bat
+C:\DEVELOPMENT\EMULATORS\ALGOLV2\test.alg
+C:\DEVELOPMENT\EMULATORS\ALGOLV2\test.s
+
+
+[State]
+SysSetCwd='C:\Development\Emulators\U494'
+SrchSetFlags=0x4418600b
+FileSortMode=0x0
+StateWindowFrame=0,1,1142,1082,0x63097f08
+_StateWindow=52,52,662,556,0x00100010,'C:\Development\Emulators\U494\U1230.cfg',208,31,212,4,20,12,46,26,126,176,8,4294967295,4294967295,1,10,'',12,255,48,72,10,467,0,0,721,252,249,4,9,400,0,212,214,210,220,721,721,720,729,217,80,0,223,224,14,1,1,208,1,6
+_StateBuffer='C:\Development\Emulators\U494\U1230.cfg',0x0400048a,4,9,25,'6 12 17 22 27 32 37 41','',0x1,'',1,72,1
+_StateHistory=FILELIST,'C:\Development\Emulators\U494\Source\MOS.lst','C:\Development\Emulators\U494\Algol\algrt.asm','D:\LIB\37873205\F02_05.PDA','C:\Development\Emulators\U494\Source\Monitor6.spurt','C:\Development\Emulators\U494\Source\monitor6.mem','C:\Development\Emulators\U9200\U9200.cfg','C:\Development\Emulators\U494\U490.cfg','C:\Development\Emulators\U494\U494.cfg','C:\Development\Emulators\U494\U1230.cfg'
+_StateHistory=SEARCH,'strarray','ccp$','ccp$cmds','l$0','extern','isi$ext','j$ext','io$savea','cons$ext','$ext'
+_StateHistory=XSYMBOL,'FILE','ARRAY','GetElements','GetLocation'
+_StateHistory=EDITFILE,'C:\Development\Emulators\AlgolV2\Tests\test4.s','C:\Development\Emulators\U494\Source\MOS.lst','C:\Development\Emulators\U494\Source\MOS.pjt','D:\LIB\37873205\F02_05.PDA','C:\Development\Emulators\U494\Source\Monitor6.spurt','C:\Development\Emulators\U494\Source\monitor6.mem','C:\Development\Emulators\U9200\U9200.cfg','C:\Development\Emulators\U494\U490.cfg','C:\Development\Emulators\U494\U494.cfg','C:\Development\Emulators\U494\U1230.cfg'
+_StateHistory=DIRECTORY,'N:\\','N:\trkc'
+_StateHistory=GOTOMARK,'strcpy'
+_StateHistory=DIFFFILE,'C:\temp\ZXing.Delphi-v_3.0\Lib\Classes\2D Barcodes\Detector\ZXing.QrCode.Internal.FinderPatternFinder.pas'
+_StateHistory=DIFFTARGET,'C:\Development\NewTransEaz\ImgIntf\ZXing.Delphi-3.5\Lib\Classes\2D Barcodes\Detector\ZXing.QrCode.Internal.FinderPatternFinder.pas'
+
+[Editor]
+VCSProject=''
+VCSProjectPath=''
+VCSProjectLocalPath=''
+ScrapSetCount=1
+ClipboardEnableSepStr=1
+ClipboardSetSepStr='\r\n',0
+ClipboardEnableTermStr=1
+ClipboardSetTermStr='\r\n',0
+
+[Compiler]
+TagSetCmd='${HOME}${WTAGS} -oc -d -t${TAGFILE}.tag -p${TAGFILE}.ptg',0x8000060
+BrowseSetFile='C:\Development\Emulators\AlgolV2\AlgolV2.ptg'
+TagSetFile='C:\Development\Emulators\AlgolV2\AlgolV2.tag'
+CompilerAddCmd='Microsoft Assembler','c:\development\emulators\u494\win32\debug\u494asm %p%b%e -P ..\..\procs ',1073741840,'',16,'',16,'',16,'',0,'',0,'','','','',''
+CompilerAddResponse='Microsoft Assembler',
+CompilerAddCmd='Default Compiler Settings','',1073741840,'',16,'',16,'',16,'',0,'',0,'','','','',''
+CompilerAddResponse='Default Compiler Settings',
+CompilerAddCmd='RM/Cobol','rmcobol %b%e',1073741840,'rmcobol %b%e',16,'',16,'',16,'',0,'',0,'','','','',''
+CompilerAddResponse='RM/Cobol',
+CompilerAddCmd='$_cw_proj_hash_$','',1073741904,'',80,'C:\Development\Emulators\U494\Algol\Buildalgrt.bat',176,'${FTEE} nmake',176,'',0,'',0,'_ErrorInfoDefault','','','proj.err','%x'
+CompilerAddResponse='$_cw_proj_hash_$',
+CompilerAddCmd='U494 Assmebler','c:\development\emulators\u494\Source\BuildCave.bat',1073741840,'',16,'',16,'',16,'',0,'',0,'','','','',''
+CompilerAddResponse='U494 Assmebler',
+CompilerNewExt=.htm
+CompilerAssign='RM/Cobol','.cbl'
+CompilerAssign='RM/Cobol','.pgm'
+CompilerAssign='U494 Assmebler','.alg'
+CompilerNewExt=.pas
+CompilerAssign='RM/Cobol','.cob'
+CompilerNewExt=.dyn
+CompilerNewExt=.ini
+CompilerNewExt=.html
+CompilerNewExt=.ws
+CompilerNewExt=.proc
+CompilerAssign='Default Compiler Settings','.*'
+CompilerNewExt=.txt
+CompilerAssign='U494 Assmebler','.asm'
+CompilerNewExt=.ecbl
+
+[VersionControl:PVCS]
+VCSSetCmd=VCS_CHECKIN_ID,'put -n -T@%Q -M@%Q %b%e',0x8000040
+VCSSetCmd=VCS_CHECKINLOCK_ID,'put -n -T@%Q -M@%Q -l %b%e',0x8000040
+VCSSetCmd=VCS_CHECKOUT_ID,'get -y %b%e',0x8000040
+VCSSetCmd=VCS_CHECKOUTLOCK_ID,'get -y -l %b%e',0x8000040
+VCSSetCmd=VCS_CHECKLOCK_ID,'vcs -l %b%e',0x8000040
+VCSSetCmd=VCS_CHECKUNLOCK_ID,'vcs -u %b%e',0x8000040
+VCSSetCmd=VCS_CHECKLABEL_ID,'vcs -v${VCSLABEL} %b%e',0x8000040
+VCSSetCmd=VCS_CHECKLOG_ID,'vlog %b%e',0x8000040
+VCSSetCmd=VCS_CHECKPROP_ID,'vlog -b %b%e',0x8000040
+VCSSetCmd=VCS_CHECKDIFF_ID,'vdiff -r %b%e',0x8000040
+VCSSetCmd=VCS_CHECKMENU_ID,'pvcswinu',0x8000000
+VCSSetCmd=VCS_ADD_ID,'vcs -i -t@%Q %b%e',0x8000040
+VCSSetCmd=VCS_REMOVE_ID,'del /f %b%{??v|___}e',0x8000040

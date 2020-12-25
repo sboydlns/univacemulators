@@ -1,0 +1,201 @@
+       .
+       . DTF definitions
+       .
+       P           PROC
+       DTF$DEF*    NAME
+       DTF$FLAGS   EQU       0                   . U = ERROR # L = SETTINGS
+       DTF$NAME    EQU       1D                  . FILE NAME (2 WORDS)
+       DTF$RECBFR  EQU       3D                  . U = SIZE L = ADDR
+       DTF$TRACKS  EQU       4D                  . U = # TRACKS L = STRT TRACK
+       DTF$LASTLEN EQU       5D                  . # WORDS IN LAST TRACK
+       DTF$POSN    EQU       6D                  . U = BFR OFFSET L = TRACK #
+       DTF$TRKLEN  EQU       7D                  . # WORDS CRNT TRACK
+       DTF$ERRPROC EQU       8D                  . ADDR OF ERROR ROUTINE
+       DTF$EOFPROC EQU       9D                  . ADDR OF EOF ROUTINE
+       DTF$IOBFR   EQU       10D                 . ADDR OF I/O BFR
+       DTF$CHAN    EQU       11D                 . L = CHANNEL #
+       DTF$SPCB4   EQU       11D                 . U = PRINTER SPACE B4 COUNT
+       DTF$QUEUE   EQU       12D                 . PTR TO DEVICE QUEUE
+       DTF$LEN     EQU       DTF$QUEUE-DTF$FLAGS+1
+       .
+       . Flag bits
+       .
+       DTF$TYPE    EQU       7                   . 3 BITS FOR FILE TYPE
+       DTF$SD      EQU       1D                  . SEQUENTIAL DRUM FILE
+       DTF$CR      EQU       2D                  . CARD READER
+       DTF$CP      EQU       3D                  . CARD PUNCH
+       DTF$PR      EQU       4D                  . PRINTER
+       DTF$INPUT   EQU       40000               . INPUT FILE
+       DTF$OUTPUT  EQU       20000               . OUTPUT FILE
+       DTF$VARREC  EQU       10000               . VARIABLE LENGTH RECORDS
+       DTF$OPEN    EQU       04000               . FILE IS OPEN
+       DTF$EOF     EQU       02000               . END OF FILE
+       DTF$COLIMG  EQU       01000               . CARD IMAGE BY COLUMN MODE
+       DTF$ROWIMG  EQU       00400               . CARD IMAGE BY ROW MODE
+       DTF$STKR1   EQU       00200               . SELECT STACKER 1
+       .
+       . Error codes
+       .
+       DTF$EOPEN   EQU       1D                  . ALREADY OPEN
+       DTF$ENFND   EQU       2D                  . FILE NOT FOUND
+       DTF$EUNK    EQU       3D                  . UNKNOWN FILE TYPE
+       DTF$ERDERR  EQU       4D                  . READ ERROR
+       DTF$EDFULL  EQU       5D                  . DRUM FULL
+       DTF$ENOMEM  EQU       6D                  . OUT OF MEMORY
+       DTF$EWRERR  EQU       7D                  . WRITE ERROR
+       DTF$EINUSE  EQU       8D                  . DEVICE IN USE
+       DTF$ENOTOPN EQU       9D                  . NOT OPEN
+       DTF$EINTLK  EQU       10D                 . INTERLOCK (HOPPER EMPTY)
+                   END
+       .
+       . DTFSD - Sequential drum file
+       . 
+       . Parameters:
+       .   file_name,channel file_type rsize,rbfr iobfr eof_routine error_routine 
+       .                 
+       P           PROC
+       DTFSD*      NAME
+                   +P(2,1)++DTF$SD
+                   DLD       P(1,1)
+                   +P(3,1),P(3,2)
+                   +0
+                   +0
+                   +0
+                   +0
+                   +P(6,1)
+                   +P(5,1)
+                   +P(4,1)
+                   +P(1,2)
+                   +0
+                   END
+       .
+       . DTFCR - Card reader file
+       .
+       . Parameters:
+       .   rsize,rbfr eof_routine error_routine img_mode
+       .
+       P           PROC
+       DTFCR*      NAME
+                   +DTF$INPUT++DTF$CR++P(4,1)
+                   DLD       'READER'
+                   +P(1,1),P(1,2)
+                   +0
+                   +0
+                   +0
+                   +0
+                   +P(3,1)
+                   +P(2,1)
+                   +0
+                   +0
+                   +0
+                   END
+       .
+       . DTFCP - Card punch file
+       .
+       . Parameters:
+       .   rsize,rbfr error_routine img_mode
+       .
+       P           PROC
+       DTFCP*      NAME
+                   +DTF$INPUT++DTF$CP++P(3,1)
+                   DLD       'PUNCH'
+                   +P(1,1),P(1,2)
+                   +0
+                   +0
+                   +0
+                   +0
+                   +P(2,1)
+                   +0
+                   +0
+                   +0
+                   +0
+                   END
+       .
+       . DTFPR - Printer file
+       .
+       . Parameters:
+       .   rsize,rbfr error_routine dflt_space_b4
+       .
+       P           PROC
+       DTFPR*      NAME
+                   +DTF$INPUT++DTF$PR
+                   DLD       'PRINTER'
+                   +P(1,1),P(1,2)
+                   +0
+                   +0
+                   +0
+                   +0
+                   +P(2,1)
+                   +0
+                   +0
+                   +P(3,1),0
+                   +0
+                   END
+       .
+       . OPEN - Open a file
+       .
+       . Parameters:
+       .   dtf
+       .
+       P           PROC
+       OPEN*       NAME
+                   EXRN      EROPEN$
+                   +P(1,1)
+                   END
+       .
+       . CLOSE - Close a file
+       .
+       . Parameters:
+       .   dtf
+       .
+       P           PROC
+       CLOSE*      NAME
+                   EXRN      ERCLOSE$
+                   +P(1,1)
+                   END
+       .
+       . READ - Read a record from a file
+       .
+       . Parameters:
+       .   dtf
+       .
+       P           PROC
+       READ*       NAME
+                   EXRN      ERREAD$
+                   +P(1,1)
+                   END                                      
+       .
+       . WRITE - Write a record to a file
+       .
+       . Parameters:
+       .   dtf
+       .
+       P           PROC
+       WRITE*      NAME
+                   EXRN      ERWRITE$
+                   +P(1,1)
+                   END
+       .
+       . STKSEL - Stacker select for punch files
+       .
+       . Parameters:
+       .   dtf stacker#(0/1)
+       .
+       P           PROC
+       STKSEL*     NAME
+                   LA        P(2,1),,AZERO
+                   LA        DTF$STKR1
+                   ROR,L     P(1,1)+DTF$FLAGS
+                   END
+       .
+       . PRSPC - Set printer space before count
+       .
+       . Paramters:
+       .   dtf count
+       .
+       P           PROC
+       PRSPC*      NAME
+                   LA        P(2,1)**77
+                   SA,L      P(1,1)+DTF$SPCB4
+                   END                   
+                                      

@@ -1,0 +1,44 @@
+       . 
+       . TEST A FOR EQUALITY TO A CONSTANT. JUMP TO TARGET IF EQUAL.
+       .
+       . JE CONST,TARGET
+       .
+       P           PROC
+       JE*         NAME
+                   TA,X      P(1,1),,YMORE
+                   TA,X      P(1,1)+1,,YMORE
+                   J         $+2
+                   J         P(1,2)
+                   END
+       . 
+       . TEST A FOR INEQUALITY TO A CONSTANT. JUMP TO TARGET IF NOT EQUAL.
+       .
+       . JNE CONST,TARGET
+       .
+       P           PROC
+       JNE*        NAME
+                   TA,X      P(1,1),,YMORE
+                   TA,X      P(1,1)+1,,YMORE
+                   J         P(1,2)
+                   END
+       .
+       . JUMP TO TARGET IF A > CONSTANT
+       .
+       . JG CONST,TARGET
+       .
+       P           PROC
+       JG*         NAME
+                   TA        P(1,1)+1,,YMORE
+                   J         P(1,2)
+                   END
+       . JUMP TO TARGET IF A < CONSTANT
+       .
+       . JL CONST,TARGET
+       .
+       P           PROC
+       JL*         NAME
+                   TA        P(1,1),,YLESS
+                   J         P(1,2)
+                   END
+                                      
+                   

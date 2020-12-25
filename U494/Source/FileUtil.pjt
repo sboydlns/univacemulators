@@ -1,0 +1,75 @@
+;Codewright Project File (do not remove or modify this line)
+[ProjInit]
+ProjSetConfigFlags=0x04010940
+ProjCheckPath='C:\Development\Emulators\U494\Source\\'
+
+[Files]
+C:\Development\Emulators\U494\Source\BuildFileUtil.bat
+C:\DEVELOPMENT\EMULATORS\U494\SOURCE\FileUtil.asm
+
+
+[State]
+SysSetCwd='C:\Development\Emulators\U494\Source'
+SrchSetFlags=0x4410600b
+FileSortMode=0x0
+StateWindowFrame=0,0,1211,1069,0x63097f08
+_StateWindow=130,130,731,573,0x00100010,'C:\DEVELOPMENT\EMULATORS\U494\SOURCE\FileUtil.asm',208,31,212,4,20,12,46,26,126,176,8,4294967295,4294967295,1,10,'',12,255,48,72,10,467,0,0,721,252,249,294,30,400,0,212,214,210,220,721,721,720,729,217,80,0,223,224,14,256,1,208,1,6
+_StateBuffer='C:\DEVELOPMENT\EMULATORS\U494\SOURCE\FileUtil.asm',0x0400048a,294,30,25,'8 20 30 50','',0x1,'',1,72,1
+_StateHistory=FILELIST,'C:\Development\Emulators\U494\Source\BuildBcdTest.bat','C:\Development\Emulators\U494\Procs\ExecReturn.proc','C:\Development\Emulators\U494\Source\BuildDrum.bat','C:\Development\Emulators\U494\Source\BcdTest.asm','C:\Development\Emulators\U494\Procs\files.proc','n:\trkcob\mc2hrcvd.cbl','C:\Development\Emulators\U494\Source\BuildFileUtil.bat','C:\DEVELOPMENT\EMULATORS\U494\SOURCE\FileUtil.asm'
+_StateHistory=SEARCH,'GOTDEST','ZERO','PUN','PRN','RDR','\'','OPDTF1','BANNER','DTFCP','DTF$CHAN'
+_StateHistory=XSYMBOL,'FILE','INPUT','LINE','OUTPUT'
+_StateHistory=EDITFILE,'C:\Development\Emulators\U494\Source\MOS.pjt','C:\Development\Emulators\U494\Source\BcdTest.asm','C:\Development\Emulators\U494\Source\MOS.pjt','C:\Development\Emulators\U494\Source\MOS.PJT','C:\Development\Emulators\U494\Source\mos.pjt','C:\Development\Emulators\U494\Procs\files.proc','C:\Development\Emulators\U494\Source\mos.pjt','C:\Development\Emulators\U494\Procs\files.proc','C:\Development\Emulators\U494\Source\mos.pjt','C:\Development\Emulators\U494\Source\MOS.pjt'
+
+[Editor]
+VCSProject=''
+VCSProjectPath=''
+VCSProjectLocalPath=''
+ScrapSetCount=1
+ClipboardEnableSepStr=1
+ClipboardSetSepStr='\r\n',0
+ClipboardEnableTermStr=1
+ClipboardSetTermStr='\r\n',0
+
+[Compiler]
+TagSetCmd='${HOME}${WTAGS} -oc -d -t${TAGFILE}.tag -p${TAGFILE}.ptg',0x8000060
+BrowseSetFile='C:\Development\Emulators\U494\Source\FileUtil.ptg'
+TagSetFile='C:\Development\Emulators\U494\Source\FileUtil.tag'
+CompilerAddCmd='Microsoft Assembler','c:\development\emulators\u494\win32\debug\u494asm %p%b%e -P ..\..\procs ',1073741840,'',16,'',16,'',16,'',0,'',0,'','','','',''
+CompilerAddResponse='Microsoft Assembler',
+CompilerAddCmd='Default Compiler Settings','',1073741840,'',16,'',16,'',16,'',0,'',0,'','','','',''
+CompilerAddResponse='Default Compiler Settings',
+CompilerAddCmd='RM/Cobol','rmcobol %b%e',1073741840,'rmcobol %b%e',16,'',16,'',16,'',0,'',0,'','','','',''
+CompilerAddResponse='RM/Cobol',
+CompilerAddCmd='$_cw_proj_hash_$','',1073741904,'',80,'C:\Development\Emulators\U494\Source\BuildFileUtil.bat',176,'${FTEE} nmake',176,'',0,'',0,'_ErrorInfoDefault','','','proj.err','%x'
+CompilerAddResponse='$_cw_proj_hash_$',
+CompilerAddCmd='U494 Assmebler','c:\development\emulators\u494\Source\BuildCave.bat',1073741840,'',16,'',16,'',16,'',0,'',0,'','','','',''
+CompilerAddResponse='U494 Assmebler',
+CompilerNewExt=.htm
+CompilerAssign='RM/Cobol','.cbl'
+CompilerAssign='RM/Cobol','.pgm'
+CompilerNewExt=.pas
+CompilerAssign='RM/Cobol','.cob'
+CompilerNewExt=.dyn
+CompilerNewExt=.ini
+CompilerNewExt=.html
+CompilerNewExt=.proc
+CompilerNewExt=.ws
+CompilerAssign='Default Compiler Settings','.*'
+CompilerNewExt=.txt
+CompilerAssign='U494 Assmebler','.asm'
+CompilerNewExt=.ecbl
+
+[VersionControl:PVCS]
+VCSSetCmd=VCS_CHECKIN_ID,'put -n -T@%Q -M@%Q %b%e',0x8000040
+VCSSetCmd=VCS_CHECKINLOCK_ID,'put -n -T@%Q -M@%Q -l %b%e',0x8000040
+VCSSetCmd=VCS_CHECKOUT_ID,'get -y %b%e',0x8000040
+VCSSetCmd=VCS_CHECKOUTLOCK_ID,'get -y -l %b%e',0x8000040
+VCSSetCmd=VCS_CHECKLOCK_ID,'vcs -l %b%e',0x8000040
+VCSSetCmd=VCS_CHECKUNLOCK_ID,'vcs -u %b%e',0x8000040
+VCSSetCmd=VCS_CHECKLABEL_ID,'vcs -v${VCSLABEL} %b%e',0x8000040
+VCSSetCmd=VCS_CHECKLOG_ID,'vlog %b%e',0x8000040
+VCSSetCmd=VCS_CHECKPROP_ID,'vlog -b %b%e',0x8000040
+VCSSetCmd=VCS_CHECKDIFF_ID,'vdiff -r %b%e',0x8000040
+VCSSetCmd=VCS_CHECKMENU_ID,'pvcswinu',0x8000000
+VCSSetCmd=VCS_ADD_ID,'vcs -i -t@%Q %b%e',0x8000040
+VCSSetCmd=VCS_REMOVE_ID,'del /f %b%{??v|___}e',0x8000040

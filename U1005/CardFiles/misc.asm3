@@ -1,0 +1,54 @@
+     DL    $P1
+     .
+     . PROGRAM TO TEST MISCELLANEOUS INSTRUCTIONS THAT
+     . AREN'T USED IN THE ASSEMBLER OR OTHER TEST PROGRAMS.
+     .
+     . PRINTS A LIST OF THE SUMS OF ALL INTEGERS FROM ONE TO 50.
+     .
+     . PRINTS A LIST OF 100 - ALL INTEGERS FROM ONE TO 50.
+     .
+STRT GC    #0000     #0034     #0000    NEW PAGE
+     TD    ONE       NUM                INIT NUMS
+     TD    ONE       RSLT
+LP1  AM    +NUM      RSLT               ADD THEM
+     TX    +ED1      ED1                PRINT RESULT
+     ED    NUM       $PR       $PR  +7
+     TX    +ED2      ED2                
+     ED    NUM       $PR  +9   $PR  +16
+     TX    +ED3      ED3
+     ED    RSLT      $PR  +18  $PR  +25
+     GC4
+     AK    01        NUM                BUMP NUM
+     TD    NUM       RSLT
+     JK    5         DN1       NUM  +3  NUM+3 = 5 I.E NUM=50?
+     J     LP1                          NO
+     . CN    +NUM      FFTY               <= 50?
+     . JT    LP1       LP1                YES
+     .
+DN1  GC    #0000     #0034     #0000    NEW PAGE
+     TD    ONE       NUM                INIT NUMS
+     TD    FFTY      RSLT
+     TK    #0202     ED1  +6   ED1  +6  CHANGE + TO -
+LP2  SM    +NUM      RSLT               SUBTRACT THEM
+     TX    +ED1      ED1                PRINT RESULT
+     ED    FFTY      $PR       $PR  +7
+     TX    +ED2      ED2                
+     ED    NUM       $PR  +9   $PR  +16
+     TX    +ED3      ED3
+     ED    RSLT      $PR  +18  $PR  +25
+     GC4
+     AK    01        NUM                BUMP NUM
+     TD    FFTY      RSLT
+     CN    +NUM      FFTY               <= 50?
+     JT    LP2       LP2                YES
+     .
+     STOP  #H1
+     .
+NUM  DC    5     00000
+RSLT DC    5     00000
+ONE  DC    5     00001
+FFTY DC    5     00050
+ED1  DC    31    ^{{{{ + ~
+ED2  DC    31    ^{{{{ = ~
+ED3  DC    31    ^{{{{~
+     END   STRT

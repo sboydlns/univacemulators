@@ -1,0 +1,7 @@
+/root C:\Development\Emulators\U9200\CardFiles
+/file rdr,Compilers\9200_16k_assembler_pass1.h16
+/file rdr,Source\timer_test.asm
+/file rdr,Compilers\9200_16k_assembler_pass2.h16
+/file rdr,Source\timer_test.asm
+/blanks rdr,2
+

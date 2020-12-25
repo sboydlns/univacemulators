@@ -1,0 +1,51 @@
+     . PRINT CARDS FULL	LINE, 64/68 CHARACTERS
+     . GO TO NEW PAGE ON EACH 73-76 BREAK
+     . IF A CARD CONTAINS AN ODD NUMBER	IN COLS. 77-80
+     . IT IS ASSUMED TO GO INTO THE FIRST HALF	OF THE
+     . LINE.  EVEN NUMBERS GO IN THE SECOND HALF.
+     . ONLY ONE	CARD (ODD OR EVEN) NEED	BE SPECIFIED
+     . FOR ANY	PARTICULAR LINE.
+BEGINSTOP  #H3
+     TK              $PR   0            CLEAR PRINT BUFF
+     GC    #0000     #0034     #0000    HOME PAPER
+     GC1                                READ FIRST CARD
+     TD    $R1  +72  CNTL               INITIALIZE CNTL.
+     J     NORD                         START PROCESSING
+     . INPUT LOOP
+READ GC1                                READ A CARD
+NORD CK    /*        $R1       $R1  +1  END OF FILE?
+     JT    BREAK     $    +5            YES
+     CA    +CNTL     $R1  +72  $R1  +75 CONTROL	BREAK?
+     JT    $    +5   BREAK              YES
+     JK    #0100     EVEN      +$R1     JUMP IF	EVEN NO.
+     . ODD-NUMBERED CARD--IF THE PREVIOUS CARD WAS ALSO
+     . ODD, IT	MUST BE	PRINTED	FIRST.
+     CK     1        PUT                LAST CARD ODD?
+     JT    $    +5   ONO                NO
+     TD    $R1       CARD               SAVE CARD IMAGE
+     GC5                                PRINT AND READ
+     TD    CARD      $PR       $PR  +71 CARD TO	LINE
+     J     NORD                         PROCESS	NEXT CD.
+ONO  TD    $R1       $PR       $PR  +71 1ST HALF OF LINE
+     TK     1        PUT                DATA TO	PRINT
+     J     READ                         GET NEXT CARD
+     . EVEN-NUMBERED CARD--MOVE TO 2ND HALF AND	PRINT
+EVEN TD    $R1       $PR  +64           2ND HALF OF LINE
+     GC5                                PRINT AND READ
+     TK     0        PUT                CLEAR PUT SWITCH
+     J     NORD                         PROCESS	NEXT CD.
+     . BREAK ON	73-76--PRINT REMAINING DATA, IF	ANY
+BREAKCK     1        PUT                DATA TO	PRINT?
+     JT    $    +5   NOPUT              NO
+     GC4                                PRINT LAST LINE
+NOPUTCK    /*        $R1       $R1  +1  END OF FILE?
+     JT    BEGIN     $    +5            YES--STOP
+     GC    #0000     #0034     #0000    HOME PAPER
+     TD    $R1  +72  CNTL               UPDATE CONTROL
+     J     NORD                         PROCESS	NEXT CD.
+     . STORAGE
+CNTL DA    4                            73-76 CONTROL
+CARD DA    80                           STANDBY	AREA
+PUT  DC    1     0			PUT INDICATOR
+     END   BEGIN
+     . PRINT  LOADER

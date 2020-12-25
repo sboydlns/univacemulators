@@ -1,0 +1,15 @@
+/root C:\Development\U9200\CardFiles
+/file rdr,Compilers\linker.h16
+/file rdr,Source\loader_params.asc
+/file rdr,Object\loader_obj.h16
+/file rdr,Object\exec1_test_obj.h16
+/file rdr,Object\exec1_obj.h16
+/file rdr,Source\end.asc
+/blanks rdr,2
+/file rdr,Source\loader_params.asc
+/file rdr,Object\loader_obj.h16
+/file rdr,Object\exec1_test_obj.h16
+/file rdr,Object\exec1_obj.h16
+/file rdr,Source\end.asc
+/blanks rdr,2
+

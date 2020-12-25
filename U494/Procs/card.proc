@@ -1,0 +1,34 @@
+       .
+       . Card peripheral definitions
+       .
+       P           PROC
+       CARD$DEF*   NAME
+       .
+       . External function codes
+       .
+       CARD$STKR0  EQU       2
+       CARD$STKR1  EQU       3
+       CARD$PXLATE EQU       4
+       CARD$PCIMG  EQU       5
+       CARD$PRIMG  EQU       6
+       CARD$TERM   EQU       23
+       CARD$RDNOFD EQU       41
+       CARD$READ   EQU       42
+       CARD$FEED   EQU       43
+       CARD$RXLATE EQU       62
+       CARD$RCIMG  EQU       63
+       CARD$RRIMG  EQU       64
+       CARD$WINT   EQU       10
+       .
+       . Status codes
+       .
+       CARD$ESEQ   EQU       20
+       CARD$ECOUNT EQU       30
+       CARD$OK     EQU       40
+       CARD$EILFNC EQU       50
+       CARD$EPCHK  EQU       54
+       CARD$EINAP  EQU       60
+       CARD$EILCHR EQU       70
+       CARD$EINTLK EQU       74
+                   END
+                                 

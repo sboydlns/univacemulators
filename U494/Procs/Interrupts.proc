@@ -1,0 +1,14 @@
+       P           PROC
+       . Set interrupt lockout
+       I$LOCK*     NAME
+                   SLJT      0,,SIL
+                   GO        FIN
+       . Release interrupt lockout
+       I$UNLOCK*   NAME
+                   JT        0,,RIL
+                   GO        FIN
+       . Release interrupt lockout and jump
+       I$UNLOCKJ*  NAME      
+                   JT        P(1,1),P(1,2),RILJP                   
+       FIN         NAME
+                   END                   

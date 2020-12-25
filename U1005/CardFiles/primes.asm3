@@ -1,0 +1,39 @@
+     DL    $PR
+     *     44    TABLE OF PRIMES < 100
+     *     44
+     *     2
+     *     42
+STRT GC    #1100     #0035     #0000    FF THEN PRINT 90
+     TK     1        $PR       $PR  +4  PRINT 1ST 3 PRIMES
+     GC4
+     TK     2        $PR       $PR  +4
+     GC4
+     TK     3        $PR       $PR  +4
+     GC4 
+     .
+LP1  TK    03        DIV                INIT DIVISOR
+LP2  DV    +DIV      NUM       +QUOT
+     CN    +ZERO     $3218B1   $3223B1  REMAINDER ZERO?
+     JT    NOTP      $    +5            YES, NOT PRIME
+     AK    02        DIV                BUMP DIV BY 2
+     CN    +DIV      NUM  +2            >= NUM UNDER TEST?  
+     JT    $    +5   LP2                NO, TRY AGAIN
+     TD    ED1       $XR       $XR  +5  YES, NUMBER IS PRIME
+     ED    NUM  +3   $PR       $PR  +4  PRINT IT
+     GC4
+NOTP AK    02        NUM                BUMP NUM BY 2
+     CN    +NUM      FFTY               <= 50?
+     JT    LP1       LP1                YES
+     STOP  #H1                          NO, DONE
+     .
+NUM  DC    8     00000005
+DIV  DC    6     000001
+ZERO DC    6     000000			
+QUOT DC    8
+CUB  DC    20
+FFTY DC    8     00000050
+ED1  DC    6     ^{{{{~
+ED2  DC    7     ^{,{{{~
+ED3  DC    8     ^{{,{{{~
+     .
+     END   STRT      

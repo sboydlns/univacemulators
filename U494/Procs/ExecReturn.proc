@@ -1,0 +1,178 @@
+       .
+       . Executive Return definitions
+       .
+       P           PROC
+       ER$DEF*     NAME
+       EREXIT$     EQU       0D
+       ERYIELD$    EQU       1D
+       ERWAIT$     EQU       2D
+       ERACCEPT$   EQU       3D
+       ERTYPE$     EQU       4D
+       EROPEN$     EQU       5D
+       ERCLOSE$    EQU       6D
+       ERREAD$     EQU       7D
+       ERWRITE$    EQU       8D
+       ERD2I$      EQU       9D
+       ERTOKEN$    EQU       10D
+       ERDCLOCK$   EQU       11D
+       ERRTCLOCK$  EQU       12D
+       ERI2D$      EQU       13D
+       ERMEMSZ$    EQU       14D
+       ERMAX$      EQU       ERMEMSZ$            . LAST ER ROUTINE
+                   END
+       .
+       . TOABS
+       .
+       . Convert the relative address in A to an absolute address
+       . and return it in A. B5 must contain the ptr to the TCB
+       .
+       P           PROC
+       TOABS*      NAME
+                   LQ,L      TCB$PLR,B5          . CVT TO ABSOLUTE ADDR
+                   LSQ       6D
+                   AQ,A
+                   SQ,A
+                   END
+       .
+       . TOABSQ
+       .
+       . Convert the relative address in Q to an absolute address
+       . and return it in Q. B5 must contain the ptr to the TCB
+       .
+       P           PROC
+       TOABSQ*     NAME
+                   LA,L      TCB$PLR,B5          . CVT TO ABSOLUTE ADDR
+                   LSA       6D
+                   AQ,A
+                   END
+       .                   
+       . EXIT
+       .
+       . Parameters:
+       .   exit_code
+       .
+       . Returns:
+       .   None
+       .
+       P           PROC
+       EXIT*       NAME
+                   EXRN      EREXIT$                   
+                   +P(1,1)
+                   END
+       .
+       . YIELD
+       .
+       . Parameters:
+       .   None
+       .
+       . Returns:
+       .   None
+       .
+       P           PROC
+       YIELD*      NAME
+                   EXRN      ERYIELD$
+                   END
+       .
+       . TYPE
+       .
+       . Parameters:
+       .   buffer length in words, buffer address
+       .
+       . Returns:
+       .   None
+       .
+       P           PROC
+       TYPE*       NAME
+                   EXRN      ERTYPE$
+                   +P(1,1)
+                   +P(1,2)
+                   END
+       .
+       . ACCEPT
+       .
+       . Parameters:
+       .   prompt length,prompt bfr reply length,relpy bfr
+       .
+       . Returns:
+       .   console input
+       .
+       P           PROC
+       ACCEPT*     NAME
+                   EXRN      ERACCEPT$
+                   +P(1,1)
+                   +P(1,2)
+                   +P(2,1)
+                   +P(2,2)
+                   END 
+       .
+       . DEC2INT
+       .
+       . Parameters:
+       .   a fieldata string containing the decimal number in AQ
+       .
+       .
+       . Returns:
+       .   1 word integer eqivalent in A
+       .
+       P           PROC
+       DEC2INT*    NAME
+                   EXRN      ERD2I$
+                   END
+       .
+       . INT2DEC
+       .
+       . Parameters:
+       .   1 word integer to be converted in A
+       .
+       .
+       . Returns:
+       .   the fieldata decimal number in AQ
+       .
+       P           PROC
+       INT2DEC*    NAME
+                   EXRN      ERI2D$
+                   END
+       .
+       . GETTOKEN
+       .
+       . Parameters:
+       .   U = character in word, L = word in buffer (0,0) to get first token
+       .   bfr address
+       .
+       . Returns:
+       .   updated character / word index. Pass unchanged to get next token
+       .   token in AQ
+       .
+       P           PROC
+       GETTOKEN*   NAME
+                   EXRN      ERTOKEN$
+                   +P(1,1)
+                   +P(1,2)
+                   END 
+       .
+       . DAYCLOCK
+       .
+       . GET VALUE OF DAYCLOCK IN A
+       .
+       P           PROC
+       DAYCLOCK*   NAME
+                   EXRN      ERDCLOCK$
+                   END                                                                          
+       .
+       . RTCLOCK
+       .
+       . GET VALUE OF THE REAL TIME CLOCK IN A
+       .
+       P           PROC
+       RTCLOCK*    NAME
+                   EXRN      ERRTCLOCK$
+                   END 
+       .
+       . MEMSIZ
+       .                                                                                            
+       . GET THE PROGRAM MEMORY SIZE IN A
+       .
+       P           PROC
+       MEMSIZ*     NAME
+                   EXRN      ERMEMSZ$
+                   END

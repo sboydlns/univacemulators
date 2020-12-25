@@ -1,0 +1,26 @@
+     H   S  32        132  M RPGT            EST
+0101 F* RESEQUENCE R P G SOURCE DECKS                                     RPGSEQ
+0102 FREADER  IP                       READER      8
+0104 FPUNCH   O                        PUNCH       9
+0201 C   L1                Z-ADD01        CTRPGE
+0202 C    *                Z-ADD0         CTRLNE
+0203 C   10      CTRLNE    ADD  1         CTRLNE  20
+0204 C    *      30        COMP CTRLNE                 69
+0205 C    * 69   CTRPGE    ADD  1         CTRPGE  20
+0206 C    *                Z-ADD01        CTRLNE
+0207 C   10      'F'       COMP CC                       71
+0208 C    * 71   '*'       COMP AST                      72
+0209 C    * 72             MOVE IDENT     HIDENT  6
+0210 C   10                MLLZO1         CTRPGE
+0211 C    *                MLLZO1         CTRLNE
+0301 IREADER  AA  10
+0302 I                                        1  80 FILE
+0303 I                                        6   6 CC    L1
+0304 I                                       75  80 IDENT
+0305 I                                        7   7 AST
+0401 OPUNCH   D        10
+0402 O                         FILE      80
+0403 O                         CTRPGE     2
+0404 O                         CTRLNE     4
+0405 O                                    5 ' '
+0406 O                         HIDENT    80

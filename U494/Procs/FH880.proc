@@ -1,0 +1,49 @@
+       .
+       . FH880 Device Control Block definitions
+       .
+       . No parameters
+       .
+       P           PROC
+       FH8$DEF*    NAME
+       FH8$LIST    EQU       0
+       FH8$NEXT    EQU       1D                   
+       FH8$PRIOR   EQU       2D
+       FH8$CHAN    EQU       3D                  . CHANNEL #
+       FH8$QUE     EQU       4D                  . PTR TO QUEUE
+       FH8$BCW     EQU       5D                  . MOST RECENT BCW
+       FH8$LEN     EQU       FH8$BCW-FH8$LIST+1
+       .
+       . External function codes
+       .
+       FH8$WRITE   EQU       02
+       FH8$RDCONT  EQU       42
+       FH8$RDBLK   EQU       52
+       FH8$SEARCH  EQU       45
+       FH8$SRHRD   EQU       46
+       FH8$SRHBLK  EQU       55
+       FH8$SRHBKRD EQU       56
+       FH8$BTWOINT EQU       40
+       FH8$BTWINT  EQU       50
+       FH8$TRWOINT EQU       23
+       FH8$TRWINT  EQU       33
+       .
+       . Misc constants
+       .
+       FH8$TSIZE   EQU       1024D               . WORDS PER TRACK
+       FH8$VSIZE   EQU       207D                . VOLUME HEADER SIZE
+       FH8$VOLID   EQU       2D*FH8$TSIZE        . ADDR OF VOLUME ID
+       FH8$MFD     EQU       3D*FH8$TSIZE        . ADDR OF MFD       
+                   END
+       .
+       . Create an FH880 DCB
+       .
+       . Takes 1 paramter with 2 fields: channel,queue
+       .
+       P           PROC
+       FH8$DCB*    NAME
+                   L$HEADER
+                   +P(1,1)
+                   +P(1,2)
+                   +0
+                   END
+                                       
