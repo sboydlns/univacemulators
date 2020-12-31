@@ -22,9 +22,11 @@ start /b notepad++ Algol\RTTest.map
 if errorlevel 1 goto end
 win32\debug\FH880Util -d Drums\sysvol.drum -i Bin\RTTest.mem -f RTTEST -lp
 
-win32\debug\u494asm ..\AlgolV2\test.s -obj -P Procs -O ..\AlgolV2\Obj -noproc
+..\AlgolV2\win32\debug\algol ..\Algol\test.alg
 if errorlevel 1 goto end
-start /b notepad++ ..\AlgolV2\test.lst
+win32\debug\u494asm ..\Algol\test.s -obj -P Procs -O ..\AlgolV2\Obj -noproc
+if errorlevel 1 goto end
+start /b notepad++ ..\Algol\test.lst
 if errorlevel 1 goto end
 
 win32\debug\u494link Obj\algrt.obj Obj\algio.obj Obj\algmath.obj ..\AlgolV2\Obj\test.obj -exe -o ..\AlgolV2\Bin\test.mem -l ..\AlgolV2\test.map

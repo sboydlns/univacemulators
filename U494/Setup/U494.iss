@@ -79,14 +79,25 @@ Source: ..\Procs\Lists.proc; DestDir: {app}\Procs
 Source: ..\Procs\Mem.proc; DestDir: {app}\Procs
 Source: ..\Procs\Mfd.proc; DestDir: {app}\Procs
 Source: ..\Obj\BcdTest.obj; DestDir: {app}\Obj
+Source: ..\U490.cfg; DestDir: {app}
+Source: ..\U494.cfg; DestDir: {app}
+Source: ..\U1230.cfg; DestDir: {app}
+Source: ..\Win32\Debug\U494Spurt.exe; DestDir: {app}
+Source: ..\Source\Monitor6.spurt; DestDir: {app}\Source
+Source: ..\Manuals\490\UP-3900_SPURT_refMan_1963.pdf; DestDir: {app}\Manuals
+Source: ..\Manuals\1230\PX3892_Programming_Manual_for_1230_Computer_Feb66.pdf; DestDir: {app}\Manuals
+Source: ..\Bin\monitor6.mem; DestDir: {app}\Bin
+Source: ..\Bin\monitor6.mem; DestDir: {commonappdata}\Univac 494 Emulator\Data
+Source: ..\Docs\Monitor6.pdf; DestDir: {app}\Docs
 
 [Icons]
 Name: {group}\{#MyAppName}; Filename: {app}\{#MyAppExeName}; WorkingDir: {app}
 Name: {commondesktop}\{#MyAppName}; Filename: {app}\{#MyAppExeName}; Tasks: desktopicon; WorkingDir: {app}
-Name: {group}\U494 Assembler; Filename: {app}\U494Asm.exe; WorkingDir: {app}
 Name: {group}\FH880 Utilities; Filename: {app}\FH880Util.exe; WorkingDir: {app}; IconIndex: 0
 Name: {group}\U494 Console; Filename: {app}\U494Console.exe; WorkingDir: {app}; IconIndex: 0
 Name: {group}\U494 Emulator Docs; Filename: {app}\Docs\U494.pdf
+Name: {group}\Univac 1230 Emulator; Filename: {app}\U494.exe; Parameters: -c U1230.cfg; WorkingDir: {app}
+Name: {group}\Univac 490 Emulator; Filename: {app}\U494.exe; Parameters: -c U490.cfg; WorkingDir: {app}; IconIndex: 0
 
 [Run]
 Filename: {app}\{#MyAppExeName}; Description: {cm:LaunchProgram,{#MyAppName}}; Flags: nowait postinstall skipifsilent

@@ -64,7 +64,7 @@
 		<PropertyGroup Condition="'$(Cfg_1_Win32)'!=''">
 			<DCC_MapFile>3</DCC_MapFile>
 			<DCC_DebugDCUs>true</DCC_DebugDCUs>
-			<Debugger_RunParams>..\..\Tests\test4.alg</Debugger_RunParams>
+			<Debugger_RunParams>..\..\test.alg</Debugger_RunParams>
 			<VerInfo_Locale>1033</VerInfo_Locale>
 			<Manifest_File>None</Manifest_File>
 			<Icon_MainIcon>Algol_Icon.ico</Icon_MainIcon>

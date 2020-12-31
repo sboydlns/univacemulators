@@ -141,7 +141,7 @@
                    DPS       RSLT
                    TYPE     MLEN,MSG
        .                   
-                   EXIT      
+                   HALT      
        
        BCD0        DLD       0I
        BCD1        DLD       1234567I

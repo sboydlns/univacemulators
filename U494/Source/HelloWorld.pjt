@@ -13,8 +13,8 @@ SysSetCwd='C:\Development\Emulators\U494\Source'
 SrchSetFlags=0x0410600a
 FileSortMode=0x0
 StateWindowFrame=0,0,1211,1069,0x63097f08
-_StateWindow=130,130,731,573,0x00100010,'C:\DEVELOPMENT\EMULATORS\U494\SOURCE\HelloWorld.asm',208,31,212,4,20,12,46,26,126,176,8,4294967295,4294967295,1,10,'',12,255,48,72,10,467,0,0,721,252,249,11,9,400,0,212,214,210,220,721,721,720,729,217,80,0,223,224,14,1,1,208,1,6
-_StateBuffer='C:\DEVELOPMENT\EMULATORS\U494\SOURCE\HelloWorld.asm',0x0400048a,11,9,25,'8 20 30 50','',0x1,'',1,72,1
+_StateWindow=130,130,731,573,0x00100010,'C:\DEVELOPMENT\EMULATORS\U494\SOURCE\HelloWorld.asm',208,31,212,4,20,12,46,26,126,176,8,4294967295,4294967295,1,10,'',12,255,48,72,10,467,0,0,721,252,249,8,24,400,0,212,214,210,220,721,721,720,729,217,80,0,223,224,14,1,1,208,1,6
+_StateBuffer='C:\DEVELOPMENT\EMULATORS\U494\SOURCE\HelloWorld.asm',0x0400048a,8,24,25,'8 20 30 50','',0x1,'',1,72,1
 _StateHistory=FILELIST,'C:\DEVELOPMENT\EMULATORS\U494\SOURCE\HelloWorld.asm','C:\Development\Emulators\U494\Source\BuildBcdTest.bat','C:\Development\Emulators\U494\Source\BuildHelloWorld.bat','C:\Development\Emulators\U494\Procs\ExecReturn.proc','C:\Development\Emulators\U494\Procs\files.proc'
 _StateHistory=EDITFILE,'C:\Development\Emulators\U494\Source\BuildBcdTest.bat','C:\Development\Emulators\U494\Procs\ExecReturn.proc','C:\Development\Emulators\U494\Procs\files.proc','C:\Development\Emulators\U494\Source\MOS.pjt'
 

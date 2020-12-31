@@ -31,7 +31,7 @@ type
 
 implementation
 
-uses U494Util, U494Interrupts;
+uses U494Util, U494Interrupts, U494Config;
 
 const
   OUTPUT_ENABLE = $01;
@@ -178,7 +178,7 @@ begin
                     Dec(bytesCopied, bytesWritten);
                 end;
                 // Copy CPU buffer to output buffer
-                bcr := FMemory.FetchBcr(BcrOut0, True);
+                bcr := FMemory.FetchBcr(BcrOut(FChannel), True);
                 tail := FOBfrTail;
                 while (OutputActive and
                        ((FFunction.Value and PRINTER_ENABLED) = PRINTER_ENABLED) and
@@ -190,7 +190,7 @@ begin
                     FOBfrTail := tail;
                     bcr.Address := bcr.Address + 1;
                     bcr.Count := bcr.Count - 1;
-                    FMemory.StoreBcr(BcrOut0, bcr, True);
+                    FMemory.StoreBcr(BcrOut(FChannel), bcr, True);
                     if (tail = FOBfrHead) then
                         Break;
                 end;
@@ -227,7 +227,7 @@ begin
             end;
             // Send any new input to the buffer if input is activated and
             // the keyword is enabled
-            bcr := FMemory.FetchBcr(BcrIn0, True);
+            bcr := FMemory.FetchBcr(BcrIn(FChannel), True);
             head := FIBfrHead;
             while (InputActive and
                    ((FFunction.Value and KEYBOARD_ENABLED) = KEYBOARD_ENABLED) and
@@ -241,7 +241,7 @@ begin
                 FIBfrHead := head;
                 bcr.Address := bcr.Address + 1;
                 bcr.Count := bcr.Count - 1;
-                FMemory.StoreBcr(BcrIn0, bcr, True);
+                FMemory.StoreBcr(BcrIn(FChannel), bcr, True);
             end;
             if (InputActive and (bcr.Count = 0)) then
             begin

@@ -75,7 +75,7 @@
                    LBPJB1    WR$INT 
                    LBPJB1    WR$FLUSH           
        .                                                                                                                
-                   EXIT      0       
+                   HALT      0       
        
        
        .                   

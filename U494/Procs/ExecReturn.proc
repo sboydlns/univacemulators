@@ -46,7 +46,7 @@
                    AQ,A
                    END
        .                   
-       . EXIT
+       . HALT
        .
        . Parameters:
        .   exit_code
@@ -55,7 +55,7 @@
        .   None
        .
        P           PROC
-       EXIT*       NAME
+       HALT*       NAME
                    EXRN      EREXIT$                   
                    +P(1,1)
                    END

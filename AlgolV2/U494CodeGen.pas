@@ -1186,7 +1186,7 @@ var
     heapSize: Integer;
     stemp: AnsiString;
 begin
-    Emit('', 'EXIT', '0');
+    Emit('', 'HALT', '0');
     Emit('', '.');
     Emit('TEMP$AQ', 'RES', '2');
     Emit('TEMP$AQ2', 'RES', '2');

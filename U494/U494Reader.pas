@@ -346,7 +346,7 @@ var
 begin
     if (FReadStationLoaded) then
     begin
-        bcr := FMemory.FetchBcr(BcrIn0 + FChannel, True);
+        bcr := FMemory.FetchBcr(BcrIn(FChannel), True);
         for r := 15 downto 4 do
         begin
             word.Value := 0;
@@ -362,7 +362,7 @@ begin
                     word := 0;
                     bcr.Address := bcr.Address + 1;
                     bcr.Count := bcr.Count - 1;
-                    FMemory.StoreBcr(BcrIn0 + FChannel, bcr, True);
+                    FMemory.StoreBcr(BcrIn(FChannel), bcr, True);
                     if (bcr.Count = 0) then
                         Break;
                 end;
@@ -373,7 +373,7 @@ begin
             FMemory.Store(bcr.Address, word, True);
             bcr.Address := bcr.Address + 1;
             bcr.Count := bcr.Count - 1;
-            FMemory.StoreBcr(BcrIn0 + FChannel, bcr, True);
+            FMemory.StoreBcr(BcrIn(FChannel), bcr, True);
         end;
         FInputActive := False;
         FFuncCode := 0;
@@ -416,7 +416,7 @@ var
     bcr: T494Bcr;
     word: T494Word;
 begin
-    bcr := FMemory.FetchBcr(BcrIn0 + FChannel, True);
+    bcr := FMemory.FetchBcr(BcrIn(FChannel), True);
     word := 0;
     count := 0;
     i := Low(bfr.Columns);
@@ -431,7 +431,7 @@ begin
             count := 0;
             bcr.Address := bcr.Address + 1;
             bcr.Count := bcr.Count - 1;
-            FMemory.StoreBcr(BcrIn0 + FChannel, bcr, True);
+            FMemory.StoreBcr(BcrIn(FChannel), bcr, True);
         end;
         Inc(i);
     end;
@@ -736,7 +736,7 @@ var
 begin
     for i := 1 to 80 do
         bfr.Columns[i] :=  Ord(TCodeTranslator.AsciiToFieldata(' '));
-    bcr := FMemory.FetchBcr(BcrOut0 + FChannel, True);
+    bcr := FMemory.FetchBcr(BcrOut(FChannel), True);
     i := Low(bfr.Columns);
     while (FOutputActive and (i <= 80) and (bcr.Count > 0)) do
     begin
@@ -748,7 +748,7 @@ begin
         bfr.Columns[i + 4] := word.Value and $3f;
         bcr.Address := bcr.Address + 1;
         bcr.Count := bcr.Count - 1;
-        FMemory.StoreBcr(BcrOut0 + FChannel, bcr, True);
+        FMemory.StoreBcr(BcrOut(FChannel), bcr, True);
         Inc(i, 5);
     end;
     bfr.Count := 80;
@@ -794,7 +794,7 @@ begin
             FOutputFile1.Merge(rawBfr, FPunchStation);
         FOutputActive := False;
         FFuncCode := 0;
-        bcr := FMemory.FetchBcr(BcrOut0 + FChannel, True);
+        bcr := FMemory.FetchBcr(BcrOut(FChannel), True);
         if (FInputMonitor and (bcr.Count = 0)) then
             QueueInterrupt(intIO, IIsiOutput, 0);
         if (FWithExtInterrupt) then
@@ -817,7 +817,7 @@ begin
     if (FPunchStationLoaded) then
     begin
         rawBfr.Clear;
-        bcr := FMemory.FetchBcr(BcrOut0 + FChannel, True);
+        bcr := FMemory.FetchBcr(BcrOut(FChannel), True);
         r := 15;
         while (FOutputActive and (bcr.Count > 0) and (r >= 4)) do
         begin
@@ -875,7 +875,7 @@ begin
             FOutputFile1.Merge(rawBfr, FPunchStation);
         FOutputActive := False;
         FFuncCode := 0;
-        bcr := FMemory.FetchBcr(BcrOut0 + FChannel, True);
+        bcr := FMemory.FetchBcr(BcrOut(FChannel), True);
         if (FInputMonitor and (bcr.Count = 0)) then
             QueueInterrupt(intIO, IIsiOutput, 0);
         if (FWithExtInterrupt) then

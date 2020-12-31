@@ -30,55 +30,16 @@ const
     IIsiOutput = 22;
     IParityBank3 = 23;
     ITestAndSet = 24;
-    // Buffer Control Register addresses
-    BcrOut0 = 32;
-    BcrOut1 = 33;
-    BcrOut2 = 34;
-    BcrOut3 = 35;
-    BcrOut4 = 36;
-    BcrOut5 = 37;
-    BcrOut6 = 38;
-    BcrOut7 = 39;
-    BcrOut8 = 40;
-    BcrOut9 = 41;
-    BcrOut10 = 42;
-    BcrOut11 = 43;
-    BcrOut12 = 44;
-    BcrOut13 = 45;
-    BcrOut14 = 46;
-    BcrOut15 = 47;
-    BcrOut16 = 48;
-    BcrOut17 = 49;
-    BcrOut18 = 50;
-    BcrOut19 = 51;
-    BcrOut20 = 52;
-    BcrOut21 = 53;
-    BcrOut22 = 54;
-    BcrOut23 = 55;
-    BcrIn0 = 64;
-    BcrIn1 = 65;
-    BcrIn2 = 66;
-    BcrIn3 = 67;
-    BcrIn4 = 68;
-    BcrIn5 = 69;
-    BcrIn6 = 70;
-    BcrIn7 = 71;
-    BcrIn8 = 72;
-    BcrIn9 = 73;
-    BcrIn10 = 74;
-    BcrIn11 = 75;
-    BcrIn12 = 76;
-    BcrIn13 = 77;
-    BcrIn14 = 78;
-    BcrIn15 = 79;
-    BcrIn16 = 80;
-    BcrIn17 = 81;
-    BcrIn18 = 82;
-    BcrIn19 = 83;
-    BcrIn20 = 84;
-    BcrIn21 = 85;
-    BcrIn22 = 86;
-    BcrIn23 = 87;
+    // BCR starting addresses
+    BcrIn494 = 64;
+    BcrOut494= 32;
+    BcrIn490 = 64;
+    BcrOut490= 80;
+    BcrIn1230 = 64;
+    BcrOut1230= 80;
+    BcrExt1230 = 96;
+    // 1230 B register memory start
+    B1230 = 113;
     // Misc low memory locations
     DayClock = 14;
     RTClock = 15;
@@ -91,6 +52,23 @@ const
     BIT29 = $20000000;                                  // Sign bit for 30-bit word
 
 type
+  T494Memory = class;
+
+  T494BRegister = packed record                         // Used to hold 17-bit addresses
+  private
+    FValue: UInt32;
+    FRegNumber: Byte;
+    FMemory: T494Memory;
+    function GetValue15: UInt32;
+    function GetValue: UInt32;
+    procedure SetValue(const Value: UInt32);
+  public
+    property Value: UInt32 read GetValue write SetValue;
+//    property Value15: UInt32 read GetValue15;
+  end;
+
+  P494BRegister = ^T494BRegister;
+
   T494Address = packed record                           // Used to hold 17-bit addresses
   private
     FValue: UInt32;
@@ -99,6 +77,7 @@ type
     procedure SetValue(const Value: UInt32);
   public
     class operator Add(a: T494Address; b: Integer): T494Address;
+    class operator Add(a: T494Address; b: T494BRegister): T494Address;
     class operator Add(a, b: T494Address): T494Address;
     class operator Equal(a, b: T494Address): Boolean;
     class operator GreaterThan(a: T494Address; b: Integer): Boolean;
@@ -111,6 +90,8 @@ type
     property Value: UInt32 read GetValue write SetValue;
     property Value15: UInt32 read GetValue15;
   end;
+
+  P494Address = ^T494Address;
 
   T494HalfWord = packed record
   // Simulate a Univac 494 half word. A 15-bit ones complement value.
@@ -254,9 +235,15 @@ type
     function GetCount: UInt32;
     procedure SetAddress(const Value: UInt32);
     procedure SetCount(const Value: UInt32);
+    function GetEndAddr: UInt32;
+    function GetStartAddr: UInt32;
+    procedure SetEndAddr(const Value: UInt32);
+    procedure SetStartAddr(const Value: UInt32);
   public
     property Address: UInt32 read GetAddress write SetAddress;
+    property EndAddr: UInt32 read GetEndAddr write SetEndAddr;
     property Count: UInt32 read GetCount write SetCount;
+    property StartAddr: UInt32 read GetStartAddr write SetStartAddr;
     property Value: UInt32 read GetValue write SetValue;
   end;
 
@@ -270,9 +257,12 @@ type
     function f: Byte;
     function g: Byte;
     function j: Byte;
+    function j77: Byte;
     function jhat: Byte;
     function k: Byte;
+    function k77: Byte;
     function khat: Byte;
+    function s: Byte;
     function y: T494Address;
     property Value: UInt32 read FValue;
     property ybar: T494Address read Fybar write Fybar;
@@ -294,12 +284,23 @@ type
     property Value: Byte read FValue write SetValue;
   end;
 
+  T1230Sr = packed record
+  private
+    FValue: Byte;
+    procedure SetValue(const Value: Byte);
+  public
+    property Value: Byte read FValue write SetValue;
+  end;
+
   T494Memory = class
   // Simulate Univac 494 memory of 128K, 30-bit words.
   // Also provides a storage area for the various CPU registers.
   private
     FCore: array [0..MemSize] of T494Word;
+    FB: array [0..1, 1..7] of T494BRegister;            // B (index) registers
+                                                        // 0 = exec 1 = user
     function NativeToBcd(value: UInt64): TBcd;
+    function GetB(i, j: Integer): P494BRegister;
   public
     // registers
     IFR: T494Ifr;                                       // Internal function register
@@ -316,8 +317,8 @@ type
     A: T494Word;
     Q: T494Word;
     K: T494Word;
-    B: array [0..1, 1..7] of T494Address;               // B (index) registers
-                                                        // 0 = exec 1 = user
+    SR: array [0..2] of T1230Sr;                        // 1230 bank descriptors
+    constructor Create;
     function Fetch(addr: Integer; nolimit: Boolean = False): T494Word;
     function FetchAQ: UInt64;
     function FetchBcd(addr: Integer; nolimit: Boolean = False): TBcd;
@@ -329,11 +330,45 @@ type
     procedure StoreBcdAQ(value: TBcd);
     procedure StoreBcr(addr: Integer; value: T494Bcr; nolimit: Boolean = False);
     procedure StoreDWord(addr: Integer; value: T494DWord; nolimit: Boolean = False);
+    property B[i, j: Integer]: P494BRegister read GetB;
   end;
+
+  function BcrEXT(chan: Byte): Integer;
+  function BcrIN(chan: Byte): Integer;
+  function BcrOUT(chan: Byte): Integer;
 
 implementation
 
-uses U494Util;
+uses U494Util, U494Config;
+
+function BcrEXT(chan: Byte): Integer;
+begin
+    if (gConfig.Mode = m1230) then
+        Result := BcrExt1230 + chan
+    else
+        Result := 0;
+end;
+
+function BcrIN(chan: Byte): Integer;
+begin
+    case gConfig.Mode of
+      m494:     Result := BcrIn494 + chan;
+      m490:     Result := BcrIn490 + chan;
+      m1230:    Result := BcrIn1230 + chan;
+      else      Result := BcrIn494 + chan;
+    end;
+end;
+
+function BcrOUT(chan: Byte): Integer;
+begin
+    case gConfig.Mode of
+      m494:     Result := BcrOut494 + chan;
+      m490:     Result := BcrOut490 + chan;
+      m1230:    Result := BcrOut1230 + chan;
+      else      Result := BcrOut494 + chan;
+    end;
+end;
+
 
 { T494Word }
 
@@ -569,6 +604,11 @@ begin
     Result := (FValue and $e00000) shr 21;
 end;
 
+function T494Inst.j77: Byte;
+begin
+    Result := (FValue shr 9) and $0f;
+end;
+
 function T494Inst.jhat: Byte;
 begin
     Result := (FValue and $f00000) shr 20;
@@ -580,9 +620,19 @@ begin
     Result := (FValue and $1c0000) shr 18;
 end;
 
+function T494Inst.k77: Byte;
+begin
+    Result := (FValue shr 8) and $1;
+end;
+
 function T494Inst.khat: Byte;
 begin
     Result := (FValue and $c0000) shr 18;
+end;
+
+function T494Inst.s: Byte;
+begin
+    Result := (FValue shr 13) and $3;
 end;
 
 function T494Inst.y: T494Address;
@@ -599,6 +649,11 @@ begin
 end;
 
 class operator T494Address.Add(a, b: T494Address): T494Address;
+begin
+    Result.FValue := (a.FValue + b.FValue) and BITS17;
+end;
+
+class operator T494Address.Add(a: T494Address; b: T494BRegister): T494Address;
 begin
     Result.FValue := (a.FValue + b.FValue) and BITS17;
 end;
@@ -811,6 +866,18 @@ end;
 
 { T494Memory }
 
+constructor T494Memory.Create;
+var
+    i, j: Integer;
+begin
+    for i := 0 to 1 do
+        for j := 1 to 7 do
+        begin
+            FB[i, j].FRegNumber := j;
+            FB[i, j].FMemory := Self;
+        end;
+end;
+
 function T494Memory.Fetch(addr: Integer; nolimit: Boolean): T494Word;
 begin
     if (not nolimit) then
@@ -864,6 +931,11 @@ begin
                 raise EProgramProtection.CreateFmt('Address (%d) out of range', [addr]);
     end;
     Result.Value := Int64(FCore[addr].Value) shl 30 or FCore[addr + 1].Value;
+end;
+
+function T494Memory.GetB(i, j: Integer): P494BRegister;
+begin
+    Result := @FB[i, j];
 end;
 
 function T494Memory.NativeToBcd(value: UInt64): TBcd;
@@ -965,12 +1037,28 @@ end;
 
 function T494Bcr.GetAddress: UInt32;
 begin
-    Result := FValue and BITS17;
+    case gConfig.Mode of
+      m494:     Result := FValue and BITS17;
+      else      Result := StartAddr;
+    end;
 end;
 
 function T494Bcr.GetCount: UInt32;
 begin
-    Result := (FValue and $3ffc0000) shr 18;
+    case gConfig.Mode of
+      m494:     Result := (FValue and $3ffc0000) shr 18;
+      else      Result := EndAddr - StartAddr + 1;
+    end;
+end;
+
+function T494Bcr.GetEndAddr: UInt32;
+begin
+    Result := (FValue shr 15) and BITS15;
+end;
+
+function T494Bcr.GetStartAddr: UInt32;
+begin
+    Result := FValue and BITS15;
 end;
 
 function T494Bcr.GetValue: UInt32;
@@ -980,12 +1068,28 @@ end;
 
 procedure T494Bcr.SetAddress(const Value: UInt32);
 begin
-    FValue := (FValue and (not BITS17)) or (Value and BITS17);
+    case gConfig.Mode of
+      m494:     FValue := (FValue and (not BITS17)) or (Value and BITS17);
+      else      StartAddr := FValue;
+    end;
 end;
 
 procedure T494Bcr.SetCount(const Value: UInt32);
 begin
-    FValue := (FValue and (not $3ffc0000)) or ((Value and $fff) shl 18);
+    case gConfig.Mode of
+      m494:     FValue := (FValue and (not $3ffc0000)) or ((Value and $fff) shl 18);
+      else      StartAddr := EndAddr - Value + 1;
+    end;
+end;
+
+procedure T494Bcr.SetEndAddr(const Value: UInt32);
+begin
+    FValue := ((Value shl 15) and BITS15) or (FValue and BITS15)
+end;
+
+procedure T494Bcr.SetStartAddr(const Value: UInt32);
+begin
+    FValue := (FValue and (not BITS15)) or (Value and BITS15);
 end;
 
 procedure T494Bcr.SetValue(const Value: UInt32);
@@ -1080,6 +1184,51 @@ end;
 procedure T494Iasr.SetValue(const Value: Byte);
 begin
     FValue := Value and $1f;
+end;
+
+{ T1230Sr }
+
+procedure T1230Sr.SetValue(const Value: Byte);
+begin
+    FValue := Value and $f;
+end;
+
+{ T494BRegister }
+
+function T494BRegister.GetValue: UInt32;
+begin
+    case gConfig.Mode of
+      m494:
+      begin
+        if ((FMemory.IFR.f7 = 0) or (FRegNumber <= 3)) then
+            Result := FValue and BITS15
+        else
+            Result := FValue and BITS17;
+      end;
+      m490:
+      begin
+        Result := FValue and BITS15;
+      end;
+      m1230:
+      begin
+        FValue := FMemory.Fetch(B1230 + FRegNumber - 1, True);
+        Result := FValue and BITS17;
+      end;
+    end;
+end;
+
+function T494BRegister.GetValue15: UInt32;
+begin
+    if (gConfig.Mode = m1230) then
+        FValue := FMemory.Fetch(B1230 + FRegNumber - 1, True);
+    Result := FValue and BITS15;
+end;
+
+procedure T494BRegister.SetValue(const Value: UInt32);
+begin
+    FValue := Value and BITS17;
+    if (gConfig.Mode = m1230) then
+        FMemory.Store(B1230 + FRegNumber - 1, FValue, True);
 end;
 
 end.

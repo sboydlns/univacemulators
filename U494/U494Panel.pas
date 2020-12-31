@@ -227,15 +227,23 @@ begin
         FSystem := T494System.Create;
         FBreakpoints := TList<UInt32>.Create;
         PeripheralPages.ActivePageIndex := 0;
-        FReaderFrame := TU494ReaderFrame.Create(Self, FSystem.Reader);
-        FReaderFrame.Parent := ReaderPanel;
-        FReaderFrame.Align := alClient;
-        FPunchFrame := TU494PunchFrame.Create(Self, FSystem.Punch);
-        FPunchFrame.Parent := PunchPanel;
-        FPunchFrame.Align := alClient;
-        FPrinterFrame := TU494PrinterFrame.Create(Self, FSystem.Printer);
-        FPrinterFrame.Parent := PrinterPanel;
-        FPrinterFrame.Align := alClient;
+        if (gConfig.RdrPunChan <> -1) then
+        begin
+            FReaderFrame := TU494ReaderFrame.Create(Self, FSystem.Reader);
+            FReaderFrame.Parent := ReaderPanel;
+            FReaderFrame.Align := alClient;
+            FPunchFrame := TU494PunchFrame.Create(Self, FSystem.Punch);
+            FPunchFrame.Parent := PunchPanel;
+            FPunchFrame.Align := alClient;
+        end else
+            CardPage.TabVisible := False;
+        if (gConfig.PrinterChan <> -1) then
+        begin
+            FPrinterFrame := TU494PrinterFrame.Create(Self, FSystem.Printer);
+            FPrinterFrame.Parent := PrinterPanel;
+            FPrinterFrame.Align := alClient;
+        end else
+            PrinterPage.TabVisible := False;
         FDebuggerState := udsContinue;
         FSystem.Cpu.OnLog := DoLog;
         FDebugOS := True;
@@ -361,6 +369,7 @@ var
     f, g: Byte;
     op: T494Opcode;
     j, k, b: String;
+    mnemonic: String;
 
     procedure DisAssemble;
     begin
@@ -369,17 +378,38 @@ var
         if (f = $3f) then
         begin
             g := FSystem.Memory.Inst.g;
-            op := U494ExtOpcodes[g];
+            case gConfig.Mode of
+              m494:
+              begin
+                op := U494ExtOpcodes[g];
+                mnemonic := op.AsmMnemonic;
+              end;
+              m490:
+              begin
+                op := U494ExtOpcodes[g];
+                mnemonic := op.SpurtMnemonic;
+              end;
+              m1230:
+              begin
+                op := U1230ExtOpcodes[g];
+                mnemonic := op.SpurtMnemonic;
+              end;
+            end;
             WriteAudit(Format('%s/%s: %s %-10.10s %s%s',
                               [Copy(FormatOctal(FSystem.Memory.RIR.Value), 5),
                                Copy(FormatOctal(p - FSystem.Memory.RIR.Value), 5),
                                FormatOctal(FSystem.Memory.Inst.Value),
-                               op.AsmMnemonic,
+                               mnemonic,
                                Copy(FormatOctal(FSystem.Memory.Inst.y.Value15), 6),
                                b]));
         end else
         begin
             op := U494StdOpcodes[f];
+            case gConfig.Mode of
+              m494:     mnemonic := op.AsmMnemonic;
+              m490:     mnemonic := op.SpurtMnemonic;
+              m1230:    mnemonic := op.SpurtMnemonic;
+            end;
             if (op.InstType = itRead) then
                 k := kdesig_read[FSystem.Memory.Inst.k]
             else if (op.InstType = itStore) then
@@ -401,7 +431,7 @@ var
                                   [Copy(FormatOctal(FSystem.Memory.RIR.Value), 5),
                                    Copy(FormatOctal(p - FSystem.Memory.RIR.Value), 5),
                                    FormatOctal(FSystem.Memory.Inst.Value),
-                                   op.AsmMnemonic + k,
+                                   mnemonic + k,
                                    j,
                                    Copy(FormatOctal(FSystem.Memory.Inst.y.Value15), 6),
                                    b]));
@@ -415,7 +445,7 @@ var
                                   [Copy(FormatOctal(FSystem.Memory.RIR.Value), 5),
                                    Copy(FormatOctal(p - FSystem.Memory.RIR.Value), 5),
                                    FormatOctal(FSystem.Memory.Inst.Value),
-                                   op.AsmMnemonic + k,
+                                   mnemonic + k,
                                    Copy(FormatOctal(FSystem.Memory.Inst.y.Value15), 6),
                                    b,
                                    j]));

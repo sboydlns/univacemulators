@@ -193,7 +193,7 @@ var
     word: T494Word;
 begin
     FStatus := 0;
-    bcr := FMemory.FetchBcr(BcrIn0 + FChannel, True);
+    bcr := FMemory.FetchBcr(BcrIn(FChannel), True);
     while (FInputActive and (bcr.Count > 0) and (StatusCode <> CEND_OF_FILE)) do
     begin
         word.Value := FDrum.ReadWord(addr);
@@ -203,7 +203,7 @@ begin
         Inc(addr);
         bcr.Address := bcr.Address + 1;
         bcr.Count := bcr.Count - 1;
-        FMemory.StoreBcr(BcrIn0 + FChannel, bcr, True);
+        FMemory.StoreBcr(BcrIn(FChannel), bcr, True);
         if (word.Value = BITS30) then
         begin
             // End of block detected. Read overflow word,
@@ -220,7 +220,7 @@ begin
                     FMemory.Store(bcr.Address, word, True);
                     bcr.Address := bcr.Address + 1;
                     bcr.Count := bcr.Count - 1;
-                    FMemory.StoreBcr(BcrIn0 + FChannel, bcr, True);
+                    FMemory.StoreBcr(BcrIn(FChannel), bcr, True);
                 end;
             end else
             begin
@@ -241,7 +241,7 @@ var
     word: T494Word;
 begin
     FStatus := 0;
-    bcr := FMemory.FetchBcr(BcrIn0 + FChannel, True);
+    bcr := FMemory.FetchBcr(BcrIn(FChannel), True);
     while (FInputActive and (bcr.Count > 0) and (StatusCode <> CEND_OF_FILE)) do
     begin
         word.Value := FDrum.ReadWord(addr);
@@ -251,7 +251,7 @@ begin
         Inc(addr);
         bcr.Address := bcr.Address + 1;
         bcr.Count := bcr.Count - 1;
-        FMemory.StoreBcr(BcrIn0 + FChannel, bcr, True);
+        FMemory.StoreBcr(BcrIn(FChannel), bcr, True);
     end;
     if (FInputMonitor and (bcr.Count = 0)) then
     begin
@@ -387,7 +387,7 @@ var
     word: T494Word;
 begin
     FStatus := 0;
-    bcr := FMemory.FetchBcr(BcrOut0 + FChannel, True);
+    bcr := FMemory.FetchBcr(BcrOut(FChannel), True);
     while ((bcr.Count > 0) and (StatusCode <> CEND_OF_FILE)) do
     begin
         word := FMemory.Fetch(bcr.Address, True);
@@ -397,7 +397,7 @@ begin
         Inc(addr);
         bcr.Address := bcr.Address + 1;
         bcr.Count := bcr.Count - 1;
-        FMemory.StoreBcr(BcrOut0 + FChannel, bcr, True);
+        FMemory.StoreBcr(BcrOut(FChannel), bcr, True);
     end;
     if (FOutputMonitor and (bcr.Count = 0)) then
     begin

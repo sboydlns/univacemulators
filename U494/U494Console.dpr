@@ -1,6 +1,7 @@
 program U494Console;
 
 uses
+  ExceptionLog,
   Vcl.Forms,
   U494ConsoleFrm in 'U494ConsoleFrm.pas' {U494ConsoleForm},
   U494Util in 'U494Util.pas',

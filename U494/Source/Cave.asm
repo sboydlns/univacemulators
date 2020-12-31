@@ -76,7 +76,7 @@
                    TA        601D,,YLESS         . TABLE FULL?                   
                    J         L1004
                    TYPE      TMLLEN,TMLERR       . YES
-                   EXIT      1D      
+                   HALT      1D      
        .
        . RECORD TYPE 5 (STATIC GAME STATES)
        .
@@ -152,7 +152,7 @@
                    RI,W      I                   . I = I+1
                    JNE       400D,L1018          . IF I<>1000 GOTO L1017
                    TYPE      TM3LEN,TM3ERR
-                   EXIT      2D
+                   HALT      2D
        L1018       TBI       B2,10D
                    J         L1017A                   
        L1019       LB,W      B1,I                . TRAVEL(I-1)=-TRAVEL(I-1)
@@ -174,7 +174,7 @@
                    TBI       B1,200D
                    J         L1020A
                    TYPE      TMWLEN,TMWERR
-                   EXIT      3D
+                   HALT      3D
        .
        . RECORD TYPE 6 (HINTS AND EVENTS)
        .
@@ -876,7 +876,7 @@
                    LA,W      AA
                    MATE      SQUIT               . A = 'QUIT'?
                    J         L2020C              . NO
-                   EXIT      0                   . YES, END GAME
+                   HALT      0                   . YES, END GAME
        L2020C      MATE      SENTER              . A = 'ENTER'?
                    J         L2021               . NO
                    LA,W      WD2
@@ -914,7 +914,7 @@
        . NO END SENTINAL (ID = 99999) IN KTAB
        .                   
                    TYPE      E6LEN,ERR6          . OOPS!
-                   EXIT      4D
+                   HALT      4D
        .
        . GO TO THE APPROPRIATE ROUTINE TO PROCESS THE CLASS OF THE WORD.
        . ACTION WORDS ARE BETWEEN 0 AND 999, OJBECTS ARE BETWEEN 
@@ -937,7 +937,7 @@
                    J,L       L2025$J,B1          . GOTO ... KQ
        .                   
        L2025A      TYPE      NNLEN,NONO
-                   EXIT      5D                   
+                   HALT      5D                   
        .
        L2025$J     +0
                    +L5014                        . 0-999
@@ -961,7 +961,7 @@
                    J,L       L2026$J,B1          . GO TO APPROPRAITE ROUTINE       
        .                   
        L2026A      TYPE      E5LEN,ERR5
-                   EXIT      6D     
+                   HALT      6D     
        . 
        . JUMP TABLE FOR 2000 SERIES WORDS WITH AN OBJECT
        .      
@@ -1072,7 +1072,7 @@
                    J,L       L2036$J,B1          . GO TO APPROPRIATE RTN
        .
        L2036A      TYPE      OLEN,OOPS
-                   EXIT      6D
+                   HALT      6D
        .
        . JUMP TABLE FOR 2000 SERIES WORDS WITHOUT AN OBJECT
        .
@@ -1495,7 +1495,7 @@
                    SA,W      PROP,B1             . PROP(WATER)=1
                    J         L5200
        .
-                   EXIT      0
+                   HALT      0
        . ++++++++++
        . MOD
        . 
@@ -1672,7 +1672,7 @@
                    OR,W      SPCZERO
                    SA,W      FILSTAT
                    TYPE      FELEN,FILERR
-                   EXIT      8D
+                   HALT      8D
        .
        . INFILE EOF
        .                   
@@ -1732,7 +1732,7 @@
        R$Q         +0
        .
        CFG$ERR     TYPE      CFG$LEN,CFG$MSG
-                   EXIT      9D
+                   HALT      9D
        CFG$MSG     +'INVALID LINE TYPE DETECTED IN CONFIGURATION FILE ^'
        CFG$LEN     EQU       $-CFG$MSG                   
        .

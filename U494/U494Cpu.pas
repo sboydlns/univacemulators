@@ -121,13 +121,16 @@ public
     procedure CUL;
     procedure CUU;
     procedure D;
+    procedure D17;
     procedure DA;
     procedure DAC;
     procedure DAN;
     procedure DANB;
     procedure DCL;
     procedure DCU;
+    procedure DICDM;
     procedure DN;
+    procedure DOCDM;
     procedure DPA;
     procedure DPAN;
     procedure DPL;
@@ -138,11 +141,20 @@ public
     procedure DT;
     procedure DTE;
     procedure DTL;
+    procedure E17;
     procedure ECSR;
+    procedure EESR;
+    procedure EICDM;
     procedure EIR;
+    procedure EISR;
+    procedure EOCDM;
+    procedure EOSR;
     procedure ER;
     procedure ERIR;
+    procedure ESR;
     procedure EXF;
+    procedure EXF490;
+    procedure EXF1230;
     procedure EXRN;
     procedure FA;
     procedure FAN;
@@ -151,10 +163,14 @@ public
     procedure FP;
     procedure FU;
     procedure INMON;
+    procedure INMON490;
     procedure INN;
+    procedure INN490;
     procedure J;
     procedure JACTI;
+    procedure JACTI490;
     procedure JACTO;
+    procedure JACTO490;
     procedure JBD;
     procedure JT;
     procedure LA;
@@ -183,10 +199,15 @@ public
     procedure M;
     procedure MATE;
     procedure MATL;
+    procedure NORM;
     procedure NOTT;
     procedure ORR;
     procedure OUTMON;
+    procedure OUTMON490;
+    procedure OUTMON1230;
     procedure OUT;
+    procedure OUT490;
+    procedure OUT1230;
     procedure R;
     procedure RA;
     procedure RALP;
@@ -212,16 +233,24 @@ public
     procedure SBW;
     procedure SC;
     procedure SCN;
+    procedure SESR;
     procedure SFS;
     procedure SIFR;
+    procedure SISR;
     procedure SLJ;
     procedure SLJT;
+    procedure SOSR;
     procedure SQ;
+    procedure SSR;
     procedure SSU;
     procedure TA;
     procedure TBI;
     procedure TERMIN;
+    procedure TERMIN1230;
+    procedure TERMIN490;
     procedure TERMOT;
+    procedure TERMOT1230;
+    procedure TERMOT490;
     procedure TLP;
     procedure TSET;
     procedure XORR;
@@ -249,7 +278,7 @@ implementation
 
 { T494Cpu }
 
-uses FmtBcd, Bcd;
+uses FmtBcd, Bcd, U494Config;
 
 procedure T494Cpu.A;
 var
@@ -374,20 +403,10 @@ begin
     j := FMemory.Inst.j;
     if (j = 0) then
         Exit;
-    if ((FMemory.IFR.f7 = 0) or (j <= 3)) then
+    if (FMemory.B[FMemory.IFR.f6, j].Value <> 0) then
     begin
-        if (FMemory.B[FMemory.IFR.f6, j].Value15 <> 0) then
-        begin
-            FMemory.B[FMemory.IFR.f6, j] := FMemory.B[FMemory.IFR.f6, j] - 1;
-            FMemory.P := addr + FMemory.RIR.Value;
-        end;
-    end else
-    begin
-        if (FMemory.B[FMemory.IFR.f6, j].Value <> 0) then
-        begin
-            FMemory.B[FMemory.IFR.f6, j] := FMemory.B[FMemory.IFR.f6, j] - 1;
-            FMemory.P := addr + FMemory.RIR.Value;
-        end;
+        FMemory.B[FMemory.IFR.f6, j].Value := FMemory.B[FMemory.IFR.f6, j].Value - 1;
+        FMemory.P := addr + FMemory.RIR.Value;
     end;
 end;
 
@@ -480,10 +499,10 @@ begin
     end;
     if (operand.Value <> FMemory.B[FMemory.IFR.f6, j].Value) then
     begin
-        FMemory.B[FMemory.IFR.f6, j] := FMemory.B[FMemory.IFR.f6, j] + 1;
+        FMemory.B[FMemory.IFR.f6, j].Value := FMemory.B[FMemory.IFR.f6, j].Value + 1;
     end else
     begin
-        FMemory.B[FMemory.IFR.f6, j] := 0;
+        FMemory.B[FMemory.IFR.f6, j].Value := 0;
         FMemory.P := FMemory.P + 1;
     end;
 end;
@@ -500,6 +519,37 @@ begin
         FChannels[chan].TerminateInput;
 end;
 
+procedure T494Cpu.TERMIN1230;
+var
+    chan: Byte;
+begin
+    chan := FMemory.Inst.jhat;
+    case FMemory.Inst.khat of
+      0:
+      begin
+        if (Assigned(FChannels[chan])) then
+            FChannels[chan].TerminateInput;
+      end;
+      1:
+      begin
+        InterruptLockout := (FMemory.Inst.b <> 0);
+      end;
+      else
+      begin
+        raise Exception.CreateFmt('TERMIN1230 k designator %d not implemented', [FMemory.Inst.khat]);
+      end;
+    end;
+end;
+
+procedure T494Cpu.TERMIN490;
+var
+    chan: Byte;
+begin
+    chan := FMemory.Inst.jhat;
+    if (Assigned(FChannels[chan])) then
+        FChannels[chan].TerminateInput;
+end;
+
 procedure T494Cpu.TERMOT;
 var
     chan: Byte;
@@ -508,6 +558,33 @@ begin
         chan := FMemory.IASR.Value
     else
         chan := FMemory.CSR.Value;
+    if (Assigned(FChannels[chan])) then
+        FChannels[chan].TerminateOutput;
+end;
+
+procedure T494Cpu.TERMOT1230;
+var
+    chan: Byte;
+begin
+    chan := FMemory.Inst.jhat;
+    case FMemory.Inst.khat of
+      0:
+      begin
+        if (Assigned(FChannels[chan])) then
+            FChannels[chan].TerminateOutput;
+      end;
+      else
+      begin
+        raise Exception.CreateFmt('TERMOT1230 k designator %d not implemented', [FMemory.Inst.khat]);
+      end;
+    end;
+end;
+
+procedure T494Cpu.TERMOT490;
+var
+    chan: Byte;
+begin
+    chan := FMemory.Inst.jhat;
     if (Assigned(FChannels[chan])) then
         FChannels[chan].TerminateOutput;
 end;
@@ -597,11 +674,12 @@ end;
 
 procedure T494Cpu.TLP;
 var
-    operand: T494Word;
+    operand, lp: T494Word;
     test: Integer;
 begin
     operand := StdFetch;
-    test := FMemory.A - (operand.Value and FMemory.Q.Value);
+    lp.Value := operand.Value and FMemory.Q.Value;
+    test := FMemory.A - lp;
     case FMemory.Inst.j of
       1:
       begin
@@ -686,7 +764,6 @@ begin
     FStdInstProcs[8] := LQ;
     FStdInstProcs[9] := LA;
     FStdInstProcs[10] := LB;
-    FStdInstProcs[11] := EXF;
     FStdInstProcs[12] := SQ;
     FStdInstProcs[13] := SA;
     FStdInstProcs[14] := SB;
@@ -725,73 +802,126 @@ begin
     FStdInstProcs[47] := RSSU;
     FStdInstProcs[48] := JT;
     FStdInstProcs[49] := J;
-    FStdInstProcs[50] := JACTI;
-    FStdInstProcs[51] := JACTO;
     FStdInstProcs[52] := SLJT;
     FStdInstProcs[53] := SLJ;
-    FStdInstProcs[54] := TERMIN;
-    FStdInstProcs[55] := TERMOT;
     FStdInstProcs[56] := R;
     FStdInstProcs[57] := TBI;
     FStdInstProcs[58] := JBD;
-    FStdInstProcs[59] := INN;
-    FStdInstProcs[60] := OUT;
-    FStdInstProcs[61] := INMON;
-    FStdInstProcs[62] := OUTMON;
+    case gConfig.Mode of
+      m494:
+      begin
+        FStdInstProcs[11] := EXF;
+        FStdInstProcs[50] := JACTI;
+        FStdInstProcs[51] := JACTO;
+        FStdInstProcs[54] := TERMIN;
+        FStdInstProcs[55] := TERMOT;
+        FStdInstProcs[59] := INN;
+        FStdInstProcs[60] := OUT;
+        FStdInstProcs[61] := INMON;
+        FStdInstProcs[62] := OUTMON;
+      end;
+      m490:
+      begin
+        FStdInstProcs[11] := EXF490;
+        FStdInstProcs[50] := JACTI490;
+        FStdInstProcs[51] := JACTO490;
+        FStdInstProcs[54] := TERMIN490;
+        FStdInstProcs[55] := TERMOT490;
+        FStdInstProcs[59] := INN490;
+        FStdInstProcs[60] := OUT490;
+        FStdInstProcs[61] := INMON490;
+        FStdInstProcs[62] := OUTMON490;
+      end;
+      m1230:
+      begin
+        FStdInstProcs[11] := EXF1230;
+        FStdInstProcs[50] := JACTI490;
+        FStdInstProcs[51] := JACTO490;
+        FStdInstProcs[54] := TERMIN1230;
+        FStdInstProcs[55] := TERMOT1230;
+        FStdInstProcs[59] := INN490;
+        FStdInstProcs[60] := OUT1230;
+        FStdInstProcs[61] := INMON490;
+        FStdInstProcs[62] := OUTMON1230;
+      end;
+    end;
     // Extended instructions
-    FExtInstProcs[1] := FA;
-    FExtInstProcs[2] := FAN;
-    FExtInstProcs[3] := FM;
-    FExtInstProcs[5] := FD;
-    FExtInstProcs[6] := FP;
-    FExtInstProcs[7] := FU;
-    FExtInstProcs[8] := DT;
-    FExtInstProcs[9] := DA;
-    FExtInstProcs[10] := DAN;
-    FExtInstProcs[11] := DTE;
-    FExtInstProcs[12] := DN;
-    FExtInstProcs[13] := DAC;
-    FExtInstProcs[14] := DANB;
-    FExtInstProcs[15] := DTL;
-    FExtInstProcs[17] := DPL;
-    FExtInstProcs[18] := DPA;
-    FExtInstProcs[19] := DPTE;
-    FExtInstProcs[20] := DPN;
-    FExtInstProcs[21] := DPS;
-    FExtInstProcs[22] := DPAN;
-    FExtInstProcs[23] := DPTL;
-    FExtInstProcs[24] := SFS;
-    FExtInstProcs[25] := CPL;
-    FExtInstProcs[26] := CPU;
-    FExtInstProcs[27] := DCL;
-    FExtInstProcs[28] := DCU;
-    FExtInstProcs[29] := CUL;
-    FExtInstProcs[30] := CUU;
-    FExtInstProcs[31] := ER;
-    FExtInstProcs[32] := LBPJB0;
-    FExtInstProcs[33] := LBPJB1;
-    FExtInstProcs[34] := LBPJB2;
-    FExtInstProcs[35] := LBPJB3;
-    FExtInstProcs[36] := LBPJB4;
-    FExtInstProcs[37] := LBPJB5;
-    FExtInstProcs[38] := LBPJB6;
-    FExtInstProcs[39] := LBPJB7;
-    FExtInstProcs[41] := LRSQ;
-    FExtInstProcs[42] := TSET;
-    FExtInstProcs[43] := MATE;
-    FExtInstProcs[44] := EXRN;
-    FExtInstProcs[45] := LRSA;
-    FExtInstProcs[46] := LRSAQ;
-    FExtInstProcs[47] := MATL;
-    FExtInstProcs[49] := EIR;
-    FExtInstProcs[50] := LPLR;
-    FExtInstProcs[53] := SIFR;
-    FExtInstProcs[54] := ERIR;
-    FExtInstProcs[57] := LBW;
-    FExtInstProcs[58] := SCN;
-    FExtInstProcs[59] := ECSR;
-    FExtInstProcs[61] := SBW;
-    FExtInstProcs[63] := LOG;
+    case gConfig.Mode of
+      m494:
+      begin
+        FExtInstProcs[1] := FA;
+        FExtInstProcs[2] := FAN;
+        FExtInstProcs[3] := FM;
+        FExtInstProcs[5] := FD;
+        FExtInstProcs[6] := FP;
+        FExtInstProcs[7] := FU;
+        FExtInstProcs[8] := DT;
+        FExtInstProcs[9] := DA;
+        FExtInstProcs[10] := DAN;
+        FExtInstProcs[11] := DTE;
+        FExtInstProcs[12] := DN;
+        FExtInstProcs[13] := DAC;
+        FExtInstProcs[14] := DANB;
+        FExtInstProcs[15] := DTL;
+        FExtInstProcs[17] := DPL;
+        FExtInstProcs[18] := DPA;
+        FExtInstProcs[19] := DPTE;
+        FExtInstProcs[20] := DPN;
+        FExtInstProcs[21] := DPS;
+        FExtInstProcs[22] := DPAN;
+        FExtInstProcs[23] := DPTL;
+        FExtInstProcs[24] := SFS;
+        FExtInstProcs[25] := CPL;
+        FExtInstProcs[26] := CPU;
+        FExtInstProcs[27] := DCL;
+        FExtInstProcs[28] := DCU;
+        FExtInstProcs[29] := CUL;
+        FExtInstProcs[30] := CUU;
+        FExtInstProcs[31] := ER;
+        FExtInstProcs[32] := LBPJB0;
+        FExtInstProcs[33] := LBPJB1;
+        FExtInstProcs[34] := LBPJB2;
+        FExtInstProcs[35] := LBPJB3;
+        FExtInstProcs[36] := LBPJB4;
+        FExtInstProcs[37] := LBPJB5;
+        FExtInstProcs[38] := LBPJB6;
+        FExtInstProcs[39] := LBPJB7;
+        FExtInstProcs[41] := LRSQ;
+        FExtInstProcs[42] := TSET;
+        FExtInstProcs[43] := MATE;
+        FExtInstProcs[44] := EXRN;
+        FExtInstProcs[45] := LRSA;
+        FExtInstProcs[46] := LRSAQ;
+        FExtInstProcs[47] := MATL;
+        FExtInstProcs[49] := EIR;
+        FExtInstProcs[50] := LPLR;
+        FExtInstProcs[53] := SIFR;
+        FExtInstProcs[54] := ERIR;
+        FExtInstProcs[57] := LBW;
+        FExtInstProcs[58] := SCN;
+        FExtInstProcs[59] := ECSR;
+        FExtInstProcs[61] := SBW;
+        FExtInstProcs[63] := LOG;
+      end;
+      m1230:
+      begin
+        FExtInstProcs[7] := NORM;
+        FExtInstProcs[48] := ESR;
+        FExtInstProcs[49] := EISR;
+        FExtInstProcs[50] := EOSR;
+        FExtInstProcs[51] := EESR;
+        FExtInstProcs[52] := EICDM;
+        FExtInstProcs[53] := EOCDM;
+        FExtInstProcs[54] := DICDM;
+        FExtInstProcs[55] := DOCDM;
+        FExtInstProcs[56] := SSR;
+        FExtInstProcs[57] := SISR;
+        FExtInstProcs[58] := SOSR;
+        FExtInstProcs[59] := SESR;
+        FExtInstProcs[60] := D17;
+        FExtInstProcs[61] := E17;
+      end;
+    end;
 end;
 
 procedure T494Cpu.CUL;
@@ -938,6 +1068,11 @@ with assembler manual when I get it. }
     end;
 end;
 
+procedure T494Cpu.D17;
+begin
+
+end;
+
 procedure T494Cpu.DA;
 var
     addr: UInt32;
@@ -1056,6 +1191,11 @@ begin
     FMemory.StoreAQ(aq);
 end;
 
+procedure T494Cpu.DICDM;
+begin
+
+end;
+
 procedure T494Cpu.DN;
 var
     op1, op2: TBcd;
@@ -1070,12 +1210,32 @@ begin
     FMemory.StoreBcdAQ(op1);
 end;
 
+procedure T494Cpu.DOCDM;
+begin
+
+end;
+
+procedure T494Cpu.E17;
+begin
+
+end;
+
 procedure T494Cpu.ECSR;
 begin
     if (FInterruptActive) then
         FMemory.IASR.Value := FMemory.Fetch(FMemory.Operand.Value).Value
     else
         FMemory.CSR.Value := FMemory.Fetch(FMemory.Operand.Value).Value;
+end;
+
+procedure T494Cpu.EESR;
+begin
+
+end;
+
+procedure T494Cpu.EICDM;
+begin
+
 end;
 
 procedure T494Cpu.EIR;
@@ -1088,6 +1248,21 @@ begin
     FMemory.IFR.SetDelay(1);
 end;
 
+procedure T494Cpu.EISR;
+begin
+
+end;
+
+procedure T494Cpu.EOCDM;
+begin
+
+end;
+
+procedure T494Cpu.EOSR;
+begin
+
+end;
+
 procedure T494Cpu.ER;
 begin
     FExecRemotePending := True;
@@ -1097,6 +1272,16 @@ end;
 procedure T494Cpu.ERIR;
 begin
     FMemory.RIR.Value := FMemory.Fetch(FMemory.Operand.Value).Value;
+end;
+
+procedure T494Cpu.ESR;
+var
+    r: Byte;
+begin
+    r := FMemory.Inst.j77;
+    if (r > 2) then
+        raise Exception.CreateFmt('Illegal SR (%d)', [r]);
+    FMemory.SR[r].Value := FMemory.Inst.y.Value15 and $f;
 end;
 
 procedure T494Cpu.LA;
@@ -1153,9 +1338,9 @@ var
     procedure ExtendSign;
     begin
         if ((FMemory.B[b1, b2].Value and $4fff) = 0) then
-            FMemory.B[b1, b2] := FMemory.B[b1, b2].Value and (not $18000)
+            FMemory.B[b1, b2].Value := FMemory.B[b1, b2].Value and (not $18000)
         else
-            FMemory.B[b1, b2] := FMemory.B[b1, b2].Value or $18000;
+            FMemory.B[b1, b2].Value := FMemory.B[b1, b2].Value or $18000;
     end;
 
 begin
@@ -1170,22 +1355,22 @@ begin
           0,
           4:
           begin
-            FMemory.B[b1, b2] := FMemory.Operand.Value15;
+            FMemory.B[b1, b2].Value := FMemory.Operand.Value15;
           end;
           1,
           3,
           5:
           begin
-            FMemory.B[b1, b2] := FMemory.Fetch(FMemory.Operand.Value).H2.Value and BITS15;
+            FMemory.B[b1, b2].Value := FMemory.Fetch(FMemory.Operand.Value).H2.Value and BITS15;
           end;
           2,
           6:
           begin
-            FMemory.B[b1, b2] := FMemory.Fetch(FMemory.Operand.Value).H1.Value and BITS15;
+            FMemory.B[b1, b2].Value := FMemory.Fetch(FMemory.Operand.Value).H1.Value and BITS15;
           end;
           7:
           begin
-            FMemory.B[b1, b2] := FMemory.A.H2.Value and BITS15;
+            FMemory.B[b1, b2].Value := FMemory.A.H2.Value and BITS15;
           end;
         end;
     end else
@@ -1193,38 +1378,38 @@ begin
         case FMemory.Inst.k of
           0:
           begin
-            FMemory.B[b1, b2] := FMemory.Operand.Value;
+            FMemory.B[b1, b2].Value := FMemory.Operand.Value;
           end;
           1:
           begin
-            FMemory.B[b1, b2] := FMemory.Fetch(FMemory.Operand.Value).H2.Value;
+            FMemory.B[b1, b2].Value := FMemory.Fetch(FMemory.Operand.Value).H2.Value;
           end;
           2:
           begin
-            FMemory.B[b1, b2] := FMemory.Fetch(FMemory.Operand.Value).H1.Value;
+            FMemory.B[b1, b2].Value := FMemory.Fetch(FMemory.Operand.Value).H1.Value;
           end;
           3:
           begin
-            FMemory.B[b1, b2] := FMemory.Fetch(FMemory.Operand.Value).Value and BITS17;
+            FMemory.B[b1, b2].Value := FMemory.Fetch(FMemory.Operand.Value).Value and BITS17;
           end;
           4:
           begin
-            FMemory.B[b1, b2] := FMemory.Operand.Value15;
+            FMemory.B[b1, b2].Value := FMemory.Operand.Value15;
             ExtendSign;
           end;
           5:
           begin
-            FMemory.B[b1, b2] := FMemory.Fetch(FMemory.Operand.Value).H2.Value;
+            FMemory.B[b1, b2].Value := FMemory.Fetch(FMemory.Operand.Value).H2.Value;
             ExtendSign;
           end;
           6:
           begin
-            FMemory.B[b1, b2] := FMemory.Fetch(FMemory.Operand.Value).H1.Value;
+            FMemory.B[b1, b2].Value := FMemory.Fetch(FMemory.Operand.Value).H1.Value;
             ExtendSign;
           end;
           7:
           begin
-            FMemory.B[b1, b2] := FMemory.A.Value and BITS17;
+            FMemory.B[b1, b2].Value := FMemory.A.Value and BITS17;
           end;
         end;
     end;
@@ -1237,43 +1422,43 @@ end;
 
 procedure T494Cpu.LBPJB1;
 begin
-    FMemory.B[FMemory.IFR.f6, 1] := FMemory.P.Value - FMemory.RIR.Value;
+    FMemory.B[FMemory.IFR.f6, 1].Value := FMemory.P.Value - FMemory.RIR.Value;
     FMemory.P := FMemory.Operand.Value;
 end;
 
 procedure T494Cpu.LBPJB2;
 begin
-    FMemory.B[FMemory.IFR.f6, 2] := FMemory.P.Value - FMemory.RIR.Value;
+    FMemory.B[FMemory.IFR.f6, 2].Value := FMemory.P.Value - FMemory.RIR.Value;
     FMemory.P := FMemory.Operand.Value;
 end;
 
 procedure T494Cpu.LBPJB3;
 begin
-    FMemory.B[FMemory.IFR.f6, 3] := FMemory.P.Value - FMemory.RIR.Value;
+    FMemory.B[FMemory.IFR.f6, 3].Value := FMemory.P.Value - FMemory.RIR.Value;
     FMemory.P := FMemory.Operand.Value;
 end;
 
 procedure T494Cpu.LBPJB4;
 begin
-    FMemory.B[FMemory.IFR.f6, 4] := FMemory.P.Value - FMemory.RIR.Value;
+    FMemory.B[FMemory.IFR.f6, 4].Value := FMemory.P.Value - FMemory.RIR.Value;
     FMemory.P := FMemory.Operand.Value;
 end;
 
 procedure T494Cpu.LBPJB5;
 begin
-    FMemory.B[FMemory.IFR.f6, 5] := FMemory.P.Value - FMemory.RIR.Value;
+    FMemory.B[FMemory.IFR.f6, 5].Value := FMemory.P.Value - FMemory.RIR.Value;
     FMemory.P := FMemory.Operand.Value;
 end;
 
 procedure T494Cpu.LBPJB6;
 begin
-    FMemory.B[FMemory.IFR.f6, 6] := FMemory.P.Value - FMemory.RIR.Value;
+    FMemory.B[FMemory.IFR.f6, 6].Value := FMemory.P.Value - FMemory.RIR.Value;
     FMemory.P := FMemory.Operand.Value;
 end;
 
 procedure T494Cpu.LBPJB7;
 begin
-    FMemory.B[FMemory.IFR.f6, 7] := FMemory.P.Value - FMemory.RIR.Value;
+    FMemory.B[FMemory.IFR.f6, 7].Value := FMemory.P.Value - FMemory.RIR.Value;
     FMemory.P := FMemory.Operand.Value;
 end;
 
@@ -1282,13 +1467,13 @@ var
     addr: UInt32;
 begin
     addr := FMemory.Operand.Value;
-    FMemory.B[1, 1] := FMemory.Fetch(addr).H2.Value;
-    FMemory.B[1, 2] := FMemory.Fetch(addr + 1).H2.Value;
-    FMemory.B[1, 3] := FMemory.Fetch(addr + 2).H2.Value;
-    FMemory.B[1, 4] := FMemory.Fetch(addr + 3).Value;
-    FMemory.B[1, 5] := FMemory.Fetch(addr + 4).Value;
-    FMemory.B[1, 6] := FMemory.Fetch(addr + 5).Value;
-    FMemory.B[1, 7] := FMemory.Fetch(addr + 6).Value;
+    FMemory.B[1, 1].Value := FMemory.Fetch(addr).H2.Value;
+    FMemory.B[1, 2].Value := FMemory.Fetch(addr + 1).H2.Value;
+    FMemory.B[1, 3].Value := FMemory.Fetch(addr + 2).H2.Value;
+    FMemory.B[1, 4].Value := FMemory.Fetch(addr + 3).Value;
+    FMemory.B[1, 5].Value := FMemory.Fetch(addr + 4).Value;
+    FMemory.B[1, 6].Value := FMemory.Fetch(addr + 5).Value;
+    FMemory.B[1, 7].Value := FMemory.Fetch(addr + 6).Value;
 end;
 
 procedure T494Cpu.LLP;
@@ -1373,10 +1558,7 @@ begin
                 FMemory.Inst.ybar := FMemory.Inst.y;
                 if (b <> 0) then
                 begin
-                    if ((FMemory.IFR.f7 = 0) or ((b >= 1) and (b <= 3))) then
-                        bval := FMemory.B[FMemory.IFR.f6, b].Value15
-                    else
-                        bval := FMemory.B[FMemory.IFR.f6, b].Value;
+                    bval := FMemory.B[FMemory.IFR.f6, b].Value;
                     FMemory.Inst.ybar := FMemory.Inst.y + bval;
                     if ((FMemory.IFR.f7 = 0) or ((b >= 1) and (b <= 3))) then
                         FMemory.Inst.ybar := FMemory.Inst.ybar.Value15;
@@ -1398,7 +1580,7 @@ begin
                   end;
                   3:
                   begin
-                    FMemory.IFR.f1 := FMemory.IFR.f1 + FMemory.B[FMemory.IFR.f6, FMemory.Inst.b];
+                    FMemory.IFR.f1 := FMemory.IFR.f1 + FMemory.B[FMemory.IFR.f6, FMemory.Inst.b]^;
                   end;
                   4:
                   begin
@@ -1416,7 +1598,7 @@ begin
                   end;
                   7:
                   begin
-                    FMemory.IFR.f1 := FMemory.IFR.f1 + FMemory.B[FMemory.IFR.f6, FMemory.Inst.b];
+                    FMemory.IFR.f1 := FMemory.IFR.f1 + FMemory.B[FMemory.IFR.f6, FMemory.Inst.b]^;
                     FMemory.Store(FMemory.Operand.Value + FMemory.B[Fmemory.IFR.f6, 6].Value, FMemory.IFR.f1.Value);
                   end;
                 end;
@@ -1471,9 +1653,46 @@ begin
       0,
       1,
       2:    Exit;
+      3:
+      begin
+        if (Assigned(FChannels[chan])) then
+            FChannels[chan].ExternalFunction(FMemory.Fetch(FMemory.Operand.Value));
+      end;
     end;
-    if (Assigned(FChannels[chan])) then
-        FChannels[chan].ExternalFunction(FMemory.Fetch(FMemory.Operand.Value));
+end;
+
+procedure T494Cpu.EXF1230;
+var
+    chan: Byte;
+begin
+    chan := FMemory.Inst.jhat;
+    case FMemory.Inst.khat of
+      0,
+      1,
+      3:    raise Exception.CreateFmt('EXF1230 designator %d not implemented', [FMemory.Inst.khat]);
+      2:
+      begin
+        if (Assigned(FChannels[chan])) then
+            FChannels[chan].ExternalFunction(FMemory.Fetch(FMemory.Operand.Value));
+      end;
+    end;
+end;
+
+procedure T494Cpu.EXF490;
+var
+    chan: Byte;
+begin
+    chan := FMemory.Inst.jhat;
+    case FMemory.Inst.khat of
+      0,
+      1,
+      2:    Exit;
+      3:
+      begin
+        if (Assigned(FChannels[chan])) then
+            FChannels[chan].ExternalFunction(FMemory.Fetch(FMemory.Operand.Value));
+      end;
+    end;
 end;
 
 procedure T494Cpu.EXRN;
@@ -1648,10 +1867,7 @@ instruction. }
             FMemory.Inst.ybar := FMemory.Inst.y;
             if (b <> 0) then
             begin
-                if ((FMemory.IFR.f7 = 0) or ((b >= 1) and (b <= 3))) then
-                    bval := FMemory.B[FMemory.IFR.f6, b].Value15
-                else
-                    bval := FMemory.B[FMemory.IFR.f6, b].Value;
+                bval := FMemory.B[FMemory.IFR.f6, b].Value;
                 FMemory.Inst.ybar := FMemory.Inst.y + bval;
                 if ((FMemory.IFR.f7 = 0) or ((b >= 1) and (b <= 3))) then
                     FMemory.Inst.ybar := FMemory.Inst.ybar.Value15;
@@ -1899,12 +2115,35 @@ begin
         chan := FMemory.IASR.Value
     else
         chan := FMemory.CSR.Value;
-    addr := BcrIn0 + chan;
+    addr := BcrIn(chan);
     bcr := FMemory.Fetch(addr.Value);
     case FMemory.Inst.khat of
       0:    Exit;
       1:    bcr.H2 := operand.H2;
       2:    bcr.H1 := operand.H1;
+      3:    bcr := operand;
+    end;
+    FMemory.Store(addr.Value, bcr);
+    if (not Assigned(FChannels[chan])) then
+        Exit;
+    FChannels[chan].ActivateInput(True);
+end;
+
+procedure T494Cpu.INMON490;
+var
+    operand: T494Word;
+    chan: Byte;
+    addr: T494Address;
+    bcr: T494Word;
+begin
+    operand := IOFetch;
+    chan := FMemory.Inst.jhat;
+    addr := BcrIn(chan);
+    bcr := FMemory.Fetch(addr.Value);
+    case FMemory.Inst.khat of
+      0:    bcr.H2 := operand.H2;
+      1:    bcr.H2 := operand.H2;
+      2:    ;
       3:    bcr := operand;
     end;
     FMemory.Store(addr.Value, bcr);
@@ -1925,12 +2164,35 @@ begin
         chan := FMemory.IASR.Value
     else
         chan := FMemory.CSR.Value;
-    addr := BcrIn0 + chan;
+    addr := BcrIn(chan);
     bcr := FMemory.Fetch(addr.Value);
     case FMemory.Inst.khat of
       0:    Exit;
       1:    bcr.H2 := operand.H2;
       2:    bcr.H1 := operand.H1;
+      3:    bcr := operand;
+    end;
+    FMemory.Store(addr.Value, bcr);
+    if (not Assigned(FChannels[chan])) then
+        Exit;
+    FChannels[chan].ActivateInput(False);
+end;
+
+procedure T494Cpu.INN490;
+var
+    operand: T494Word;
+    chan: Byte;
+    addr: T494Address;
+    bcr: T494Word;
+begin
+    operand := IOFetch;
+    chan := FMemory.Inst.jhat;
+    addr := BcrIn(chan);
+    bcr := FMemory.Fetch(addr.Value);
+    case FMemory.Inst.khat of
+      0:    bcr.H2 := operand.H2;
+      1:    bcr.H2 := operand.H2;
+      2:    ;
       3:    bcr := operand;
     end;
     FMemory.Store(addr.Value, bcr);
@@ -2107,6 +2369,26 @@ begin
     end;
 end;
 
+procedure T494Cpu.JACTI490;
+var
+    chan: Byte;
+    operand: T494Word;
+begin
+    operand := IOFetch;
+    chan := FMemory.Inst.jhat;
+    if (not Assigned(FChannels[chan])) then
+        Exit;
+    if (FChannels[chan].InputActive) then
+    begin
+        case FMemory.Inst.khat of
+          0:    FMemory.P := operand.Value;
+          1,
+          3:    FMemory.P := operand.H2.Value;
+          2:    FMemory.P := operand.H1.Value;
+        end;
+    end;
+end;
+
 procedure T494Cpu.JACTO;
 var
     chan: Byte;
@@ -2117,6 +2399,26 @@ begin
         chan := FMemory.IASR.Value
     else
         chan := FMemory.CSR.Value;
+    if (not Assigned(FChannels[chan])) then
+        Exit;
+    if (FChannels[chan].OutputActive) then
+    begin
+        case FMemory.Inst.khat of
+          0:    FMemory.P := operand.Value;
+          1,
+          3:    FMemory.P := operand.H2.Value;
+          2:    FMemory.P := operand.H1.Value;
+        end;
+    end;
+end;
+
+procedure T494Cpu.JACTO490;
+var
+    chan: Byte;
+    operand: T494Word;
+begin
+    operand := IOFetch;
+    chan := FMemory.Inst.jhat;
     if (not Assigned(FChannels[chan])) then
         Exit;
     if (FChannels[chan].OutputActive) then
@@ -2403,6 +2705,11 @@ begin
     pi^ := r;
 end;
 
+procedure T494Cpu.NORM;
+begin
+
+end;
+
 procedure T494Cpu.NormalSkip;
 // Skip processing for "normal" instructions
 begin
@@ -2503,7 +2810,11 @@ begin
     if (op = $3f) then
     begin
         g := FMemory.Inst.g;
-        FCurOpcode := U494ExtOpcodes[g];
+        case gConfig.Mode of
+          m494:     FCurOpcode := U494ExtOpcodes[g];
+          m490:     IllegalInst;
+          m1230:    FCurOpcode := U1230ExtOpcodes[g];
+        end;
         FCurInstProc := FExtInstProcs[g];
     end else
     begin
@@ -2648,6 +2959,11 @@ begin
     end;
 end;
 
+procedure T494Cpu.SOSR;
+begin
+
+end;
+
 procedure T494Cpu.SLJ;
 var
     operand, mem: T494Word;
@@ -2718,7 +3034,7 @@ var
     operand: T494Word;
 begin
     operand := StdFetch;
-    FMemory.B[FMemory.IFR.f6, 7] := operand.Value;
+    FMemory.B[FMemory.IFR.f6, 7].Value := operand.Value;
     if (operand.Value = 0) then
     begin
         FMemory.P := FMemory.P + 1;
@@ -2835,7 +3151,7 @@ begin
         chan := FMemory.IASR.Value
     else
         chan := FMemory.CSR.Value;
-    addr := BcrOut0 + chan;
+    addr := BcrOut(chan);
     if ((FMemory.Inst.jhat mod 2) = 1) then
     begin
         if (Assigned(FChannels[chan])) then
@@ -2855,6 +3171,52 @@ begin
     end;
 end;
 
+procedure T494Cpu.OUTMON1230;
+var
+    operand: T494Word;
+    chan: Byte;
+    addr: T494Address;
+    bcr: T494Word;
+begin
+    operand := IOFetch;
+    chan := FMemory.Inst.jhat;
+    addr := BcrOut(chan);
+    if (FMemory.Inst.khat = 2) then
+        addr := BcrExt(chan);
+    bcr := FMemory.Fetch(addr.Value);
+    case FMemory.Inst.khat of
+      0:    bcr.H2 := operand.H2;
+      1:    bcr.H2 := operand.H2;
+      2:    bcr := operand;
+      3:    bcr := operand;
+    end;
+    FMemory.Store(addr.Value, bcr);
+    if (Assigned(FChannels[chan])) then
+        FChannels[chan].ActivateOutput(True);
+end;
+
+procedure T494Cpu.OUTMON490;
+var
+    operand: T494Word;
+    chan: Byte;
+    addr: T494Address;
+    bcr: T494Word;
+begin
+    operand := IOFetch;
+    chan := FMemory.Inst.jhat;
+    addr := BcrOut(chan);
+    bcr := FMemory.Fetch(addr.Value);
+    case FMemory.Inst.khat of
+      0:    bcr.H2 := operand.H2;
+      1:    bcr.H2 := operand.H2;
+      2:    ;
+      3:    bcr := operand;
+    end;
+    FMemory.Store(addr.Value, bcr);
+    if (Assigned(FChannels[chan])) then
+        FChannels[chan].ActivateOutput(True);
+end;
+
 procedure T494Cpu.OUT;
 var
     operand: T494Word;
@@ -2867,7 +3229,7 @@ begin
         chan := FMemory.IASR.Value
     else
         chan := FMemory.CSR.Value;
-    addr := BcrOut0 + chan;
+    addr := BcrOut(chan);
     if ((FMemory.Inst.jhat mod 2) = 1) then
     begin
         if (Assigned(FChannels[chan])) then
@@ -2885,6 +3247,62 @@ begin
         if (Assigned(FChannels[chan])) then
             FChannels[chan].ActivateOutput(False);
     end;
+end;
+
+procedure T494Cpu.OUT1230;
+var
+    operand: T494Word;
+    chan: Byte;
+    addr: T494Address;
+    bcr: T494Word;
+begin
+    operand := IOFetch;
+    chan := FMemory.Inst.jhat;
+    addr := BcrOut(chan);
+    if (FMemory.Inst.khat = 2) then
+        addr := BcrExt(chan);
+    bcr := FMemory.Fetch(addr.Value);
+    case FMemory.Inst.khat of
+      0:    bcr.H2 := operand.H2;
+      1:    bcr.H2 := operand.H2;
+      2:    bcr := operand;
+      3:    bcr := operand;
+    end;
+    FMemory.Store(addr.Value, bcr);
+    if (Assigned(FChannels[chan])) then
+        FChannels[chan].ActivateOutput(False);
+end;
+
+procedure T494Cpu.OUT490;
+var
+    operand: T494Word;
+    chan: Byte;
+    addr: T494Address;
+    bcr: T494Word;
+begin
+    operand := IOFetch;
+    chan := FMemory.Inst.jhat;
+    addr := BcrOut(chan);
+    bcr := FMemory.Fetch(addr.Value);
+    case FMemory.Inst.khat of
+      0:    bcr.H2 := operand.H2;
+      1:    bcr.H2 := operand.H2;
+      2:    ;
+      3:    bcr := operand;
+    end;
+    FMemory.Store(addr.Value, bcr);
+    if (Assigned(FChannels[chan])) then
+        FChannels[chan].ActivateOutput(False);
+end;
+
+procedure T494Cpu.SSR;
+var
+    r: Byte;
+begin
+    r := FMemory.Inst.j77;
+    if (r > 2) then
+        raise Exception.CreateFmt('Illegal SR (%d)', [r]);
+    FMemory.Q.Value := FMemory.SR[r].Value;
 end;
 
 procedure T494Cpu.SSU;
@@ -2936,6 +3354,11 @@ var
 begin
     word.Value := FMemory.IFR.Value;
     FMemory.Store(FMemory.Operand.Value, word);
+end;
+
+procedure T494Cpu.SISR;
+begin
+
 end;
 
 procedure T494Cpu.Start;
@@ -3293,10 +3716,7 @@ begin
         case FMemory.Inst.k of
           0:
           begin
-            if ((FMemory.IFR.f7 = 0) or ((b2 >= 1) and (b2 <= 3))) then
-                FMemory.Q := FMemory.B[b1, b2].Value15
-            else
-                FMemory.Q := FMemory.B[b1, b2].Value;
+            FMemory.Q := FMemory.B[b1, b2].Value;
           end;
           1:
           begin
@@ -3307,32 +3727,24 @@ begin
           2:
           begin
             value := FMemory.Fetch(addr);
-            hvalue.Value := FMemory.B[b1, b2].Value15;
+            hvalue.Value := FMemory.B[b1, b2].Value;
             value.H1 := hvalue;
             FMemory.Store(addr, value);
           end;
           3:
           begin
-            value := FMemory.Fetch(addr);
-            value := 0;
-            if ((FMemory.IFR.f7 = 0) or ((b2 >= 1) and (b2 <= 3))) then
-                value.H2 := FMemory.B[b1, b2].Value15
-            else
-                value.Value := FMemory.B[b1, b2].Value;
+            value.Value := FMemory.B[b1, b2].Value;
             FMemory.Store(addr, value);
           end;
           4:
           begin
-            if ((FMemory.IFR.f7 = 0) or ((b2 >= 1) and (b2 <= 3))) then
-                FMemory.A := FMemory.B[b1, b2].Value15
-            else
-                FMemory.A := FMemory.B[b1, b2].Value;
+            FMemory.A := FMemory.B[b1, b2].Value;
           end;
           5:
           begin
             value := FMemory.Fetch(addr);
             hvalue := value.H2;
-            hvalue.Value := FMemory.B[b1, b2].Value15 xor BITS15;
+            hvalue.Value := (FMemory.B[b1, b2].Value and BITS15) xor BITS15;
             value.H2 := hvalue;
             FMemory.Store(addr, value);
           end;
@@ -3340,7 +3752,7 @@ begin
           begin
             value := FMemory.Fetch(addr);
             hvalue := value.H1;
-            hvalue.Value := FMemory.B[b1, b2].Value15 xor BITS15;
+            hvalue.Value := (FMemory.B[b1, b2].Value and BITS15) xor BITS15;
             value.H1 := hvalue;
             FMemory.Store(addr, value);
           end;
@@ -3349,7 +3761,7 @@ begin
             value := FMemory.Fetch(addr);
             if ((FMemory.IFR.f7 = 0) or ((b2 >= 1) and (b2 <= 3))) then
             begin
-                bval := (not FMemory.B[b1, b2].Value15) and BITS15;
+                bval := (not FMemory.B[b1, b2].Value) and BITS15;
                 if ((bval and BIT14) = 0) then
                     value.Value := 0
                 else
@@ -3376,11 +3788,11 @@ var
     word: T494Word;
 begin
     addr := FMemory.Operand.Value;
-    word.Value := FMemory.B[1, 1].Value15;
+    word.Value := FMemory.B[1, 1].Value;
     FMemory.Store(addr, word);
-    word.Value := FMemory.B[1, 2].Value15;
+    word.Value := FMemory.B[1, 2].Value;
     FMemory.Store(addr + 1, word);
-    word.Value := FMemory.B[1, 3].Value15;
+    word.Value := FMemory.B[1, 3].Value;
     FMemory.Store(addr + 2, word);
     word.Value := FMemory.B[1, 4].Value;
     FMemory.Store(addr + 3, word);
@@ -3407,6 +3819,11 @@ begin
     else
         value := $1f;
     FMemory.Store(FMemory.Operand.Value, value);
+end;
+
+procedure T494Cpu.SESR;
+begin
+
 end;
 
 procedure T494Cpu.SetInterruptActive(const Value: Boolean);
@@ -3608,12 +4025,12 @@ end;
 
 function T494Device.FetchInputBcr: T494Word;
 begin
-    Result := FMemory.Fetch(BcrIn0 + FChannel, True);
+    Result := FMemory.Fetch(BcrIn(FChannel), True);
 end;
 
 function T494Device.FetchOutputBcr: T494Word;
 begin
-    Result := FMemory.Fetch(BcrOut0 + FChannel, True);
+    Result := FMemory.Fetch(BcrOut(FChannel), True);
 end;
 
 function T494Device.InputActive: Boolean;
@@ -3644,12 +4061,12 @@ end;
 
 procedure T494Device.StoreInputBcr(Value: T494Word);
 begin
-    Fmemory.Store(BcrIn0 + FChannel, Value, True);
+    Fmemory.Store(BcrIn(FChannel), Value, True);
 end;
 
 procedure T494Device.StoreOutputBcr(Value: T494Word);
 begin
-    Fmemory.Store(BcrOut0 + FChannel, Value, True);
+    Fmemory.Store(BcrOut(FChannel), Value, True);
 end;
 
 procedure T494Device.Terminate;

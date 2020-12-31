@@ -252,7 +252,7 @@ var
     word: T494Word;
 begin
     // Get the text to be printed and convert to ASCII.
-    bcr := FMemory.FetchBcr(BcrOut0 + FChannel, True);
+    bcr := FMemory.FetchBcr(BcrOut(FChannel), True);
     i := 1;
     text := '';
     while (FOutputActive and (i <= 132) and (bcr.Count > 0)) do
@@ -265,7 +265,7 @@ begin
         text := text + AnsiChar(Chr(word.Value and $3f));
         bcr.Address := bcr.Address + 1;
         bcr.Count := bcr.Count - 1;
-        FMemory.StoreBcr(BcrOut0 + FChannel, bcr, True);
+        FMemory.StoreBcr(BcrOut(FChannel), bcr, True);
         Inc(i, 5);
     end;
     text := TCodeTranslator.FieldataToAscii(text);

@@ -8,6 +8,10 @@ type
 
   T494Mode = ( m494, m490, m1230 );
 
+  T494ConsoleType = ( ct1232 );
+
+  T494DrumType = (dtFH880 );
+
   EMemoryException = class(Exception);
   EIllegalInstruction = class(Exception);
   EProgramProtection = class(Exception);

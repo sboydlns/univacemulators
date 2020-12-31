@@ -8,10 +8,10 @@ SysSetCwd='C:\Development\Emulators\AlgolV2'
 SrchSetFlags=0x4410600b
 FileSortMode=0x0
 StateWindowFrame=0,4,974,1083,0x63097f08
-_StateWindow=52,52,494,587,0x00100010,'C:\Development\Emulators\AlgolV2\test.s',208,31,212,4,20,12,46,26,126,176,8,4294967295,4294967295,1,10,'',12,255,48,72,10,467,0,0,721,252,249,19,5,400,0,212,214,210,220,721,721,720,729,217,80,0,223,224,14,1,1,208,1,6
-_StateBuffer='C:\Development\Emulators\AlgolV2\test.s',0x0400048a,19,5,25,'6 12 17 22 27 32 37 41','',0x1,'',1,72,1
-_StateHistory=FILELIST,'C:\temp\junk','C:\Development\Emulators\U494\Algol\Buildalgrt.bat','C:\Development\Emulators\Algol\notes.asm','C:\Development\Emulators\U494\Algol\algrt.asm','C:\Development\Emulators\U494\Algol\RTTest.asm','C:\Development\Emulators\Algol\test.alg','C:\Development\Emulators\Algol\test.s','C:\Development\Emulators\AlgolV2\test.s','C:\Development\Emulators\AlgolV2\test.alg'
-_StateHistory=SEARCH,'FM$Q','c$6','c$0','***','b6','NA$DIM','AA$LEN','77777','newarray','arrayadr'
+_StateWindow=156,156,494,557,0x00100010,'C:\Development\Emulators\U494\Algol\Buildalgrt.bat',208,31,212,4,20,12,46,26,126,176,8,4294967295,4294967295,1,10,'',12,255,48,72,10,467,0,0,721,252,249,29,28,400,0,212,214,210,220,721,721,720,729,217,80,0,223,224,14,1,1,208,1,6
+_StateBuffer='C:\Development\Emulators\U494\Algol\Buildalgrt.bat',0x0400048e,29,28,25,'5 9','',0x0,'',1,72,1
+_StateHistory=FILELIST,'C:\temp\junk','C:\Development\Emulators\Algol\notes.asm','C:\Development\Emulators\Algol\test.s','C:\Development\Emulators\AlgolV2\test.s','C:\Development\Emulators\AlgolV2\test.alg','C:\Development\Emulators\Algol\test.alg','C:\Development\Emulators\U494\Algol\algrt.asm','C:\Development\Emulators\U494\Algol\RTTest.asm','C:\Development\Emulators\U494\Algol\Buildalgrt.bat'
+_StateHistory=SEARCH,'***','b6','NA$DIM','AA$LEN','77777','newarray','arrayadr','EXIT','TEST.ALG','test.s'
 _StateHistory=XSYMBOL,'ERROR','ARRAY'
 _StateHistory=EDITFILE,'C:\Development\Emulators\Algol\test.alg','C:\Development\Emulators\Algol\test.s','C:\Development\Emulators\Algol\test.alg','C:\Development\Emulators\Algol\test.s','C:\Development\Emulators\Algol\test.alg','C:\Development\Emulators\Algol\test.s','C:\Development\Emulators\Algol\notes.asm','C:\Development\Emulators\AlgolV2\test.alg','C:\Development\Emulators\AlgolV2\test.s','C:\Development\Emulators\AlgolV2\test.alg'
 

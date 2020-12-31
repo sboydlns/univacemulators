@@ -139,7 +139,7 @@
                    DPS       RSLT
                    TYPE      MLEN,MSG
        .
-                   EXIT      0                   
+                   HALT      0                   
        .
        . RETURN THE INTEGER PART OF THE FLOATING POINT NUMBER IN AQ
        . AS A 60-BIT INTEGER IN AQ.

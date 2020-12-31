@@ -33,7 +33,7 @@
                    SLJ       EXECCMD             . GO EXECUTE THE VERB
                    J         LOOP
        .                   
-                   EXIT      0
+                   HALT      0
        . ++++++++++
        . EXECCMD
        .
@@ -143,7 +143,7 @@
        . ++++++++++
        . QUIT - EXIT THE PROGRAM
        . ++++++++++
-       QUIT        EXIT      0
+       QUIT        HALT      0
        . ++++++++++
        . PARSEID
        .

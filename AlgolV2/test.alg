@@ -20,7 +20,7 @@ begin comment this is the main program starting point;
    
    for i := 1 while not done do done := true;
    
-   for i := 1 step 1 until i geq 10 do i := i * 2;
+   for i := 1 step 1 until 10 do i := i * 2;
    
    for i:= 1, 2, 3, 4 do i := i * 2;
    

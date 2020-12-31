@@ -1565,7 +1565,6 @@ var
     b: Byte;
     rel1, rel2, rel: TRelocatableType;
 begin
-    Inc(FLocationCounter.Value);
     if (FPass = 2) then
     begin
         h1 := GetY(lineNum, ops, rel1, b);
@@ -1587,6 +1586,7 @@ begin
         FListFile.Value := word;
         FListFile.Print;
     end;
+    Inc(FLocationCounter.Value);
 end;
 
 procedure TAssembler.DoWord(lineNum: Integer; var ops: AnsiString);

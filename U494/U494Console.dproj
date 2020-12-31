@@ -65,6 +65,8 @@
 			<DCC_RemoteDebug>true</DCC_RemoteDebug>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Cfg_1_Win32)'!=''">
+			<DCC_MapFile>3</DCC_MapFile>
+			<DCC_Define>EUREKALOG;EUREKALOG_VER6;$(DCC_Define)</DCC_Define>
 			<VerInfo_Locale>1033</VerInfo_Locale>
 			<VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
 			<Icon_MainIcon>U494Console_Icon.ico</Icon_MainIcon>
@@ -155,7 +157,7 @@
 <!-- EurekaLog First Line
 [Exception Log]
 EurekaLog Version=6105
-Activate=0
+Activate=1
 Activate Handle=1
 Save Log File=1
 Foreground Tab=0
@@ -634,5 +636,5 @@ Count mtException_AntiFreeze=1
 mtException_AntiFreeze0="The application seems to be frozen."
 Count mtInvalidEmailMsg=1
 mtInvalidEmailMsg0="Invalid email."
-TextsCollection=English
+TextsCollection=
 EurekaLog Last Line -->

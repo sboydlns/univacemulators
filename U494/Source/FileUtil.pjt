@@ -13,10 +13,10 @@ SysSetCwd='C:\Development\Emulators\U494\Source'
 SrchSetFlags=0x4410600b
 FileSortMode=0x0
 StateWindowFrame=0,0,1211,1069,0x63097f08
-_StateWindow=130,130,731,573,0x00100010,'C:\DEVELOPMENT\EMULATORS\U494\SOURCE\FileUtil.asm',208,31,212,4,20,12,46,26,126,176,8,4294967295,4294967295,1,10,'',12,255,48,72,10,467,0,0,721,252,249,294,30,400,0,212,214,210,220,721,721,720,729,217,80,0,223,224,14,256,1,208,1,6
-_StateBuffer='C:\DEVELOPMENT\EMULATORS\U494\SOURCE\FileUtil.asm',0x0400048a,294,30,25,'8 20 30 50','',0x1,'',1,72,1
+_StateWindow=130,130,731,573,0x00100010,'C:\DEVELOPMENT\EMULATORS\U494\SOURCE\FileUtil.asm',208,31,212,4,20,12,46,26,126,176,8,4294967295,4294967295,1,10,'',12,255,48,72,10,467,0,0,721,252,249,146,24,400,0,212,214,210,220,721,721,720,729,217,80,0,223,224,14,142,1,208,1,6
+_StateBuffer='C:\DEVELOPMENT\EMULATORS\U494\SOURCE\FileUtil.asm',0x0400048a,146,24,25,'8 20 30 50','',0x1,'',1,72,1
 _StateHistory=FILELIST,'C:\Development\Emulators\U494\Source\BuildBcdTest.bat','C:\Development\Emulators\U494\Procs\ExecReturn.proc','C:\Development\Emulators\U494\Source\BuildDrum.bat','C:\Development\Emulators\U494\Source\BcdTest.asm','C:\Development\Emulators\U494\Procs\files.proc','n:\trkcob\mc2hrcvd.cbl','C:\Development\Emulators\U494\Source\BuildFileUtil.bat','C:\DEVELOPMENT\EMULATORS\U494\SOURCE\FileUtil.asm'
-_StateHistory=SEARCH,'GOTDEST','ZERO','PUN','PRN','RDR','\'','OPDTF1','BANNER','DTFCP','DTF$CHAN'
+_StateHistory=SEARCH,'ZERO','PUN','PRN','RDR','\'','OPDTF1','BANNER','DTFCP','DTF$CHAN','EXIT'
 _StateHistory=XSYMBOL,'FILE','INPUT','LINE','OUTPUT'
 _StateHistory=EDITFILE,'C:\Development\Emulators\U494\Source\MOS.pjt','C:\Development\Emulators\U494\Source\BcdTest.asm','C:\Development\Emulators\U494\Source\MOS.pjt','C:\Development\Emulators\U494\Source\MOS.PJT','C:\Development\Emulators\U494\Source\mos.pjt','C:\Development\Emulators\U494\Procs\files.proc','C:\Development\Emulators\U494\Source\mos.pjt','C:\Development\Emulators\U494\Procs\files.proc','C:\Development\Emulators\U494\Source\mos.pjt','C:\Development\Emulators\U494\Source\MOS.pjt'
 

@@ -130,7 +130,7 @@
        . STACK OVERFLOW DETECTED
        .
                    TYPE      SO$LEN,S$OVFL
-                   EXIT      ESOVFL
+                   HALT      ESOVFL
        .
        S$SAVE      RES       2D
        S$OVFL      +'STACK OVERFLOW'
@@ -192,12 +192,12 @@
                    J         S$UERR
                    TBI       B4,77777
                    J,L       S$INCR
-                   EXIT      666
+                   HALT      666
        .
        . STACK UNDERFLOW DETECTED
        .
        S$UERR      TYPE      SU$LEN,S$UNFL
-                   EXIT      ESUNFL
+                   HALT      ESUNFL
        .
        S$UNFL      +'STACK UNDERFLOW'
                    +'    ^'
@@ -411,7 +411,7 @@
                    J         FMG$LOOP
        .
        FMG$HMTY    TYPE      HELEN,HEMSG
-                   EXIT      EHMTY
+                   HALT      EHMTY
        .
        HEMSG       +'HEAP EXHAUSTED'
                    +'    ^'
@@ -502,7 +502,7 @@
                    J         FMF$ADDNEW          . END OF LIST
        .
        HEAPBAD     TYPE      HBLEN,HBMSG
-                   EXIT      EHCRUPT
+                   HALT      EHCRUPT
        .
        HBMSG       +'HEAP FREE LIST CORRUPTED'
                    +'    ^'
@@ -740,7 +740,7 @@
        AA$RTRN     J         $
        .
        AA$BADIDX   TYPE      AA$LEN,AA$MSG
-                   EXIT      EABADIDX       
+                   HALT      EABADIDX       
        .       
        AA$MSG      +'RUN-TIME ERROR: WRONG NUMBER OF ARRAY INDICES'
                    +'    ^'

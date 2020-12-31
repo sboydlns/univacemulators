@@ -700,10 +700,6 @@ object U494PanelFrm: TU494PanelFrm
       object PrinterPage: TTabSheet
         Caption = 'Printer'
         ImageIndex = 1
-        ExplicitLeft = 0
-        ExplicitTop = 0
-        ExplicitWidth = 0
-        ExplicitHeight = 0
         object PrinterPanel: TPanel
           Left = 0
           Top = 0

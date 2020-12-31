@@ -4,7 +4,7 @@ interface
 
 uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
-  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.ExtCtrls, Vcl.StdCtrls;
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.ExtCtrls, Vcl.StdCtrls, Vcl.Menus;
 
 const
   START_MSG = WM_USER + 1;
@@ -13,14 +13,21 @@ type
   TU494ConsoleForm = class(TForm)
     Timer: TTimer;
     Printer: TMemo;
+    MainMenu: TMainMenu;
+    RecordMenu: TMenuItem;
+    OpenDlg: TOpenDialog;
     procedure TimerTimer(Sender: TObject);
     procedure FormKeyPress(Sender: TObject; var Key: Char);
     procedure FormShow(Sender: TObject);
+    procedure RecordMenuClick(Sender: TObject);
   private
     FPipe: THandle;
     FKeyBfr: AnsiString;
     FInTimer: Boolean;
     FMaxLines: Integer;
+    FLastChar: AnsiChar;
+    FRecordFile: TFileStream;
+    procedure CloseRecord;
     procedure StartMsg(var Message: TMessage); message START_MSG;
   public
     constructor Create(AOwner: TComponent); override;
@@ -38,15 +45,30 @@ uses U494Util, EmulatorTypes;
 
 { TForm4 }
 
+procedure TU494ConsoleForm.CloseRecord;
+var
+    l: String;
+begin
+    if (Assigned(FRecordFile)) then
+    begin
+        l := Printer.Lines[FMaxLines - 1];
+        FRecordFile.Write(PAnsiChar(AnsiString(l))^, Length(l));
+        FRecordFile.Write(PAnsiChar(AnsiString(#13#10))^, 2);
+        FreeAndNil(FRecordFile);
+    end;
+end;
+
 constructor TU494ConsoleForm.Create(AOwner: TComponent);
 begin
     inherited;
+    FLastChar := ' ';
     PostMessage(Handle, START_MSG, 0, 0);
 end;
 
 destructor TU494ConsoleForm.Destroy;
 begin
     CloseHandle(FPipe);
+    CloseRecord;
     inherited Destroy;
 end;
 
@@ -94,6 +116,22 @@ end;
 procedure TU494ConsoleForm.FormShow(Sender: TObject);
 begin
     FMaxLines := Printer.ClientHeight div Abs(Printer.Font.Height);
+end;
+
+procedure TU494ConsoleForm.RecordMenuClick(Sender: TObject);
+begin
+    if (RecordMenu.Checked) then
+    begin
+        CloseRecord;
+        RecordMenu.Checked := False;
+    end else
+    begin
+        if (not OpenDlg.Execute) then
+            Exit;
+
+        FRecordFile := TFileStream.Create(OpenDlg.FileName, fmCreate);
+        RecordMenu.Checked := True;
+    end;
 end;
 
 procedure TU494ConsoleForm.StartMsg(var Message: TMessage);
@@ -177,15 +215,34 @@ begin
             for i := 1 to bytesRead do
             begin
                 case bfr[i] of
-                  #3,
-                  #4:
+                  #3:                                   // <LF>
                   begin
+                    if (FLastChar <> #4) then           // ignore if last char was <CR>
+                    begin
+                        if (Assigned(FRecordFile)) then
+                        begin
+                            FRecordFile.Write(PAnsiChar(AnsiString(line))^, Length(line));
+                            FRecordFile.Write(PAnsiChar(AnsiString(#13#10))^, 2);
+                        end;
+                        Printer.Lines[l] := line;
+                        Printer.Lines.Delete(0);
+                        Printer.Lines.Add('');
+                        line := '';
+                    end;
+                  end;
+                  #4:                                   // <CR>
+                  begin
+                    if (Assigned(FRecordFile)) then
+                    begin
+                        FRecordFile.Write(PAnsiChar(AnsiString(line))^, Length(line));
+                        FRecordFile.Write(PAnsiChar(AnsiString(#13#10))^, 2);
+                    end;
                     Printer.Lines[l] := line;
                     Printer.Lines.Delete(0);
                     Printer.Lines.Add('');
                     line := '';
                   end;
-                  #$3f:
+                  #$3f:                                 // <BS>
                   begin
                     line := Copy(line, 1, Length(line) - 1);
                   end
@@ -194,6 +251,7 @@ begin
                     line := line + Char(TCodeTranslator.FieldataToAscii(Byte(bfr[i])));
                   end;
                 end;
+                FLastChar := bfr[i];
             end;
             Printer.Lines[l] := line;
         end;
