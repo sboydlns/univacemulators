@@ -53,6 +53,17 @@ type
     procedure EmitTransferAddr(addr: UInt32; objSize: UInt32); override;
     function FetchWord(var addr: UInt32; var rel: TRelocatableType; var word: UInt32): Boolean; override;
   end;
+  // 1230 absolute paper tape image
+  TAbsoluteStream = class(TMemImageStream)
+  protected
+    FUpperCheck: UInt32;
+    FLowerCheck: UInt32;
+  public
+    destructor Destroy; override;
+    procedure EmitTransferAddr(addr: UInt32; objSize: UInt32); override;
+    function Write(const Buffer; Count: Longint): Longint; override;
+    function WriteNoCheck(const Buffer; Count: Longint): Longint;
+  end;
 
   // Defintion of an entry point record. The last one in the list will
   // have an ID of all spaces.
@@ -559,6 +570,82 @@ begin
         if (c <> ' ') then
             Result := Result + c;
     end;
+end;
+
+{ TAbsoluteStream }
+
+destructor TAbsoluteStream.Destroy;
+var
+    hdr: UInt32;
+begin
+    // Write the check sums
+    WriteNoCheck(FLowerCheck, SizeOf(FLowerCheck));
+    WriteNoCheck(FUpperCheck, SizeOf(FUpperCheck));
+    // Write end of file header
+    hdr := 0;
+    WriteNoCheck(hdr, SizeOf(hdr));
+    inherited;
+end;
+
+procedure TAbsoluteStream.EmitTransferAddr(addr, objSize: UInt32);
+var
+    word: UInt32;
+begin
+    if (FLocationCounter <> 0) then
+        raise Exception.Create('EmitTransferAddr must be first method called');
+    FTransferAddrEmitted := True;
+    word := 62;                         // absolute image flag
+    Write(word, SizeOf(word));
+    word := ((addr and BITS15) shl 15) or ((addr + objSize - 1) and BITS15);
+    Write(word, SizeOf(word));
+    FLocationCounter := addr;
+    FUpperCheck := 0;
+    FLowerCheck := 0;
+end;
+
+function TAbsoluteStream.Write(const Buffer; Count: Integer): Longint;
+// write a word a 5 six bits bytes
+var
+    word: UInt32;
+    i: Integer;
+    bfr: array [1..5] of Byte;
+begin
+    if (Count <> 4) then
+        raise Exception.Create('Write buffer <> UInt32');
+    word := UInt32(Buffer);
+    for i := 5 downto 1 do
+    begin
+        bfr[i] := word and $3f;
+        word := word shr 6;
+    end;
+    Result := inherited Write(bfr[1], 5);
+    // Compute check sums
+    word := UInt32(Buffer);
+    if ((FUpperCheck and $20000000) <> 0) then
+        FUpperCheck := FUpperCheck + 1 + ((word shr 15) and $7fff)
+    else
+        FUpperCheck := FUpperCheck + ((word shr 15) and $7fff);
+    if ((FLowerCheck and $20000000) <> 0) then
+        FLowerCheck := FLowerCheck + 1 + (word and $7fff)
+    else
+        FLowerCheck := FLowerCheck + (word and $7fff);
+end;
+
+function TAbsoluteStream.WriteNoCheck(const Buffer; Count: Integer): Longint;
+var
+    word: UInt32;
+    i: Integer;
+    bfr: array [1..5] of Byte;
+begin
+    if (Count <> 4) then
+        raise Exception.Create('Write buffer <> UInt32');
+    word := UInt32(Buffer);
+    for i := 5 downto 1 do
+    begin
+        bfr[i] := word and $3f;
+        word := word shr 6;
+    end;
+    Result := inherited Write(bfr[1], 5);
 end;
 
 end.

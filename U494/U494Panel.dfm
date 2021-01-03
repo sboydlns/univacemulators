@@ -666,7 +666,7 @@ object U494PanelFrm: TU494PanelFrm
       Top = 1
       Width = 429
       Height = 647
-      ActivePage = CardPage
+      ActivePage = PaperTapePage
       Align = alClient
       TabOrder = 0
       object CardPage: TTabSheet
@@ -710,6 +710,76 @@ object U494PanelFrm: TU494PanelFrm
           TabOrder = 0
         end
       end
+      object PaperTapePage: TTabSheet
+        Caption = 'Paper Tape'
+        ImageIndex = 2
+        object PaperTapePanel: TPanel
+          Left = 0
+          Top = 0
+          Width = 421
+          Height = 619
+          Align = alClient
+          ParentBackground = False
+          TabOrder = 0
+          object Label31: TLabel
+            Left = 22
+            Top = 24
+            Width = 46
+            Height = 13
+            Caption = 'File Name'
+          end
+          object PTLoadedLbl: TLabel
+            Left = 21
+            Top = 94
+            Width = 391
+            Height = 17
+            Alignment = taCenter
+            AutoSize = False
+            Caption = 'PTLoadedLbl'
+            Font.Charset = DEFAULT_CHARSET
+            Font.Color = clRed
+            Font.Height = -13
+            Font.Name = 'Tahoma'
+            Font.Style = []
+            ParentFont = False
+            Visible = False
+          end
+          object PTFileNameEdt: TEdit
+            Left = 80
+            Top = 21
+            Width = 303
+            Height = 21
+            TabOrder = 0
+          end
+          object PTBrowseBtn: TButton
+            Left = 386
+            Top = 19
+            Width = 26
+            Height = 25
+            Caption = '...'
+            TabOrder = 1
+            OnClick = PTBrowseBtnClick
+          end
+          object PTMountBtn: TButton
+            Left = 80
+            Top = 48
+            Width = 75
+            Height = 25
+            Caption = 'Load'
+            TabOrder = 2
+            OnClick = PTMountBtnClick
+          end
+          object PTUnmountBtn: TButton
+            Left = 154
+            Top = 48
+            Width = 75
+            Height = 25
+            Caption = 'Unload'
+            TabOrder = 3
+            OnClick = PTUnmountBtnClick
+          end
+        end
+      end
     end
   end
   object Timer: TTimer
@@ -718,5 +788,11 @@ object U494PanelFrm: TU494PanelFrm
     OnTimer = TimerTimer
     Left = 142
     Top = 532
+  end
+  object PTOpenDlg: TOpenDialog
+    Filter = 'Paper Tape Files|*.pt|All Files|*.*'
+    Options = [ofHideReadOnly, ofPathMustExist, ofEnableSizing]
+    Left = 880
+    Top = 86
   end
 end

@@ -7,7 +7,9 @@ uses SysUtils, Classes, Generics.Collections, SrcFile, U494Opcodes;
 type
   TAllocationType = ( atNone = 0, atDirect, atRelative, atIndirect );
 
-  TOutputType = ( otImage, otExecutable, otObject );
+  TOutputType = ( otImage, otExecutable, otObject,
+                 // 1230 paper tape formats
+                  otAbsolute );
 
   TProcName = packed record
   public

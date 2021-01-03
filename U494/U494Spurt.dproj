@@ -62,7 +62,7 @@
 			<DCC_RemoteDebug>true</DCC_RemoteDebug>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Cfg_1_Win32)'!=''">
-			<Debugger_RunParams>..\..\Source\monitor6.spurt -tab # -sep * -O ..\..\bin</Debugger_RunParams>
+			<Debugger_RunParams>..\..\Source\SpurtTest.spurt -tab # -sep * -O ..\..\bin -abs</Debugger_RunParams>
 			<DCC_RemoteDebug>false</DCC_RemoteDebug>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Cfg_2)'!=''">
@@ -80,6 +80,8 @@
 			<DCCReference Include="U494Opcodes.pas"/>
 			<DCCReference Include="U494Util.pas"/>
 			<DCCReference Include="..\Common\Bcd.pas"/>
+			<DCCReference Include="ObjFile.pas"/>
+			<DCCReference Include="..\Common\EmulatorTypes.pas"/>
 			<BuildConfiguration Include="Release">
 				<Key>Cfg_2</Key>
 				<CfgParent>Base</CfgParent>

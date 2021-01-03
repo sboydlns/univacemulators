@@ -305,7 +305,7 @@ begin
     FSymbols.Add('TQ$YMORE', Symbol('TQ$YMORE', 3, False, stSystem));
     //
     FSymbols.Add('TR$YIN', Symbol('TR$YIN', 4, False, stSystem));
-    FSymbols.Add('TR$YOUT', Symbol('TR$YOUT', 4, False, stSystem));
+    FSymbols.Add('TR$YOUT', Symbol('TR$YOUT', 5, False, stSystem));
     //
     FSymbols.Add('J$KEY1', Symbol('J$KEY1', 1, False, stSystem));
     FSymbols.Add('J$KEY2', Symbol('J$KEY2', 2, False, stSystem));

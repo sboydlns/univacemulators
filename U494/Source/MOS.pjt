@@ -22,16 +22,16 @@ C:\DEVELOPMENT\EMULATORS\U494\PROCS\misc.proc
 C:\DEVELOPMENT\EMULATORS\U494\PROCS\Tasks.proc
 
 [State]
-SysSetCwd='C:\Development\Emulators\U494\Algol'
+SysSetCwd='C:\Development\Emulators\U494\Source'
 SrchSetFlags=0x4410600b
 FileSortMode=0x0
 StateWindowFrame=0,1,1056,1068,0x63097f08
-_StateWindow=104,104,576,542,0x00100010,'C:\DEVELOPMENT\EMULATORS\U494\PROCS\ExecReturn.proc',208,31,212,4,20,12,46,26,126,176,8,4294967295,4294967295,1,10,'',12,255,48,72,10,467,0,0,721,252,249,58,12,400,0,212,214,210,220,721,721,720,729,217,80,0,223,224,14,13,1,208,1,6
-_StateBuffer='C:\DEVELOPMENT\EMULATORS\U494\PROCS\ExecReturn.proc',0x0400048a,58,12,25,'8 20 30 50','',0x1,'',1,72,1
-_StateHistory=FILELIST,'C:\Development\Emulators\U494\Source\monitor6.lst','C:\temp\monitor.txt','C:\Development\Emulators\U494\Source\Monitor6.spurt','C:\Development\Emulators\U494\Source\BuildMOS.bat','C:\DEVELOPMENT\EMULATORS\U494\SOURCE\MOS.asm','C:\DEVELOPMENT\EMULATORS\U494\PROCS\Lists.proc','C:\DEVELOPMENT\EMULATORS\U494\PROCS\ExecReturn.proc','C:\Development\Emulators\U494\Algol\Buildalgrt.bat','C:\Development\Emulators\U494\Algol\RTTest.asm'
-_StateHistory=SEARCH,'77400','dump','rjp#','keyin#','numb1#','ICH3#','*cest','numbera#','pack1#','exit'
+_StateWindow=26,26,576,542,0x00100010,'C:\Development\Emulators\U494\Source\SpurtTest.spurt',208,31,212,4,20,12,46,26,126,176,8,4294967295,4294967295,1,10,'',12,255,48,72,10,467,0,0,721,252,249,11,12,400,0,212,214,210,220,721,721,720,729,217,80,0,223,224,14,1,1,208,1,6
+_StateBuffer='C:\Development\Emulators\U494\Source\SpurtTest.spurt',0x0400048a,11,12,25,'6 12 17 22 27 32 37 41','',0x1,'',1,72,1
+_StateHistory=FILELIST,'C:\DEVELOPMENT\EMULATORS\U494\PROCS\ExecReturn.proc','C:\Development\Emulators\U494\Algol\Buildalgrt.bat','C:\Development\Emulators\U494\Algol\RTTest.asm','C:\temp\papertape.pt','C:\Development\Emulators\U494\Bin\SpurtTest.mem','C:\Development\Emulators\U494\Bin\SpurtTest','C:\Development\Emulators\U494\Bin\SpurtTest.pt','C:\Development\Emulators\U494\Source\Monitor6.spurt','C:\Development\Emulators\U494\Source\SpurtTest.spurt'
+_StateHistory=SEARCH,'dump','keyin#','numb1#','ICH3#','*cest','numbera#','pack1#','exit','rjp#','lodpt#'
 _StateHistory=XSYMBOL,'OUTPUT','ERROR','INPUT','FILE'
-_StateHistory=EDITFILE,'C:\Development\Emulators\U494\Source\u494.cfg','C:\Development\Emulators\U494\u494.cfg','C:\Development\Emulators\U494\U490.cfg','C:\Development\Emulators\U494\U1230.cfg','c:\temp\monitor.txt','C:\Development\Emulators\U494\Source\monitor6.lst','c:\temp\monitor.txt','C:\Development\Emulators\U494\Source\BuildMOS.bat','C:\Development\Emulators\U494\Algol\Buildalgrt.bat','C:\Development\Emulators\U494\Algol\RTTest.asm'
+_StateHistory=EDITFILE,'C:\Development\Emulators\U494\Source\BuildMOS.bat','C:\Development\Emulators\U494\Algol\Buildalgrt.bat','C:\Development\Emulators\U494\Algol\RTTest.asm','C:\temp\pap','C:\temp\papertape.pt','C:\Development\Emulators\U494\Source\SpurtTest.spurt','C:\Development\Emulators\U494\Bin\SpurtTest.mem','C:\Development\Emulators\U494\Bin\SpurtTest','C:\Development\Emulators\U494\Bin\SpurtTest.pt','C:\Development\Emulators\U494\Source\SpurtTest.spurt'
 _StateHistory=GOTOMARK,'1','2','1'
 
 [Editor]

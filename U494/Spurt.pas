@@ -56,6 +56,7 @@ type
     procedure DoENTRY(lineNum: Integer; ops: AnsiString; op: TOpcode);
     procedure DoEQUALS(lineNum: Integer; ops: AnsiString; op: TOpcode);
     procedure DoEXIT(lineNum: Integer; ops: AnsiString; op: TOpcode);
+    procedure DoFD(lineNum: Integer; ops: AnsiString; op: TOpcode);
     procedure DoGeneral(lineNum: Integer; ops: AnsiString; op: TOpcode);
     procedure DoINCREMENT(lineNum: Integer; ops: AnsiString; op: TOpcode);
     procedure DoINDRALLOC(lineNum: Integer; ops: AnsiString; op: TOpcode);
@@ -96,7 +97,7 @@ end;
 
 implementation
 
-uses U494Util, AnsiStrings;
+uses U494Util, AnsiStrings, EmulatorTypes;
 
 function Opcode(mnem: String; op: Byte; inst: T494InstructionType; opt: T494OperandType): TOpcode;
 begin
@@ -177,6 +178,7 @@ begin
       otImage,
       otExecutable: extn := '.mem';
       otObject:     extn := '.obj';
+      otAbsolute:   extn := '.pt';
     end;
     FObjectFile := FOutDir +
                    TPath.GetFileNameWithoutExtension(FInFile) + extn;
@@ -197,6 +199,8 @@ begin
     end;
     WriteLn(Format('%-20.20s: %d error(s) encountered', [TPath.GetFileName(FInFIle), FErrorCount]));
     Result := FErrorCount;
+    FOutFile.Free;
+    FListFile.Free;
 end;
 
 constructor TAssembler.Create;
@@ -224,16 +228,16 @@ begin
             end;
         end;
     end;
-    for i := Low(U494ExtOpcodes) to High(U494ExtOpcodes) do
-    begin
-        if (U494ExtOpcodes[i].AsmMnemonic <> 'UNK') then
-        begin
-            op := Opcode(U494ExtOpcodes[i].AsmMnemonic, U494ExtOpcodes[i].Opcode,
-                         U494ExtOpcodes[i].InstType, U494ExtOpcodes[i].OperandType);
-            FOpcodes.Add(U494ExtOpcodes[i].AsmMnemonic, op);
+//    for i := Low(U494ExtOpcodes) to High(U494ExtOpcodes) do
+//    begin
+//        if (U494ExtOpcodes[i].AsmMnemonic <> 'UNK') then
+//        begin
+//            op := Opcode(U494ExtOpcodes[i].AsmMnemonic, U494ExtOpcodes[i].Opcode,
+//                         U494ExtOpcodes[i].InstType, U494ExtOpcodes[i].OperandType);
+//            FOpcodes.Add(U494ExtOpcodes[i].AsmMnemonic, op);
 //            op.Proc := Do77;
-        end;
-    end;
+//        end;
+//    end;
     for i := Low(U494PsuedoOps) to High(U494PsuedoOps) do
     begin
         if (U494PsuedoOps[i].SpurtMnemonic <> 'UNK') then
@@ -277,6 +281,7 @@ begin
     FOpcodes.Items['SIL-EX'].SpurtProc := DoSILEX;
     FOpcodes.Items['RIL'].SpurtProc := DoRIL;
     FOpcodes.Items['RIL-EX'].SpurtProc := DoRILEX;
+    FOpcodes.Items['FD'].SpurtProc := DoFD;
     FOpcodes.Items['..'].SpurtProc := DoDOTDOT;
     // Create system defined identifiers
     FLocationCounter := Symbol('$', 0, True, stSystem);
@@ -352,7 +357,7 @@ begin
     FSymbols.Add('COM.Q$YMORE', Symbol('COM.Q$YMORE', 3, False, stSystem));
     //
     FSymbols.Add('COM.AQ$YIN', Symbol('COM.AQ$YIN', 4, False, stSystem));
-    FSymbols.Add('COM.AQ$YOUT', Symbol('COM.AQ$YOUT', 4, False, stSystem));
+    FSymbols.Add('COM.AQ$YOUT', Symbol('COM.AQ$YOUT', 5, False, stSystem));
     //
     FSymbols.Add('JP$RIL', Symbol('JP$RIL', 0, False, stSystem));
     FSymbols.Add('JP$RILJP', Symbol('JP$RILJP', 1, False, stSystem));
@@ -788,6 +793,75 @@ begin
     end;
 
     Inc(FLocationCounter.Value);
+end;
+
+procedure TAssembler.DoFD(lineNum: Integer; ops: AnsiString; op: TOpcode);
+var
+    token : AnsiString;
+    len, i, bytes: Integer;
+    word: UInt32;
+begin
+    GetToken(ops, token);
+    GetNumber(token, len);
+    if (len < 0) then
+        raise Exception.Create('Illegal string size');
+    GetToken(ops, token);
+    if (token = '.') then
+    begin
+        ops := TrimRight(ops);
+        if (len = 0) then
+            len := (Length(ops) + 4) div 5;
+        word := 0;
+        i := 0;
+        while ((len > 0) and (i < Length(ops))) do
+        begin
+            word := (word shl 6) or Byte(TCodeTranslator.AsciiToFieldata(ops[i + 1]));
+            Inc(i);
+            if ((i mod 5) = 0) then
+            begin
+                if (FPass = 2) then
+                begin
+                    FOutFile.EmitSingleWord(FLocationCounter.Value, rtNone, word);
+                    FListFile.Value := word;
+                    FListFile.Print;
+                    Inc(FLocationCounter.Value);
+                    FListFile.InitLine(lineNum, FLocationCounter.Value, '');
+                end else
+                    Inc(FLocationCounter.Value);
+                word := 0;
+                Dec(len);
+            end;
+        end;
+        bytes := i mod 5;
+        if (bytes <> 0) then
+        begin
+            // Emit last word
+            if (FPass = 2) then
+            begin
+                word := word shl (30 - (bytes * 6));
+                FOutFile.EmitSingleWord(FLocationCounter.Value, rtNone, word);
+                FListFile.Value := word;
+                FListFile.Print;
+                Inc(FLocationCounter.Value);
+            end else
+                Inc(FLocationCounter.Value);
+        end;
+    end else
+    begin
+        // No string given, just output the given # of words of zeros
+        while (len > 0) do
+        begin
+            if (FPass = 2) then
+            begin
+                FOutFile.EmitSingleWord(FLocationCounter.Value, rtNone, 0);
+                FListFile.Value := 0;
+                FListFile.Print;
+                Inc(FLocationCounter.Value);
+                FListFile.InitLine(lineNum, FLocationCounter.Value, '');
+            end else
+                Inc(FLocationCounter.Value);
+        end;
+    end;
 end;
 
 procedure TAssembler.DoGeneral(lineNum: Integer; ops: AnsiString; op: TOpcode);
@@ -2142,6 +2216,7 @@ begin
           otImage,
           otExecutable: FOutFile := TMemImageStream.Create(FObjectFile, fmCreate);
           otObject:     FOutFile := TRelocatableStream.Create(FObjectFile, fmCreate);
+          otAbsolute:   FOutFile := TAbsoluteStream.Create(FObjectFile, fmCreate);
         end;
         // Reset source file to beginning only if we are not being
         // called recursively.
@@ -2231,8 +2306,64 @@ begin
 end;
 
 procedure TAssembler.PrintXref;
+var
+    syms: TStringList;
+    sym: TSymbol;
+    val: String;
+    i, l, count: Integer;
+    s, ref, id: String;
 begin
+    if (not FPrintXref) then
+        Exit;
 
+    syms := TStringList.Create;
+    try
+        syms.Sorted := True;
+        syms.OwnsObjects := False;
+        for sym in FSymbols.Values do
+            syms.AddObject(String(sym.ID), sym);
+        FListFile.Print('');
+        FListFile.Print('Symbol Cross Reference');
+        FListFile.Print('ID         Addr  Line References');
+        FListFile.Print('');
+        for i := 0 to syms.Count - 1 do
+        begin
+            sym := TSymbol(syms.Objects[i]);
+            if ((sym.SymbolType <> stSystem) and
+                (sym.SymbolType <> stBDesignator) and
+                (sym.SymbolType <> stJDesignator) and
+                (sym.SymbolType <> stJDesignator) and
+                (sym.SymbolType <> stForm)) then
+            begin
+                if (sym.IsEntry) then
+                    id := String(sym.ID) + '*'
+                else
+                    id := String(sym.ID);
+                val := Copy(FormatOctal(sym.Value), 6);
+                if (sym.IsExternal) then
+                    val := '?????';
+                s := Format('%-10.10s %s %4d ', [id, val, sym.DefLine]);
+                ref := '';
+                count := 0;
+                for l in sym.Xref do
+                begin
+                    ref := ref + Format('%4d ', [l]);
+                    Inc(count);
+                    if (count >= 15) then
+                    begin
+                        FListFile.Print(Format('%s %s', [s, ref]));
+                        s := StringOfChar(' ', 22);
+                        ref := '';
+                        count := 0;
+                    end;
+                end;
+                if (count > 0) then
+                    FListFile.Print(Format('%s %s', [s, ref]));
+            end;
+        end;
+    finally
+        syms.Free;
+    end;
 end;
 
 procedure TAssembler.ReadStatement(srcFile: TSrcFileStream; var lbl, operands, cmnt: AnsiString);

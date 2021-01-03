@@ -2,7 +2,8 @@ unit U494System;
 
 interface
 
-uses Windows, SysUtils, Classes, U494Memory, U494Cpu, U494Interrupts, U494Reader, U494Printer;
+uses Windows, SysUtils, Classes, U494Memory, U494Cpu, U494Interrupts, U494Reader, U494Printer,
+     U494ConsDevice;
 
 type
   TRTClock = class(TThread)
@@ -47,9 +48,11 @@ type
     function GetReader: T494Reader;
     function GetPunch: T494Punch;
     function GetPrinter: T494Printer;
+    function GetConsole: T494ConsDevice;
   public
     constructor Create;
     destructor Destroy; override;
+    property Console: T494ConsDevice read GetConsole;
     property Cpu: T494Cpu read FCpu;
     property Memory: T494Memory read FMemory;
     property Reader: T494Reader read GetReader;
@@ -59,7 +62,7 @@ type
 
 implementation
 
-uses U494ConsDevice, FH880Device, U494Util, U494Config;
+uses FH880Device, U494Util, U494Config;
 
 { T494System }
 
@@ -149,9 +152,16 @@ begin
     inherited;
 end;
 
+function T494System.GetConsole: T494ConsDevice;
+begin
+    Result := T494ConsDevice(FCpu.Channels[gConfig.ConsoleChan]);
+end;
+
 function T494System.GetPrinter: T494Printer;
 begin
-    Result := T494Printer(FCpu.Channels[2]);
+    Result := nil;
+    if (gConfig.PrinterChan <> -1) then
+        Result := T494Printer(FCpu.Channels[gConfig.PrinterChan]);
 end;
 
 function T494System.GetPunch: T494Punch;
@@ -270,14 +280,14 @@ end;
 { T1230RTClock }
 
 procedure T1230RTClock.Execute;
-// The real time clock is supposed to fire every 200 microseconds. The
+// The real time clock is supposed to fire every millisecond. The
 // only way to accomplish this under Windows is to spin on QueryPerformanceCounter.
-// This uses excessive amounts of CPU time. Since 200 ms resolution is likely not
+// This uses excessive amounts of CPU time. Since millisecond resolution is likely not
 // going to be required for the emulator, we use Sleep(1) which gives us about
 // 2 millisecond resolution. We capture the interval to the nearest multiple
 // of 1 millisecond and update the real time clock counter accordingly.
 var
-    timerFreq, intervalStart, intervalEnd, ms200: Int64;
+    timerFreq, intervalStart, intervalEnd, ms: Int64;
     word: T494Word;
 begin
     QueryPerformanceFrequency(timerFreq);
@@ -290,11 +300,11 @@ begin
         else
             word := FMemory.Fetch(RTClock, True);
         QueryPerformanceCounter(intervalEnd);
-        ms200 := Round(((intervalEnd - intervalStart) / timerFreq) * 5000);
-        if (ms200 > 4) then
+        ms := Round(((intervalEnd - intervalStart) / timerFreq) * 1000);
+        if (ms > 0) then
         begin
             QueryPerformanceCounter(intervalStart);
-            word.Value := (word.Value + ms200) and $3ffff;
+            word.Value := (word.Value + ms) and $3ffff;
             FMemory.Store(RTClock1230, word, True);
         end;
     end;
@@ -303,14 +313,14 @@ end;
 { T490RTClock }
 
 procedure T490RTClock.Execute;
-// The real time clock is supposed to fire every 200 microseconds. The
+// The real time clock is supposed to fire every millisecond. The
 // only way to accomplish this under Windows is to spin on QueryPerformanceCounter.
-// This uses excessive amounts of CPU time. Since 200 ms resolution is likely not
+// This uses excessive amounts of CPU time. Since millisecond resolution is likely not
 // going to be required for the emulator, we use Sleep(1) which gives us about
-// 1 millisecond resolution. We capture the interval to the nearest multiple
+// 2 millisecond resolution. We capture the interval to the nearest multiple
 // of 1 millisecond and update the real time clock counter accordingly.
 var
-    timerFreq, intervalStart, intervalEnd, ms200: Int64;
+    timerFreq, intervalStart, intervalEnd, ms: Int64;
     word: T494Word;
     origWord: UInt32;
     int: T494Interrupt;
@@ -326,11 +336,11 @@ begin
             word := FMemory.Fetch(RTClock, True);
         origWord := word.Value;
         QueryPerformanceCounter(intervalEnd);
-        ms200 := Round(((intervalEnd - intervalStart) / timerFreq) * 5000);
-        if (ms200 > 4) then
+        ms := Round(((intervalEnd - intervalStart) / timerFreq) * 1000);
+        if (ms > 0) then
         begin
             QueryPerformanceCounter(intervalStart);
-            word.Value := (word.Value + ms200) and $3ffff;
+            word.Value := (word.Value + ms) and $3ffff;
             FMemory.Store(RTClock, word, True);
             // Queue an interrupt if the counter wraps.
             if (word.Value < origWord) then

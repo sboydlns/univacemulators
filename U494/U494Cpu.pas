@@ -424,12 +424,31 @@ begin
       0:
       begin
         operand := 0;
-        if ((FMemory.IFR.f7 = 0) or (j <= 3)) then
-        begin
+        case gConfig.Mode of
+          m494:
+          begin
+            if ((FMemory.IFR.f7 = 0) or (j <= 3)) then
+            begin
+                hw.Value := FMemory.Operand.Value15;
+                operand.H2 := hw;
+            end else
+                operand.Value := FMemory.Operand.Value and BITS17;
+          end;
+          m490:
+          begin
             hw.Value := FMemory.Operand.Value15;
             operand.H2 := hw;
-        end else
-            operand.Value := FMemory.Operand.Value and BITS17;
+          end;
+          m1230:
+          begin
+            if (FMemory.IFR.f7 = 0) then
+            begin
+                hw.Value := FMemory.Operand.Value15;
+                operand.H2 := hw;
+            end else
+                operand.Value := FMemory.Operand.Value and BITS17;
+          end;
+        end;
       end;
       1:
       begin
@@ -444,10 +463,26 @@ begin
       3:
       begin
         mem := FMemory.Fetch(FMemory.Operand.Value);
-        if ((FMemory.IFR.f7 = 0) or (j <= 3)) then
+        case gConfig.Mode of
+          m494:
+          begin
+            if ((FMemory.IFR.f7 = 0) or (j <= 3)) then
+                operand.H2 := mem.H2
+            else
+                operand.Value := mem.Value and BITS17;
+          end;
+          m490:
+          begin
             operand.H2 := mem.H2
-        else
-            operand.Value := mem.Value and BITS17;
+          end;
+          m1230:
+          begin
+            if (FMemory.IFR.f7 = 0) then
+                operand.H2 := mem.H2
+            else
+                operand.Value := mem.Value and BITS17;
+          end;
+        end;
       end;
       4:
       begin
@@ -491,10 +526,26 @@ begin
       7:
       begin
         mem := FMemory.A;
-        if ((FMemory.IFR.f7 = 0) or (j <= 3)) then
-            operand.H2 := mem.H2
-        else
-            operand.Value := mem.Value and BITS17;
+        case gConfig.Mode of
+          m494:
+          begin
+            if ((FMemory.IFR.f7 = 0) or (j <= 3)) then
+                operand.H2 := mem.H2
+            else
+                operand.Value := mem.Value and BITS17;
+          end;
+          m490:
+          begin
+            operand.H2 := mem.H2;
+          end;
+          m1230:
+          begin
+            if (FMemory.IFR.f7 = 0) then
+                operand.H2 := mem.H2
+            else
+                operand.Value := mem.Value and BITS17;
+          end;
+        end;
       end;
     end;
     if (operand.Value <> FMemory.B[FMemory.IFR.f6, j].Value) then
@@ -1069,8 +1120,10 @@ with assembler manual when I get it. }
 end;
 
 procedure T494Cpu.D17;
+// We use the IFR f7 field to hold the15 / 17 bit mode for the 1230
+// because this is essentially the same purpose as the 494 uses it for.
 begin
-
+    FMemory.IFR.Value := FMemory.IFR.Value and (not $4000000);
 end;
 
 procedure T494Cpu.DA;
@@ -1216,8 +1269,10 @@ begin
 end;
 
 procedure T494Cpu.E17;
+// We use the IFR f7 field to hold the15 / 17 bit mode for the 1230
+// because this is essentially the same purpose as the 494 uses it for.
 begin
-
+    FMemory.IFR.Value := FMemory.IFR.Value or $4000000;
 end;
 
 procedure T494Cpu.ECSR;
@@ -1560,8 +1615,23 @@ begin
                 begin
                     bval := FMemory.B[FMemory.IFR.f6, b].Value;
                     FMemory.Inst.ybar := FMemory.Inst.y + bval;
-                    if ((FMemory.IFR.f7 = 0) or ((b >= 1) and (b <= 3))) then
+                    case gConfig.Mode of
+                      m494:
+                      begin
+                        if ((FMemory.IFR.f7 = 0) or ((b >= 1) and (b <= 3))) then
+                            FMemory.Inst.ybar := FMemory.Inst.ybar.Value15;
+                      end;
+                      m490:
+                      begin
                         FMemory.Inst.ybar := FMemory.Inst.ybar.Value15;
+                      end;
+                      m1230:
+                      begin
+                         { TODO : Needs to allow for SR registers }
+                        if (FMemory.IFR.f7 = 0) then
+                            FMemory.Inst.ybar := FMemory.Inst.ybar.Value15;
+                      end;
+                    end;
                 end;
                 FMemory.IFR.f1 := FMemory.Inst.ybar;
             end else
@@ -1869,8 +1939,23 @@ instruction. }
             begin
                 bval := FMemory.B[FMemory.IFR.f6, b].Value;
                 FMemory.Inst.ybar := FMemory.Inst.y + bval;
-                if ((FMemory.IFR.f7 = 0) or ((b >= 1) and (b <= 3))) then
+                case gConfig.Mode of
+                  m494:
+                  begin
+                    if ((FMemory.IFR.f7 = 0) or ((b >= 1) and (b <= 3))) then
+                        FMemory.Inst.ybar := FMemory.Inst.ybar.Value15;
+                  end;
+                  m490:
+                  begin
                     FMemory.Inst.ybar := FMemory.Inst.ybar.Value15;
+                  end;
+                  m1230:
+                  begin
+                    { TODO : Needs to allow for SR registers }
+                    if (FMemory.IFR.f7 = 0) then
+                        FMemory.Inst.ybar := FMemory.Inst.ybar.Value15;
+                  end;
+                end;
             end;
         end;
         // Calculate absolute address, if applicable. Do not relocate "reserved" addresses.
@@ -2218,12 +2303,32 @@ begin
             Result.H2 := hw;
         end else
         begin
-            if ((FMemory.IFR.f7 = 0) or ((b >= 1) and (b <= 3))) then
-            begin
+            case gConfig.Mode of
+              m494:
+              begin
+                if ((FMemory.IFR.f7 = 0) or ((b >= 1) and (b <= 3))) then
+                begin
+                    hw.Value := FMemory.Operand.Value15;
+                    Result.H2 := hw;
+                end else
+                    Result.Value := FMemory.Operand.Value;
+              end;
+              m490:
+              begin
                 hw.Value := FMemory.Operand.Value15;
                 Result.H2 := hw;
-            end else
-                Result.Value := FMemory.Operand.Value;
+              end;
+              m1230:
+              begin
+                 { TODO : Needs to allow for SR registers }
+                if (FMemory.IFR.f7 = 0) then
+                begin
+                    hw.Value := FMemory.Operand.Value15;
+                    Result.H2 := hw;
+                end else
+                    Result.Value := FMemory.Operand.Value;
+              end;
+            end;
         end;
       end;
       1:
@@ -3411,12 +3516,31 @@ begin
             Result.H2 := hw;
         end else
         begin
-            if ((FMemory.IFR.f7 = 0) or ((b >= 1) and (b <= 3))) then
-            begin
+            case gConfig.Mode of
+              m494:
+              begin
+                if ((FMemory.IFR.f7 = 0) or ((b >= 1) and (b <= 3))) then
+                begin
+                    hw.Value := FMemory.Operand.Value15;
+                    Result.H2 := hw;
+                end else
+                    Result.Value := FMemory.Operand.Value;
+              end;
+              m490:
+              begin
                 hw.Value := FMemory.Operand.Value15;
                 Result.H2 := hw;
-            end else
-                Result.Value := FMemory.Operand.Value;
+              end;
+              m1230:
+              begin
+                if (FMemory.IFR.f7 = 0) then
+                begin
+                    hw.Value := FMemory.Operand.Value15;
+                    Result.H2 := hw;
+                end else
+                    Result.Value := FMemory.Operand.Value;
+              end;
+            end;
         end;
       end;
       1:
@@ -3759,22 +3883,56 @@ begin
           7:
           begin
             value := FMemory.Fetch(addr);
-            if ((FMemory.IFR.f7 = 0) or ((b2 >= 1) and (b2 <= 3))) then
-            begin
+            case gConfig.Mode of
+              m494:
+              begin
+                if ((FMemory.IFR.f7 = 0) or ((b2 >= 1) and (b2 <= 3))) then
+                begin
+                    bval := (not FMemory.B[b1, b2].Value) and BITS15;
+                    if ((bval and BIT14) = 0) then
+                        value.Value := 0
+                    else
+                        value.Value := BITS30;
+                    value.H2 := bval;
+                end else
+                begin
+                    bval := (not FMemory.B[b1, b2].Value) and BITS17;
+                    if ((bval and $10000) = 0) then
+                        value.Value := 0
+                    else
+                        value.Value := $3ffe0000;
+                    value.Value := value.Value or bval;
+                end;
+              end;
+              m490:
+              begin
                 bval := (not FMemory.B[b1, b2].Value) and BITS15;
                 if ((bval and BIT14) = 0) then
                     value.Value := 0
                 else
                     value.Value := BITS30;
                 value.H2 := bval;
-            end else
-            begin
-                bval := (not FMemory.B[b1, b2].Value) and BITS17;
-                if ((bval and $10000) = 0) then
-                    value.Value := 0
-                else
-                    value.Value := $3ffe0000;
-                value.Value := value.Value or bval;
+              end;
+              m1230:
+              begin
+                if (FMemory.IFR.f7 = 0) then
+                begin
+                    bval := (not FMemory.B[b1, b2].Value) and BITS15;
+                    if ((bval and BIT14) = 0) then
+                        value.Value := 0
+                    else
+                        value.Value := BITS30;
+                    value.H2 := bval;
+                end else
+                begin
+                    bval := (not FMemory.B[b1, b2].Value) and BITS17;
+                    if ((bval and $10000) = 0) then
+                        value.Value := 0
+                    else
+                        value.Value := $3ffe0000;
+                    value.Value := value.Value or bval;
+                end;
+              end;
             end;
             FMemory.Store(addr, value);
           end;

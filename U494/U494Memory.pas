@@ -1212,7 +1212,10 @@ begin
       m1230:
       begin
         FValue := FMemory.Fetch(B1230 + FRegNumber - 1, True);
-        Result := FValue and BITS17;
+        if (FMemory.IFR.f7 = 0) then
+            Result := FValue and BITS15
+        else
+            Result := FValue and BITS17;
       end;
     end;
 end;
@@ -1226,9 +1229,27 @@ end;
 
 procedure T494BRegister.SetValue(const Value: UInt32);
 begin
-    FValue := Value and BITS17;
-    if (gConfig.Mode = m1230) then
+    case gConfig.Mode of
+      m494:
+      begin
+        if ((FMemory.IFR.f7 = 0) or (FRegNumber <= 3)) then
+            FValue := Value and BITS15
+        else
+            FValue := Value and BITS17;
+      end;
+      m490:
+      begin
+        FValue := Value and BITS15;
+      end;
+      m1230:
+      begin
+        if (FMemory.IFR.f7 = 0) then
+            FValue := Value and BITS15
+        else
+            FValue := Value and BITS17;
         FMemory.Store(B1230 + FRegNumber - 1, FValue, True);
+      end;
+    end;
 end;
 
 end.

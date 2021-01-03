@@ -95,6 +95,15 @@ type
     PunchPanel: TPanel;
     PrinterPage: TTabSheet;
     PrinterPanel: TPanel;
+    PaperTapePage: TTabSheet;
+    PaperTapePanel: TPanel;
+    Label31: TLabel;
+    PTFileNameEdt: TEdit;
+    PTBrowseBtn: TButton;
+    PTOpenDlg: TOpenDialog;
+    PTMountBtn: TButton;
+    PTUnmountBtn: TButton;
+    PTLoadedLbl: TLabel;
     procedure TimerTimer(Sender: TObject);
     procedure InputEdtKeyPress(Sender: TObject; var Key: Char);
     procedure StartBtnClick(Sender: TObject);
@@ -109,6 +118,9 @@ type
     procedure Switch7BtnClick(Sender: TObject);
     procedure ClearBtnClick(Sender: TObject);
     procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
+    procedure PTBrowseBtnClick(Sender: TObject);
+    procedure PTMountBtnClick(Sender: TObject);
+    procedure PTUnmountBtnClick(Sender: TObject);
   private
     FConfigFile: String;
     FInTimer: Boolean;
@@ -986,6 +998,28 @@ begin
     end;
 end;
 
+procedure TU494PanelFrm.PTBrowseBtnClick(Sender: TObject);
+begin
+    if (not PTOpenDlg.Execute) then
+        Exit;
+    PTFileNameEdt.Text := PTOpenDlg.FileName;
+end;
+
+procedure TU494PanelFrm.PTMountBtnClick(Sender: TObject);
+begin
+    if (PTFileNameEdt.Text = '') then
+        raise Exception.Create('Please enter the paper tape file name');
+    FSystem.Console.PunchFile := PTFileNameEdt.Text;
+    PTLoadedLbl.Caption := Format('%s loaded', [PTFileNameEdt.Text]);
+    PTLoadedLbl.Visible := True;
+end;
+
+procedure TU494PanelFrm.PTUnmountBtnClick(Sender: TObject);
+begin
+    FSystem.Console.PunchFile := '';
+    PTLoadedLbl.Visible := False;
+end;
+
 procedure TU494PanelFrm.TimerTimer(Sender: TObject);
 var
     msg, fname: String;
@@ -1001,7 +1035,7 @@ begin
         case gConfig.Mode of
           m490:     AuditMemo.Lines.Add('490 mode');
           m494:     AuditMemo.Lines.Add('494 mode');
-          m1230:     AuditMemo.Lines.Add('1230 mode');
+          m1230:    AuditMemo.Lines.Add('1230 mode');
         end;
         for i := 0 to gConfig.LoadFileCount - 1 do
         begin

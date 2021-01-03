@@ -221,7 +221,7 @@ const
         (SpurtMnemonic: 'SISR'; AsmMnemonic: 'SISR'; Opcode: 57; InstType: it77; JInterpret: jiNone; OperandType: ot77; Priviledged: False),
         (SpurtMnemonic: 'SOSR'; AsmMnemonic: 'SOSR'; Opcode: 58; InstType: it77; JInterpret: jiNone; OperandType: ot77; Priviledged: True),
         (SpurtMnemonic: 'SESR'; AsmMnemonic: 'SESR'; Opcode: 59; InstType: it77; JInterpret: jiNone; OperandType: ot77; Priviledged: True),
-        (SpurtMnemonic: 'D71'; AsmMnemonic: 'D17'; Opcode: 60; InstType: it77; JInterpret: jiNone; OperandType: ot77; Priviledged: True),
+        (SpurtMnemonic: 'D17'; AsmMnemonic: 'D17'; Opcode: 60; InstType: it77; JInterpret: jiNone; OperandType: ot77; Priviledged: True),
         (SpurtMnemonic: 'E17'; AsmMnemonic: 'E17'; Opcode: 61; InstType: it77; JInterpret: jiNone; OperandType: ot77; Priviledged: False),
         (SpurtMnemonic: 'UNK'; AsmMnemonic: 'UNK'; Opcode: 62),
         (SpurtMnemonic: 'UNK'; AsmMnemonic: 'UNK'; Opcode: 63)
@@ -267,7 +267,7 @@ const
         (AsmMnemonic: 'EXIT'; OperandType: otDirective)
     );
 
-    SpurtDirectives: array [0..22] of T494Opcode = (
+    SpurtDirectives: array [0..23] of T494Opcode = (
         (SpurtMnemonic: 'C-CONTROL'; OperandType: otDirective),
         (SpurtMnemonic: 'OUTPUTS'; OperandType: otDirective),
         (SpurtMnemonic: 'ALLOCATION'; OperandType: otDirective),
@@ -290,6 +290,7 @@ const
         (SpurtMnemonic: 'SIL-EX'; OperandType: otDirective),
         (SpurtMnemonic: 'RIL'; OperandType: otDirective),
         (SpurtMnemonic: 'RIL-EX'; OperandType: otDirective),
+        (SpurtMnemonic: 'FD'; OperandType: otDirective),
         (SpurtMnemonic: '..'; OperandType: otDirective)
     );
 

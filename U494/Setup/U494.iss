@@ -89,6 +89,8 @@ Source: ..\Manuals\1230\PX3892_Programming_Manual_for_1230_Computer_Feb66.pdf; D
 Source: ..\Bin\monitor6.mem; DestDir: {app}\Bin
 Source: ..\Bin\monitor6.mem; DestDir: {commonappdata}\Univac 494 Emulator\Data
 Source: ..\Docs\Monitor6.pdf; DestDir: {app}\Docs
+Source: ..\Source\SpurtTest.spurt; DestDir: {app}\Source
+Source: ..\Bin\SpurtTest.pt; DestDir: {app}\Bin
 
 [Icons]
 Name: {group}\{#MyAppName}; Filename: {app}\{#MyAppExeName}; WorkingDir: {app}

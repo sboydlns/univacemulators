@@ -14,8 +14,9 @@ type
     Timer: TTimer;
     Printer: TMemo;
     MainMenu: TMainMenu;
-    RecordMenu: TMenuItem;
+    FileMenu: TMenuItem;
     OpenDlg: TOpenDialog;
+    RecordMenu: TMenuItem;
     procedure TimerTimer(Sender: TObject);
     procedure FormKeyPress(Sender: TObject; var Key: Char);
     procedure FormShow(Sender: TObject);

@@ -10,7 +10,9 @@ uses
   Spurt in 'Spurt.pas',
   U494Opcodes in 'U494Opcodes.pas',
   U494Util in 'U494Util.pas',
-  Bcd in '..\Common\Bcd.pas';
+  Bcd in '..\Common\Bcd.pas',
+  ObjFile in 'ObjFile.pas',
+  EmulatorTypes in '..\Common\EmulatorTypes.pas';
 
 var
     InFile: String;
@@ -58,6 +60,8 @@ begin
              otype := otExecutable
         else if (ParamStr(i) = '-obj') then
              otype := otObject
+        else if (ParamStr(i) = '-abs') then
+             otype := otAbsolute
         else if (ParamStr(i) = '-P') then
         begin
             Inc(i);

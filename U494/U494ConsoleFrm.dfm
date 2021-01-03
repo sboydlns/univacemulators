@@ -46,9 +46,12 @@ object U494ConsoleForm: TU494ConsoleForm
   object MainMenu: TMainMenu
     Left = 92
     Top = 12
-    object RecordMenu: TMenuItem
-      Caption = 'Record'
-      OnClick = RecordMenuClick
+    object FileMenu: TMenuItem
+      Caption = 'File'
+      object RecordMenu: TMenuItem
+        Caption = 'Record'
+        OnClick = RecordMenuClick
+      end
     end
   end
   object OpenDlg: TOpenDialog
