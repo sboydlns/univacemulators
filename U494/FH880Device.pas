@@ -152,7 +152,7 @@ begin
         end;
         if (FStatus <> 0) then
         begin
-            QueueInterrupt(intIO, IIsiExternal, FStatus);
+            QueueInterrupt(intIO, IIsiExternal(FChannel), FStatus);
             FStatus := 0;
         end;
     end;
@@ -230,7 +230,7 @@ begin
         end;
     end;
     if (FInputMonitor and (bcr.Count = 0)) then
-        QueueInterrupt(intIO, IIsiInput, 0);
+        QueueInterrupt(intIO, IIsiInput(FChannel), 0);
     TerminateInput;
     func := 0;
 end;
@@ -255,7 +255,7 @@ begin
     end;
     if (FInputMonitor and (bcr.Count = 0)) then
     begin
-        QueueInterrupt(intIO, IIsiInput, 0);
+        QueueInterrupt(intIO, IIsiInput(FChannel), 0);
         TerminateInput;
     end;
 end;
@@ -401,7 +401,7 @@ begin
     end;
     if (FOutputMonitor and (bcr.Count = 0)) then
     begin
-        QueueInterrupt(intIO, IIsiOutput, 0);
+        QueueInterrupt(intIO, IIsiOutput(FChannel), 0);
         TerminateOutput;
     end;
 end;

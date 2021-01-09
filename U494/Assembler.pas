@@ -1106,14 +1106,14 @@ begin
     begin
         if ((not FSymbols.TryGetValue(token, sym)) or (sym.DefCount = 0)) then
         begin
-            FOutFile.EmitTransferAddr(0, FObjCodeSize);
+            FOutFile.EmitTransferAddr(0, 0, FObjCodeSize);
             raise Exception.CreateFmt('Label (%s) is undefined.', [token]);
         end;
         FTransferAddr := sym.Value;
         sym.Xref.Add(srcFile.LineNumber);
     end;
     FListFile.Print;
-    FOutFile.EmitTransferAddr(FTransferAddr, FObjCodeSize);
+    FOutFile.EmitTransferAddr(0, FTransferAddr, FObjCodeSize);
     for sym in FSymbols.Values do
     begin
         if (sym.IsEntry) then

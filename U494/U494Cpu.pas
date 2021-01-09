@@ -31,6 +31,9 @@ type
     FOutputActive: Boolean;
     FInputMonitor: Boolean;
     FOutputMonitor: Boolean;
+    FInpIntEnable: Boolean;
+    FOutIntEnable: Boolean;
+    FExtIntEnable: Boolean;
     function FetchInputBcr: T494Word;
     function FetchOutputBcr: T494Word;
     procedure Lock;
@@ -50,6 +53,9 @@ public
     procedure Terminate; reintroduce;
     procedure TerminateInput; virtual;
     procedure TerminateOutput; virtual;
+    property InpIntEnable: Boolean read FInpIntEnable write FInpIntEnable;
+    property OutIntEnable: Boolean read FOutIntEnable write FOutIntEnable;
+    property ExtIntEnable: Boolean read FExtIntEnable write FExtIntEnable;
   end;
 
   T494CardDevice = class(T494Device)
@@ -85,6 +91,7 @@ public
     FInterrupts: T494InterruptQueue;
     FChannels: T494ChannelList;
     FInterruptLockout: Boolean;
+    FExtIntLockout: Boolean;                                // External interrupt lockout
     FInterruptPending: Boolean;                             // Unconditional interrupt pending flag
     FInterruptActive: Boolean;                              // I/O interrupt active
     FInterruptVector: T494Address;                          //    "      "     "    "  vector address
@@ -99,7 +106,8 @@ public
     procedure FloatToNative(r: Double; var w1, w2: UInt32);
     procedure IllegalInst;
     function IOFetch: T494Word;
-    function LeftShift(value: UInt32; count: Integer): UInt32;
+    function LeftShift(value: UInt32; count: Integer): UInt32; overload;
+    function LeftShift(value: UInt64; count: Integer): UInt64; overload;
     procedure LogicalProductSkip;
     function LogicalRightShift(value: UInt32; count: Integer): UInt32;
     function NativeToFloat(w1, w2: UInt32): Double;
@@ -143,6 +151,7 @@ public
     procedure DTL;
     procedure E17;
     procedure ECSR;
+    procedure EEIO;
     procedure EESR;
     procedure EICDM;
     procedure EIR;
@@ -406,7 +415,23 @@ begin
     if (FMemory.B[FMemory.IFR.f6, j].Value <> 0) then
     begin
         FMemory.B[FMemory.IFR.f6, j].Value := FMemory.B[FMemory.IFR.f6, j].Value - 1;
-        FMemory.P := addr + FMemory.RIR.Value;
+        case gConfig.Mode of
+          m494:
+          begin
+            FMemory.P := addr + FMemory.RIR.Value;
+          end;
+          m490:
+          begin
+            FMemory.P := addr;
+          end;
+          m1230:
+          begin
+            if (FMemory.IFR.f7 = 0) then
+                FMemory.P := addr
+            else
+                FMemory.P := (addr and BITS13) or UInt32(FMemory.SR[FMemory.Inst.s].Value) shl 13;
+          end;
+        end;
     end;
 end;
 
@@ -585,10 +610,15 @@ begin
       begin
         InterruptLockout := (FMemory.Inst.b <> 0);
       end;
-      else
+      2:
       begin
-        raise Exception.CreateFmt('TERMIN1230 k designator %d not implemented', [FMemory.Inst.khat]);
+        FExtIntLockout := (FMemory.Inst.b <> 0);
       end;
+      3:
+      begin
+        if (Assigned(FChannels[chan])) then
+            FChannels[chan].ExtIntEnable := (FMemory.Inst.b = 0);
+      end
     end;
 end;
 
@@ -957,6 +987,7 @@ begin
       m1230:
       begin
         FExtInstProcs[7] := NORM;
+        FExtInstProcs[32] := EEIO;
         FExtInstProcs[48] := ESR;
         FExtInstProcs[49] := EISR;
         FExtInstProcs[50] := EOSR;
@@ -1039,83 +1070,115 @@ begin
     // Make 2s complement
     if (aq < 0) then
         aq := aq + 1;
-    if (Integer(operand) = 0) then
+    if ((gConfig.Mode = m1230) and (FMemory.Inst.k = 7)) then
     begin
-        divByZero := True;
-        ovfl := False;
-        if (aq >= 0) then
+        // 1230 square root function
+        if (FMemory.Q.Value >= 0) then
         begin
-            FMemory.Q.Value := BITS30;
-            FMemory.A := FMemory.Q;
+            FMemory.Q.Value := Trunc(Sqrt(aq));
+            FMemory.A.Value := aq - (FMemory.Q.Value * FMemory.Q.Value);
         end else
         begin
-            FMemory.Q := 0;
-            FMemory.A := FMemory.Q;
+            FMemory.Q.Value := 0;
+            FMemory.A.Value := 0;
+        end;
+        case FMemory.Inst.j of
+          1:
+          begin
+            FMemory.P := FMemory.P + 1;
+          end;
+          2:
+          begin
+              if (FMemory.A.Value <> 0) then
+                FMemory.P := FMemory.P + 1;
+          end;
+          3:
+          begin
+              if (FMemory.A.Value = 0) then
+                FMemory.P := FMemory.P + 1;
+          end;
         end;
     end else
     begin
-        divByZero := False;
-        quotient := aq div Integer(operand);
-        FMemory.Q := quotient;
-        FMemory.A := Integer(aq mod Integer(operand));
-        if (quotient <> 0) then
-            ovfl := Abs(aq div quotient) > $1fffffff
-        else
-            ovfl := False;
-    end;
-    // Divide skip conditions
-    case FMemory.Inst.j of
-      1:
-      begin
-        FMemory.P := FMemory.P + 1;
-      end;
-      2:
-      begin
-        if (not ovfl) then
-            FMemory.P := FMemory.P + 1;
-      end;
-      3:
-      begin
-        if (ovfl) then
-            FMemory.P := FMemory.P + 1;
-      end;
-      4:
-      begin
-        if (divByZero and (aq < 0)) then
+        // normal division
+        if (Integer(operand) = 0) then
         begin
-            if (((not FMemory.A.Value) and BITS30) = 0) then
-                FMemory.P := FMemory.P + 1;
+            divByZero := True;
+            ovfl := False;
+            if (aq >= 0) then
+            begin
+                FMemory.Q.Value := BITS30;
+                FMemory.A := FMemory.Q;
+            end else
+            begin
+                FMemory.Q := 0;
+                FMemory.A := FMemory.Q;
+            end;
         end else
         begin
+            divByZero := False;
+            quotient := aq div Integer(operand);
+            FMemory.Q := quotient;
+            FMemory.A := Integer(aq mod Integer(operand));
+            if (quotient <> 0) then
+                ovfl := Abs(aq div quotient) > $1fffffff
+            else
+                ovfl := False;
+        end;
+        // Divide skip conditions
+        case FMemory.Inst.j of
+          1:
+          begin
+            FMemory.P := FMemory.P + 1;
+          end;
+          2:
+          begin
+            if (not ovfl) then
+                FMemory.P := FMemory.P + 1;
+          end;
+          3:
+          begin
+            if (ovfl) then
+                FMemory.P := FMemory.P + 1;
+          end;
+          4:
+          begin
+            if (divByZero and (aq < 0)) then
+            begin
+                if (((not FMemory.A.Value) and BITS30) = 0) then
+                    FMemory.P := FMemory.P + 1;
+            end else
+            begin
+                if (FMemory.A.Value = 0) then
+                    FMemory.P := FMemory.P + 1;
+            end;
+          end;
+          5:
+          begin
+            if (divByZero and (aq < 0)) then
+            begin
+                if (((not FMemory.A.Value) and BITS30) <> 0) then
+                    FMemory.P := FMemory.P + 1;
+            end else
+            begin
+                if (FMemory.A.Value <> 0) then
+                    FMemory.P := FMemory.P + 1;
+            end;
+          end;
+          { TODO :
+    I'm not sure if my interpretation of the j values 6 and 7. Check
+    with assembler manual when I get it. }
+          6:
+          begin
             if (FMemory.A.Value = 0) then
                 FMemory.P := FMemory.P + 1;
-        end;
-      end;
-      5:
-      begin
-        if (divByZero and (aq < 0)) then
-        begin
-            if (((not FMemory.A.Value) and BITS30) <> 0) then
+          end;
+          7:
+          begin
+            if ((FMemory.A.Value and BIT29) <> 0) then
                 FMemory.P := FMemory.P + 1;
-        end else
-        begin
-            if (FMemory.A.Value <> 0) then
-                FMemory.P := FMemory.P + 1;
+          end;
         end;
-      end;
-      { TODO :
-I'm not sure if my interpretation of the j values 6 and 7. Check
-with assembler manual when I get it. }
-      6:
-      begin
-        if (FMemory.A.Value = 0) then
-            FMemory.P := FMemory.P + 1;
-      end;
-      7:
-      begin
-        if ((FMemory.A.Value and BIT29) <> 0) then
-            FMemory.P := FMemory.P + 1;
-      end;
     end;
 end;
 
@@ -1246,7 +1309,7 @@ end;
 
 procedure T494Cpu.DICDM;
 begin
-
+    NotImplemented;
 end;
 
 procedure T494Cpu.DN;
@@ -1265,7 +1328,7 @@ end;
 
 procedure T494Cpu.DOCDM;
 begin
-
+    NotImplemented;
 end;
 
 procedure T494Cpu.E17;
@@ -1283,14 +1346,21 @@ begin
         FMemory.CSR.Value := FMemory.Fetch(FMemory.Operand.Value).Value;
 end;
 
+procedure T494Cpu.EEIO;
+// Enabled / disable external I/O (whatever that means).
+// khat = 0 disable, khat = 1 enable
+begin
+    NotImplemented;
+end;
+
 procedure T494Cpu.EESR;
 begin
-
+    NotImplemented;
 end;
 
 procedure T494Cpu.EICDM;
 begin
-
+    NotImplemented;
 end;
 
 procedure T494Cpu.EIR;
@@ -1305,17 +1375,17 @@ end;
 
 procedure T494Cpu.EISR;
 begin
-
+    NotImplemented;
 end;
 
 procedure T494Cpu.EOCDM;
 begin
-
+    NotImplemented;
 end;
 
 procedure T494Cpu.EOSR;
 begin
-
+    NotImplemented;
 end;
 
 procedure T494Cpu.ER;
@@ -1398,75 +1468,84 @@ var
             FMemory.B[b1, b2].Value := FMemory.B[b1, b2].Value or $18000;
     end;
 
+    procedure LB494;
+    begin
+        if ((b2 >= 1) and (b2 <= 3)) then
+        begin
+            case FMemory.Inst.k of
+              0,
+              4:
+              begin
+                FMemory.B[b1, b2].Value := FMemory.Operand.Value15;
+              end;
+              1,
+              3,
+              5:
+              begin
+                FMemory.B[b1, b2].Value := FMemory.Fetch(FMemory.Operand.Value).H2.Value and BITS15;
+              end;
+              2,
+              6:
+              begin
+                FMemory.B[b1, b2].Value := FMemory.Fetch(FMemory.Operand.Value).H1.Value and BITS15;
+              end;
+              7:
+              begin
+                FMemory.B[b1, b2].Value := FMemory.A.H2.Value and BITS15;
+              end;
+            end;
+        end else
+        begin
+            case FMemory.Inst.k of
+              0:
+              begin
+                FMemory.B[b1, b2].Value := FMemory.Operand.Value;
+              end;
+              1:
+              begin
+                FMemory.B[b1, b2].Value := FMemory.Fetch(FMemory.Operand.Value).H2.Value;
+              end;
+              2:
+              begin
+                FMemory.B[b1, b2].Value := FMemory.Fetch(FMemory.Operand.Value).H1.Value;
+              end;
+              3:
+              begin
+                FMemory.B[b1, b2].Value := FMemory.Fetch(FMemory.Operand.Value).Value and BITS17;
+              end;
+              4:
+              begin
+                FMemory.B[b1, b2].Value := FMemory.Operand.Value15;
+                ExtendSign;
+              end;
+              5:
+              begin
+                FMemory.B[b1, b2].Value := FMemory.Fetch(FMemory.Operand.Value).H2.Value;
+                ExtendSign;
+              end;
+              6:
+              begin
+                FMemory.B[b1, b2].Value := FMemory.Fetch(FMemory.Operand.Value).H1.Value;
+                ExtendSign;
+              end;
+              7:
+              begin
+                FMemory.B[b1, b2].Value := FMemory.A.Value and BITS17;
+              end;
+            end;
+        end;
+    end;
+
 begin
     b1 := FMemory.IFR.f6;
     b2 := FMemory.Inst.j;
     if (b2 = 0) then
         Exit;
 
-    if ((b2 >= 1) and (b2 <= 3)) then
-    begin
-        case FMemory.Inst.k of
-          0,
-          4:
-          begin
-            FMemory.B[b1, b2].Value := FMemory.Operand.Value15;
-          end;
-          1,
-          3,
-          5:
-          begin
-            FMemory.B[b1, b2].Value := FMemory.Fetch(FMemory.Operand.Value).H2.Value and BITS15;
-          end;
-          2,
-          6:
-          begin
-            FMemory.B[b1, b2].Value := FMemory.Fetch(FMemory.Operand.Value).H1.Value and BITS15;
-          end;
-          7:
-          begin
-            FMemory.B[b1, b2].Value := FMemory.A.H2.Value and BITS15;
-          end;
-        end;
-    end else
-    begin
-        case FMemory.Inst.k of
-          0:
-          begin
-            FMemory.B[b1, b2].Value := FMemory.Operand.Value;
-          end;
-          1:
-          begin
-            FMemory.B[b1, b2].Value := FMemory.Fetch(FMemory.Operand.Value).H2.Value;
-          end;
-          2:
-          begin
-            FMemory.B[b1, b2].Value := FMemory.Fetch(FMemory.Operand.Value).H1.Value;
-          end;
-          3:
-          begin
-            FMemory.B[b1, b2].Value := FMemory.Fetch(FMemory.Operand.Value).Value and BITS17;
-          end;
-          4:
-          begin
-            FMemory.B[b1, b2].Value := FMemory.Operand.Value15;
-            ExtendSign;
-          end;
-          5:
-          begin
-            FMemory.B[b1, b2].Value := FMemory.Fetch(FMemory.Operand.Value).H2.Value;
-            ExtendSign;
-          end;
-          6:
-          begin
-            FMemory.B[b1, b2].Value := FMemory.Fetch(FMemory.Operand.Value).H1.Value;
-            ExtendSign;
-          end;
-          7:
-          begin
-            FMemory.B[b1, b2].Value := FMemory.A.Value and BITS17;
-          end;
-        end;
+    case gConfig.Mode of
+      m494:     LB494;
+      m490:     FMemory.B[b1, b2].Value := StdFetch;
+      m1230:    FMemory.B[b1, b2].Value := StdFetch;
     end;
 end;
 
@@ -1614,22 +1693,33 @@ begin
                 if (b <> 0) then
                 begin
                     bval := FMemory.B[FMemory.IFR.f6, b].Value;
-                    FMemory.Inst.ybar := FMemory.Inst.y + bval;
                     case gConfig.Mode of
                       m494:
                       begin
-                        if ((FMemory.IFR.f7 = 0) or ((b >= 1) and (b <= 3))) then
+                        FMemory.Inst.ybar := FMemory.Inst.y + bval;
+                        if (FMemory.IFR.f7 = 0) then
                             FMemory.Inst.ybar := FMemory.Inst.ybar.Value15;
                       end;
                       m490:
                       begin
+                        FMemory.Inst.ybar := FMemory.Inst.y + bval;
                         FMemory.Inst.ybar := FMemory.Inst.ybar.Value15;
                       end;
                       m1230:
                       begin
-                         { TODO : Needs to allow for SR registers }
                         if (FMemory.IFR.f7 = 0) then
+                        begin
+                            FMemory.Inst.ybar := FMemory.Inst.y + bval;
                             FMemory.Inst.ybar := FMemory.Inst.ybar.Value15;
+                        end else
+                        begin
+                            if (FMemory.Inst.s = 3) then
+                                FMemory.Inst.ybar := FMemory.Inst.y.Value13 + bval +
+                                                     (FMemory.P.Value and (not BITS13))
+                            else
+                                FMemory.Inst.ybar := FMemory.Inst.y.Value13 + bval +
+                                                     (FMemory.SR[FMemory.Inst.s].Value shl 13);
+                        end;
                       end;
                     end;
                 end;
@@ -1926,6 +2016,7 @@ instruction. }
             PreFetch(FMemory.P);
         end;
         b := FMemory.Inst.b;
+        k := FMemory.Inst.k;
         if (FMemory.IFR.f9 = 1) then
         begin
             // Repeated instruction. Fetch ybar from the IFR
@@ -1935,27 +2026,68 @@ instruction. }
             // Non-repeated instructions
             // Add index register (b) to address (y)
             FMemory.Inst.ybar := FMemory.Inst.y;
-            if (b <> 0) then
-            begin
+            if (b = 0) then
+                bval := 0
+            else
                 bval := FMemory.B[FMemory.IFR.f6, b].Value;
+            case gConfig.Mode of
+              m494:
+              begin
                 FMemory.Inst.ybar := FMemory.Inst.y + bval;
-                case gConfig.Mode of
-                  m494:
-                  begin
-                    if ((FMemory.IFR.f7 = 0) or ((b >= 1) and (b <= 3))) then
-                        FMemory.Inst.ybar := FMemory.Inst.ybar.Value15;
-                  end;
-                  m490:
-                  begin
+                if (FMemory.IFR.f7 = 0) then
                     FMemory.Inst.ybar := FMemory.Inst.ybar.Value15;
-                  end;
-                  m1230:
-                  begin
-                    { TODO : Needs to allow for SR registers }
-                    if (FMemory.IFR.f7 = 0) then
-                        FMemory.Inst.ybar := FMemory.Inst.ybar.Value15;
-                  end;
+              end;
+              m490:
+              begin
+                FMemory.Inst.ybar := FMemory.Inst.y + bval;
+                FMemory.Inst.ybar := FMemory.Inst.ybar.Value15;
+              end;
+              m1230:
+              begin
+                if (FMemory.IFR.f7 = 0) then
+                begin
+                    FMemory.Inst.ybar := FMemory.Inst.y + bval;
+                    FMemory.Inst.ybar := FMemory.Inst.ybar.Value15;
+                end else
+                begin
+                    case FCurOpcode.InstType of
+                      itRead:
+                      begin
+                        if ((k <> 0) and (k <> 4) and (k <> 7)) then
+                            FMemory.Inst.ybar := FMemory.Inst.y.Value13 + bval +
+                                                 (FMemory.SR[FMemory.Inst.s].Value shl 13)
+                        else
+                            FMemory.Inst.ybar := FMemory.Inst.y.Value15 + bval;
+                      end;
+                      itStore:
+                      begin
+                        if ((k <> 0) and (k <> 4)) then
+                            FMemory.Inst.ybar := FMemory.Inst.y.Value13 + bval +
+                                                 (FMemory.SR[FMemory.Inst.s].Value shl 13)
+                        else
+                            FMemory.Inst.ybar := FMemory.Inst.y.Value15 + bval;
+                      end;
+                      itReplace:
+                      begin
+                        FMemory.Inst.ybar := FMemory.Inst.y.Value13 + bval +
+                                             (FMemory.SR[FMemory.Inst.s].Value shl 13)
+                      end;
+                      it77:
+                      begin
+                        if (FMemory.Inst.g = 7)  then
+                            FMemory.Inst.ybar := FMemory.Inst.y.Value13 + bval +
+                                                 (FMemory.SR[FMemory.Inst.s].Value shl 13)
+                        else
+                            FMemory.Inst.ybar := (FMemory.Inst.y.Value and $ff) + bval;
+                      end;
+                      itIO:
+                      begin
+                        FMemory.Inst.ybar := FMemory.Inst.y.Value13 + bval +
+                                             (FMemory.SR[FMemory.Inst.s].Value shl 13)
+                      end;
+                    end;
                 end;
+              end;
             end;
         end;
         // Calculate absolute address, if applicable. Do not relocate "reserved" addresses.
@@ -2362,38 +2494,150 @@ begin
       end;
       1:
       begin
-        FMemory.P := addr + FMemory.RIR.Value;
+        case gConfig.Mode of
+          m494:
+          begin
+            FMemory.P := addr + FMemory.RIR.Value;
+          end;
+          m490:
+          begin
+            FMemory.P := addr;
+          end;
+          m1230:
+          begin
+            if (FMemory.IFR.f7 = 0) then
+                FMemory.P := addr
+            else
+                FMemory.P := (addr and BITS13) or UInt32(FMemory.SR[FMemory.Inst.s].Value) shl 13;
+          end;
+        end;
         InterruptLockout := False;
       end;
       2:
       begin
         if (not FMemory.Q.IsNegative) then
-            FMemory.P := addr + FMemory.RIR.Value;
+            case gConfig.Mode of
+              m494:
+              begin
+                FMemory.P := addr + FMemory.RIR.Value;
+              end;
+              m490:
+              begin
+                FMemory.P := addr;
+              end;
+              m1230:
+              begin
+                if (FMemory.IFR.f7 = 0) then
+                    FMemory.P := addr
+                else
+                    FMemory.P := (addr and BITS13) or UInt32(FMemory.SR[FMemory.Inst.s].Value) shl 13;
+              end;
+            end;
       end;
       3:
       begin
         if (FMemory.Q.IsNegative) then
-            FMemory.P := addr + FMemory.RIR.Value;
+            case gConfig.Mode of
+              m494:
+              begin
+                FMemory.P := addr + FMemory.RIR.Value;
+              end;
+              m490:
+              begin
+                FMemory.P := addr;
+              end;
+              m1230:
+              begin
+                if (FMemory.IFR.f7 = 0) then
+                    FMemory.P := addr
+                else
+                    FMemory.P := (addr and BITS13) or UInt32(FMemory.SR[FMemory.Inst.s].Value) shl 13;
+              end;
+            end;
       end;
       4:
       begin
         if (FMemory.A.Value = 0) then
-            FMemory.P := addr + FMemory.RIR.Value;
+            case gConfig.Mode of
+              m494:
+              begin
+                FMemory.P := addr + FMemory.RIR.Value;
+              end;
+              m490:
+              begin
+                FMemory.P := addr;
+              end;
+              m1230:
+              begin
+                if (FMemory.IFR.f7 = 0) then
+                    FMemory.P := addr
+                else
+                    FMemory.P := (addr and BITS13) or UInt32(FMemory.SR[FMemory.Inst.s].Value) shl 13;
+              end;
+            end;
       end;
       5:
       begin
         if (FMemory.A.Value <> 0) then
-            FMemory.P := addr + FMemory.RIR.Value;
+            case gConfig.Mode of
+              m494:
+              begin
+                FMemory.P := addr + FMemory.RIR.Value;
+              end;
+              m490:
+              begin
+                FMemory.P := addr;
+              end;
+              m1230:
+              begin
+                if (FMemory.IFR.f7 = 0) then
+                    FMemory.P := addr
+                else
+                    FMemory.P := (addr and BITS13) or UInt32(FMemory.SR[FMemory.Inst.s].Value) shl 13;
+              end;
+            end;
       end;
       6:
       begin
         if (not FMemory.A.IsNegative) then
-            FMemory.P := addr + FMemory.RIR.Value;
+            case gConfig.Mode of
+              m494:
+              begin
+                FMemory.P := addr + FMemory.RIR.Value;
+              end;
+              m490:
+              begin
+                FMemory.P := addr;
+              end;
+              m1230:
+              begin
+                if (FMemory.IFR.f7 = 0) then
+                    FMemory.P := addr
+                else
+                    FMemory.P := (addr and BITS13) or UInt32(FMemory.SR[FMemory.Inst.s].Value) shl 13;
+              end;
+            end;
       end;
       7:
       begin
         if (FMemory.A.IsNegative) then
-            FMemory.P := addr + FMemory.RIR.Value;
+            case gConfig.Mode of
+              m494:
+              begin
+                FMemory.P := addr + FMemory.RIR.Value;
+              end;
+              m490:
+              begin
+                FMemory.P := addr;
+              end;
+              m1230:
+              begin
+                if (FMemory.IFR.f7 = 0) then
+                    FMemory.P := addr
+                else
+                    FMemory.P := (addr and BITS13) or UInt32(FMemory.SR[FMemory.Inst.s].Value) shl 13;
+              end;
+            end;
       end;
     end;
 end;
@@ -2408,43 +2652,171 @@ begin
     case FMemory.Inst.j of
       0:
       begin
-        FMemory.P := addr + FMemory.RIR.Value;
+        case gConfig.Mode of
+          m494:
+          begin
+            FMemory.P := addr + FMemory.RIR.Value;
+          end;
+          m490:
+          begin
+            FMemory.P := addr;
+          end;
+          m1230:
+          begin
+            if (FMemory.IFR.f7 = 0) then
+                FMemory.P := addr
+            else
+                FMemory.P := (addr and BITS13) or UInt32(FMemory.SR[FMemory.Inst.s].Value) shl 13;
+          end;
+        end;
       end;
       1:
       begin
         if (ps1 in FPanelSwitches) then
-            FMemory.P := addr + FMemory.RIR.Value;
+            case gConfig.Mode of
+              m494:
+              begin
+                FMemory.P := addr + FMemory.RIR.Value;
+              end;
+              m490:
+              begin
+                FMemory.P := addr;
+              end;
+              m1230:
+              begin
+                if (FMemory.IFR.f7 = 0) then
+                    FMemory.P := addr
+                else
+                    FMemory.P := (addr and BITS13) or UInt32(FMemory.SR[FMemory.Inst.s].Value) shl 13;
+              end;
+            end;
       end;
       2:
       begin
         if (ps2 in FPanelSwitches) then
-            FMemory.P := addr + FMemory.RIR.Value;
+            case gConfig.Mode of
+              m494:
+              begin
+                FMemory.P := addr + FMemory.RIR.Value;
+              end;
+              m490:
+              begin
+                FMemory.P := addr;
+              end;
+              m1230:
+              begin
+                if (FMemory.IFR.f7 = 0) then
+                    FMemory.P := addr
+                else
+                    FMemory.P := (addr and BITS13) or UInt32(FMemory.SR[FMemory.Inst.s].Value) shl 13;
+              end;
+            end;
       end;
       3:
       begin
         if (ps3 in FPanelSwitches) then
-            FMemory.P := addr + FMemory.RIR.Value;
+            case gConfig.Mode of
+              m494:
+              begin
+                FMemory.P := addr + FMemory.RIR.Value;
+              end;
+              m490:
+              begin
+                FMemory.P := addr;
+              end;
+              m1230:
+              begin
+                if (FMemory.IFR.f7 = 0) then
+                    FMemory.P := addr
+                else
+                    FMemory.P := (addr and BITS13) or UInt32(FMemory.SR[FMemory.Inst.s].Value) shl 13;
+              end;
+            end;
       end;
       4:
       begin
-        FMemory.P := addr + FMemory.RIR.Value;
+        case gConfig.Mode of
+          m494:
+          begin
+            FMemory.P := addr + FMemory.RIR.Value;
+          end;
+          m490:
+          begin
+            FMemory.P := addr;
+          end;
+          m1230:
+          begin
+            if (FMemory.IFR.f7 = 0) then
+                FMemory.P := addr
+            else
+                FMemory.P := (addr and BITS13) or UInt32(FMemory.SR[FMemory.Inst.s].Value) shl 13;
+          end;
+        end;
         Include(FState, csHalted);
       end;
       5:
       begin
-        FMemory.P := addr + FMemory.RIR.Value;
+        case gConfig.Mode of
+          m494:
+          begin
+            FMemory.P := addr + FMemory.RIR.Value;
+          end;
+          m490:
+          begin
+            FMemory.P := addr;
+          end;
+          m1230:
+          begin
+            if (FMemory.IFR.f7 = 0) then
+                FMemory.P := addr
+            else
+                FMemory.P := (addr and BITS13) or UInt32(FMemory.SR[FMemory.Inst.s].Value) shl 13;
+          end;
+        end;
         if (ps5 in FPanelSwitches) then
             Include(FState, csHalted);
       end;
       6:
       begin
-        FMemory.P := addr + FMemory.RIR.Value;
+        case gConfig.Mode of
+          m494:
+          begin
+            FMemory.P := addr + FMemory.RIR.Value;
+          end;
+          m490:
+          begin
+            FMemory.P := addr;
+          end;
+          m1230:
+          begin
+            if (FMemory.IFR.f7 = 0) then
+                FMemory.P := addr
+            else
+                FMemory.P := (addr and BITS13) or UInt32(FMemory.SR[FMemory.Inst.s].Value) shl 13;
+          end;
+        end;
         if (ps6 in FPanelSwitches) then
             Include(FState, csHalted);
       end;
       7:
       begin
-        FMemory.P := addr + FMemory.RIR.Value;
+        case gConfig.Mode of
+          m494:
+          begin
+            FMemory.P := addr + FMemory.RIR.Value;
+          end;
+          m490:
+          begin
+            FMemory.P := addr;
+          end;
+          m1230:
+          begin
+            if (FMemory.IFR.f7 = 0) then
+                FMemory.P := addr
+            else
+                FMemory.P := (addr and BITS13) or UInt32(FMemory.SR[FMemory.Inst.s].Value) shl 13;
+          end;
+        end;
         if (ps7 in FPanelSwitches) then
             Include(FState, csHalted);
       end;
@@ -2545,6 +2917,19 @@ begin
     begin
         value := value shl 1;
         value := value or ((value and $40000000) shr 30);
+        Dec(count);
+    end;
+    Result := value;
+end;
+
+function T494Cpu.LeftShift(value: UInt64; count: Integer): UInt64;
+begin
+    if (count > 59) then
+        raise Exception.CreateFmt('Illegal shift count (%d)', [count]);
+    while (count > 0) do
+    begin
+        value := value shl 1;
+        value := value or ((value and $4000000000000000) shr 60);
         Dec(count);
     end;
     Result := value;
@@ -2811,8 +3196,26 @@ begin
 end;
 
 procedure T494Cpu.NORM;
+// Normalize AQ. Shift AQ until high order 2 bits are different
+// and return shift count in Y.
+var
+    operand: T494Word;
+    shiftCount, highBits: UInt32;
+    value: UInt64;
 begin
-
+    operand := StdFetch;
+    shiftCount := 0;
+    value := (FMemory.A.Value shr 30) or FMemory.Q.Value;
+    highBits := (value and $c00000000000000) shr 58;
+    while ((shiftCount < 58) and (highBits <> 1) and (highBits <> 2)) do
+    begin
+        value := LeftShift(value, 1);
+        highBits := (value and $c00000000000000) shr 58;
+        Inc(shiftCount);
+    end;
+    FMemory.A.Value := value shr 30;
+    FMemory.Q.Value := value;
+    FMemory.Store(operand.Value, shiftCount, False);
 end;
 
 procedure T494Cpu.NormalSkip;
@@ -3008,12 +3411,25 @@ end;
 procedure T494Cpu.SLJT;
 var
     operand, mem: T494Word;
+    hw: T494HalfWord;
     addr: UInt32;
 
     procedure StoreAndJump;
     begin
-        mem := FMemory.Fetch(addr + 1);
-        mem.H2 := FMemory.P.Value - FMemory.RIR.ActualValue;
+        case gConfig.Mode of
+          m494:
+          begin
+            addr := addr + FMemory.RIR.Value;
+          end;
+          m1230:
+          begin
+            if (FMemory.IFR.f7 <> 0) then
+                addr := (addr and BITS13) or UInt32(FMemory.SR[FMemory.Inst.s].Value) shl 13;
+          end;
+        end;
+        mem := FMemory.Fetch(addr);
+        hw.Value := FMemory.P.Value - FMemory.RIR.Value;
+        mem.H2 := hw;
         FMemory.Store(addr, mem);
         FMemory.P := addr + 1;
     end;
@@ -3066,7 +3482,7 @@ end;
 
 procedure T494Cpu.SOSR;
 begin
-
+    NotImplemented;
 end;
 
 procedure T494Cpu.SLJ;
@@ -3077,7 +3493,17 @@ var
 
     procedure StoreAndJump;
     begin
-        addr := addr + FMemory.RIR.Value;
+        case gConfig.Mode of
+          m494:
+          begin
+            addr := addr + FMemory.RIR.Value;
+          end;
+          m1230:
+          begin
+            if (FMemory.IFR.f7 <> 0) then
+                addr := (addr and BITS13) or UInt32(FMemory.SR[FMemory.Inst.s].Value) shl 13;
+          end;
+        end;
         mem := FMemory.Fetch(addr);
         hw.Value := FMemory.P.Value - FMemory.RIR.Value;
         mem.H2 := hw;
@@ -3401,6 +3827,8 @@ begin
 end;
 
 procedure T494Cpu.SSR;
+// Not sure how this instruction is supposed to work. All I know is
+// 7770000000 means store SR0 in Q.
 var
     r: Byte;
 begin
@@ -3463,7 +3891,7 @@ end;
 
 procedure T494Cpu.SISR;
 begin
-
+    NotImplemented;
 end;
 
 procedure T494Cpu.Start;
@@ -3981,7 +4409,7 @@ end;
 
 procedure T494Cpu.SESR;
 begin
-
+    NotImplemented;
 end;
 
 procedure T494Cpu.SetInterruptActive(const Value: Boolean);

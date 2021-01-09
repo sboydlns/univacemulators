@@ -1,14 +1,15 @@
-#ALLOCATION
-SPURTTEST#1000
+                   ALLOCATION
+       SPURTTEST   1000
 ..
-SPURTTEST#PROGRAM
-MONITOR#EQUALS*75000
-PRINT#EQUALS*75066
-CRLF#EQUALS*75321
-SPURTTEST#RJP*CRLF
-#ENT*Q*HELLO
-#RJP*PRINT
-#JP*MONITOR
+       SPURTTEST   PROGRAM
+       MONITOR     EQUALS.75000
+       PRINT       EQUALS.75066
+       CRLF        EQUALS.75321
+       SPURTTEST   DEXP                          DISABLE 17-BIT MODE
+                   RJP.CRLF
+                   ENT.Q.HELLO
+                   RJP.PRINT
+                   JP.MONITOR
 
-HELLO#FD*0*HELLO WORLD
-#77
+       HELLO       FD.0.HELLO WORLD
+                   77

@@ -2170,7 +2170,7 @@
                    SLJ       DEC2INT             . CONVERT FD TO INTEGER
                    LA,A      0,,ANOT             . = ZERO?
                    LA        5D                  . YES, DEFAULT TO 5
-       . FIND FILE IN MFD                   
+       . FIND FILE IN MFD                   
                    SA,W      CST$MFD+MFD$CHAN
                    SLJ       MFD$FIND            . TRY TO FIND FILE ON DRUM
                    +CST$MFD
@@ -2227,7 +2227,7 @@
                    J         CST$COPY            . NO
                    LA,W      0,B5                . YES, SAVE TRANSFER ADDR
                    SA,W      CST$XFER
-                   TBI,X     B5,77777
+                   LB        B5,2,B5
        CST$COPY    LA,W      0,B5                . COPY DATA TO PGM MEMORY
                    SA,W      0,B7
                    TBI,X     B7,77777 

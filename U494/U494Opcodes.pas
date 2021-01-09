@@ -168,7 +168,7 @@ const
         (SpurtMnemonic: 'UNK'; AsmMnemonic: 'UNK'; Opcode: 4),
         (SpurtMnemonic: 'UNK'; AsmMnemonic: 'UNK'; Opcode: 5),
         (SpurtMnemonic: 'UNK'; AsmMnemonic: 'UNK'; Opcode: 6),
-        (SpurtMnemonic: 'NORM'; AsmMnemonic: 'NORM'; Opcode: 7; InstType: it77; JInterpret: jiNone; OperandType: ot77; Priviledged: False),
+        (SpurtMnemonic: 'NORM.AQ'; AsmMnemonic: 'NORMAQ'; Opcode: 7; InstType: it77; JInterpret: jiNone; OperandType: ot77; Priviledged: False),
         (SpurtMnemonic: 'UNK'; AsmMnemonic: 'UNK'; Opcode: 8),
         (SpurtMnemonic: 'UNK'; AsmMnemonic: 'UNK'; Opcode: 9),
         (SpurtMnemonic: 'UNK'; AsmMnemonic: 'UNK'; Opcode: 10),
@@ -193,7 +193,7 @@ const
         (SpurtMnemonic: 'UNK'; AsmMnemonic: 'UNK'; Opcode: 29),
         (SpurtMnemonic: 'UNK'; AsmMnemonic: 'UNK'; Opcode: 30),
         (SpurtMnemonic: 'UNK'; AsmMnemonic: 'UNK'; Opcode: 31),
-        (SpurtMnemonic: 'UNK'; AsmMnemonic: 'UNK'; Opcode: 32),
+        (SpurtMnemonic: 'EEIO'; AsmMnemonic: 'EEIO'; Opcode: 32),
         (SpurtMnemonic: 'UNK'; AsmMnemonic: 'UNK'; Opcode: 33),
         (SpurtMnemonic: 'UNK'; AsmMnemonic: 'UNK'; Opcode: 34),
         (SpurtMnemonic: 'UNK'; AsmMnemonic: 'UNK'; Opcode: 35),
@@ -209,7 +209,7 @@ const
         (SpurtMnemonic: 'UNK'; AsmMnemonic: 'UNK'; Opcode: 45),
         (SpurtMnemonic: 'UNK'; AsmMnemonic: 'UNK'; Opcode: 46),
         (SpurtMnemonic: 'UNK'; AsmMnemonic: 'UNK'; Opcode: 47),
-        (SpurtMnemonic: 'ESR'; AsmMnemonic: 'ESR'; Opcode: 48; InstType: it77; JInterpret: jiNone; OperandType: ot77; Priviledged: True),
+        (SpurtMnemonic: 'ENTSR'; AsmMnemonic: 'ESR'; Opcode: 48; InstType: it77; JInterpret: jiNone; OperandType: ot77; Priviledged: True),
         (SpurtMnemonic: 'EISR'; AsmMnemonic: 'EISR'; Opcode: 49; InstType: it77; JInterpret: jiNone; OperandType: ot77; Priviledged: True),
         (SpurtMnemonic: 'EOSR'; AsmMnemonic: 'EOSR'; Opcode: 50; InstType: it77; JInterpret: jiNone; OperandType: ot77; Priviledged: True),
         (SpurtMnemonic: 'EESR'; AsmMnemonic: 'EESR'; Opcode: 51; InstType: it77; JInterpret: jiNone; OperandType: ot77; Priviledged: True),
@@ -217,17 +217,17 @@ const
         (SpurtMnemonic: 'EOCDM'; AsmMnemonic: 'EOCDM'; Opcode: 53; InstType: it77; JInterpret: jiNone; OperandType: ot77; Priviledged: True),
         (SpurtMnemonic: 'DICMD'; AsmMnemonic: 'DICDM'; Opcode: 54; InstType: it77; JInterpret: jiNone; OperandType: ot77; Priviledged: True),
         (SpurtMnemonic: 'EICMD'; AsmMnemonic: 'EICDM'; Opcode: 54; InstType: it77; JInterpret: jiNone; OperandType: ot77; Priviledged: True),
-        (SpurtMnemonic: 'SSR'; AsmMnemonic: 'SSR'; Opcode: 56; InstType: it77; JInterpret: jiNone; OperandType: ot77; Priviledged: True),
+        (SpurtMnemonic: 'STRSR'; AsmMnemonic: 'SSR'; Opcode: 56; InstType: it77; JInterpret: jiNone; OperandType: ot77; Priviledged: True),
         (SpurtMnemonic: 'SISR'; AsmMnemonic: 'SISR'; Opcode: 57; InstType: it77; JInterpret: jiNone; OperandType: ot77; Priviledged: False),
         (SpurtMnemonic: 'SOSR'; AsmMnemonic: 'SOSR'; Opcode: 58; InstType: it77; JInterpret: jiNone; OperandType: ot77; Priviledged: True),
         (SpurtMnemonic: 'SESR'; AsmMnemonic: 'SESR'; Opcode: 59; InstType: it77; JInterpret: jiNone; OperandType: ot77; Priviledged: True),
-        (SpurtMnemonic: 'D17'; AsmMnemonic: 'D17'; Opcode: 60; InstType: it77; JInterpret: jiNone; OperandType: ot77; Priviledged: True),
-        (SpurtMnemonic: 'E17'; AsmMnemonic: 'E17'; Opcode: 61; InstType: it77; JInterpret: jiNone; OperandType: ot77; Priviledged: False),
+        (SpurtMnemonic: 'DEXP'; AsmMnemonic: 'DEXP'; Opcode: 60; InstType: it77; JInterpret: jiNone; OperandType: ot77; Priviledged: True),
+        (SpurtMnemonic: 'EEXP'; AsmMnemonic: 'EEXP'; Opcode: 61; InstType: it77; JInterpret: jiNone; OperandType: ot77; Priviledged: False),
         (SpurtMnemonic: 'UNK'; AsmMnemonic: 'UNK'; Opcode: 62),
         (SpurtMnemonic: 'UNK'; AsmMnemonic: 'UNK'; Opcode: 63)
     );
 
-    U494PsuedoOps: array [0..12] of T494Opcode = (
+    U494PsuedoOps: array [0..21] of T494Opcode = (
         (SpurtMnemonic: 'COM.Q'; AsmMnemonic: 'TQ'; Opcode: 4; InstType: itRead; jInterpret: jiOther; OperandType: otGeneral; Priviledged: False),
         (SpurtMnemonic: 'COM.AQ'; AsmMnemonic: 'TR'; Opcode: 4; InstType: itRead; jInterpret: jiOther; OperandType: otGeneral; Priviledged: False),
         (SpurtMnemonic: 'CL.B'; AsmMnemonic: 'ZB'; Opcode: 10; InstType: itRead; jInterpret: jiOther; OperandType: otBRegister; Priviledged: False),
@@ -240,7 +240,16 @@ const
         (SpurtMnemonic: 'CL.A'; AsmMnemonic: 'ZA'; Opcode: 17; InstType: itRead; jInterpret: jiOther; OperandType: otGeneral; Priviledged: False),
         (SpurtMnemonic: 'EX-COM'; AsmMnemonic: 'UNK'; Opcode: 11; InstType: itIO; jInterpret: jiOther; OperandType: otIO; Priviledged: True),
         (SpurtMnemonic: 'EX-COM-MW'; AsmMnemonic: 'UNK'; Opcode: 60; InstType: itIO; jInterpret: jiOther; OperandType: otIO; Priviledged: True),
-        (SpurtMnemonic: 'RILJP'; AsmMnemonic: 'UNK'; Opcode: 48; InstType: itRead; jInterpret: jiOther; OperandType: otGeneral; Priviledged: True)
+        (SpurtMnemonic: 'RILJP'; AsmMnemonic: 'UNK'; Opcode: 48; InstType: itRead; jInterpret: jiOther; OperandType: otGeneral; Priviledged: True),
+        (SpurtMnemonic: 'SQRT'; AsmMnemonic: 'UNK'; Opcode: 19; InstType: itRead; jInterpret: jiOther; OperandType: otGeneral; Priviledged: False),
+        (SpurtMnemonic: 'ENTSR0'; AsmMnemonic: 'UNK'; Opcode: 48; InstType: it77; JInterpret: jiNone; OperandType: ot77; Priviledged: True),
+        (SpurtMnemonic: 'ENTSR1'; AsmMnemonic: 'UNK'; Opcode: 48; InstType: it77; JInterpret: jiNone; OperandType: ot77; Priviledged: True),
+        (SpurtMnemonic: 'ENTSR2'; AsmMnemonic: 'UNK'; Opcode: 48; InstType: it77; JInterpret: jiNone; OperandType: ot77; Priviledged: True),
+        (SpurtMnemonic: 'STRSR0'; AsmMnemonic: 'UNK'; Opcode: 56; InstType: it77; JInterpret: jiNone; OperandType: ot77; Priviledged: True),
+        (SpurtMnemonic: 'STRSR1'; AsmMnemonic: 'UNK'; Opcode: 56; InstType: it77; JInterpret: jiNone; OperandType: ot77; Priviledged: True),
+        (SpurtMnemonic: 'STRSR2'; AsmMnemonic: 'UNK'; Opcode: 56; InstType: it77; JInterpret: jiNone; OperandType: ot77; Priviledged: True),
+        (SpurtMnemonic: 'ECDM'; AsmMnemonic: 'UNK'; Opcode: 52; InstType: it77; JInterpret: jiNone; OperandType: ot77; Priviledged: True),
+        (SpurtMnemonic: 'DCDM'; AsmMnemonic: 'UNK'; Opcode: 54; InstType: it77; JInterpret: jiNone; OperandType: ot77; Priviledged: True)
     );
 
     AsmDirectives: array [0..20] of T494Opcode = (
@@ -267,7 +276,8 @@ const
         (AsmMnemonic: 'EXIT'; OperandType: otDirective)
     );
 
-    SpurtDirectives: array [0..23] of T494Opcode = (
+    SpurtDirectives: array [0..27] of T494Opcode = (
+        (SpurtMnemonic: 'A-CONTROL'; OperandType: otDirective),
         (SpurtMnemonic: 'C-CONTROL'; OperandType: otDirective),
         (SpurtMnemonic: 'OUTPUTS'; OperandType: otDirective),
         (SpurtMnemonic: 'ALLOCATION'; OperandType: otDirective),
@@ -291,6 +301,9 @@ const
         (SpurtMnemonic: 'RIL'; OperandType: otDirective),
         (SpurtMnemonic: 'RIL-EX'; OperandType: otDirective),
         (SpurtMnemonic: 'FD'; OperandType: otDirective),
+        (SpurtMnemonic: 'ORG'; OperandType: otDirective),
+        (SpurtMnemonic: 'ENDIT'; OperandType: otDirective),
+        (SpurtMnemonic: 'DEC'; OperandType: otDirective),
         (SpurtMnemonic: '..'; OperandType: otDirective)
     );
 

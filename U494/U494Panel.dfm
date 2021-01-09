@@ -226,32 +226,39 @@ object U494PanelFrm: TU494PanelFrm
       Height = 179
       TabOrder = 2
       object Label6: TLabel
-        Left = 16
+        Left = 12
         Top = 9
         Width = 7
         Height = 13
         Caption = 'A'
       end
       object Label7: TLabel
-        Left = 16
+        Left = 12
         Top = 33
         Width = 8
         Height = 13
         Caption = 'Q'
       end
-      object Label8: TLabel
-        Left = 16
+      object SR0Lbl: TLabel
+        Left = 12
         Top = 58
-        Width = 6
+        Width = 19
         Height = 13
-        Caption = 'X'
+        Caption = 'SR0'
       end
       object Label30: TLabel
-        Left = 16
+        Left = 12
         Top = 83
-        Width = 6
+        Width = 19
         Height = 13
-        Caption = 'Y'
+        Caption = 'SR1'
+      end
+      object Label32: TLabel
+        Left = 12
+        Top = 108
+        Width = 19
+        Height = 13
+        Caption = 'SR2'
       end
       object AEdt: TEdit
         Left = 35
@@ -273,7 +280,7 @@ object U494PanelFrm: TU494PanelFrm
         MaxLength = 10
         TabOrder = 1
       end
-      object XEdt: TEdit
+      object SR0Edt: TEdit
         Left = 35
         Top = 55
         Width = 69
@@ -283,7 +290,7 @@ object U494PanelFrm: TU494PanelFrm
         MaxLength = 10
         TabOrder = 2
       end
-      object YEdt: TEdit
+      object SR1Edt: TEdit
         Left = 35
         Top = 80
         Width = 69
@@ -292,6 +299,16 @@ object U494PanelFrm: TU494PanelFrm
         Enabled = False
         MaxLength = 10
         TabOrder = 3
+      end
+      object SR2Edt: TEdit
+        Left = 35
+        Top = 105
+        Width = 69
+        Height = 21
+        Alignment = taRightJustify
+        Enabled = False
+        MaxLength = 10
+        TabOrder = 4
       end
     end
     object Panel2: TPanel
@@ -420,7 +437,7 @@ object U494PanelFrm: TU494PanelFrm
         TabOrder = 6
       end
     end
-    object Panel3: TPanel
+    object UserBPanel: TPanel
       Left = 364
       Top = 0
       Width = 121

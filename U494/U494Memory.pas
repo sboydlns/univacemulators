@@ -25,9 +25,6 @@ const
     IEsiInput = 17;
     IEsiOutput = 18;
     IParityBank2 = 19;
-    IIsiExternal = 20;
-    IIsiInput = 21;
-    IIsiOutput = 22;
     IParityBank3 = 23;
     ITestAndSet = 24;
     // BCR starting addresses
@@ -38,6 +35,17 @@ const
     BcrIn1230 = 64;
     BcrOut1230= 80;
     BcrExt1230 = 96;
+    // Interrupt vector starting addresses
+    IIsiExternal494 = 20;
+    IIsiInput494 = 21;
+    IIsiOutput494 = 22;
+    IIsiExternal490 = 16;
+    IIsiInput490 = 32;
+    IIsiOutput490 = 64;
+    IIsiExternal1230 = 16;
+    IIsiInput1230 = 32;
+    IIsiOutput1230 = 64;
+    IIsiExtFunc1230 = 320;
     // 1230 B register memory start
     B1230 = 113;
     // Misc low memory locations
@@ -45,11 +53,13 @@ const
     RTClock = 15;
     RTClock1230 = 112;
     // Bit masks
+    BITS13 = $1FFF;
     BITS15 = $7FFF;
     BITS17 = $1FFFF;
     BITS30 = $3fffffff;
     BIT14 = $4000;                                      // Sign bit for 15-bit half word
     BIT29 = $20000000;                                  // Sign bit for 30-bit word
+    BIT59 = $800000000000000;
 
 type
   T494Memory = class;
@@ -59,12 +69,10 @@ type
     FValue: UInt32;
     FRegNumber: Byte;
     FMemory: T494Memory;
-    function GetValue15: UInt32;
     function GetValue: UInt32;
     procedure SetValue(const Value: UInt32);
   public
     property Value: UInt32 read GetValue write SetValue;
-//    property Value15: UInt32 read GetValue15;
   end;
 
   P494BRegister = ^T494BRegister;
@@ -75,6 +83,7 @@ type
     function GetValue15: UInt32;
     function GetValue: UInt32;
     procedure SetValue(const Value: UInt32);
+    function GetValue13: UInt32;
   public
     class operator Add(a: T494Address; b: Integer): T494Address;
     class operator Add(a: T494Address; b: T494BRegister): T494Address;
@@ -88,6 +97,7 @@ type
     class operator NotEqual(a, b: T494Address): Boolean;
     class operator Subtract(a: T494Address; b: Integer): T494Address;
     property Value: UInt32 read GetValue write SetValue;
+    property Value13: UInt32 read GetValue13;
     property Value15: UInt32 read GetValue15;
   end;
 
@@ -291,6 +301,7 @@ type
   public
     property Value: Byte read FValue write SetValue;
   end;
+  P1230Sr = ^T1230Sr;
 
   T494Memory = class
   // Simulate Univac 494 memory of 128K, 30-bit words.
@@ -298,9 +309,11 @@ type
   private
     FCore: array [0..MemSize] of T494Word;
     FB: array [0..1, 1..7] of T494BRegister;            // B (index) registers
+    FSR: array [0..3] of T1230Sr;                       // 1230 bank descriptors
                                                         // 0 = exec 1 = user
     function NativeToBcd(value: UInt64): TBcd;
     function GetB(i, j: Integer): P494BRegister;
+    function GetSR(s: Byte): P1230Sr;
   public
     // registers
     IFR: T494Ifr;                                       // Internal function register
@@ -312,12 +325,9 @@ type
     Inst: T494Inst;                                     // Instruction register
     Operand: T494Address;                               // Instruction operand
     IoStatus: T494Word;                                 // Most recent I/O status
-    X: T494Word;
-    Y: T494Word;
     A: T494Word;
     Q: T494Word;
     K: T494Word;
-    SR: array [0..2] of T1230Sr;                        // 1230 bank descriptors
     constructor Create;
     function Fetch(addr: Integer; nolimit: Boolean = False): T494Word;
     function FetchAQ: UInt64;
@@ -331,17 +341,23 @@ type
     procedure StoreBcr(addr: Integer; value: T494Bcr; nolimit: Boolean = False);
     procedure StoreDWord(addr: Integer; value: T494DWord; nolimit: Boolean = False);
     property B[i, j: Integer]: P494BRegister read GetB;
+    property SR[s: Byte]: P1230Sr read GetSR;
   end;
 
-  function BcrEXT(chan: Byte): Integer;
-  function BcrIN(chan: Byte): Integer;
-  function BcrOUT(chan: Byte): Integer;
+  function BcrEXT(chan: Byte): UInt32;
+  function BcrIN(chan: Byte): UInt32;
+  function BcrOUT(chan: Byte): UInt32;
+
+  function IIsiExternal(chan: Byte): UInt32;
+  function IIsiInput(chan: Byte): UInt32;
+  function IIsiOutput(chan: Byte): UInt32;
+  function IIsiExtFunc(chan: Byte): UInt32;
 
 implementation
 
 uses U494Util, U494Config;
 
-function BcrEXT(chan: Byte): Integer;
+function BcrEXT(chan: Byte): UInt32;
 begin
     if (gConfig.Mode = m1230) then
         Result := BcrExt1230 + chan
@@ -349,7 +365,7 @@ begin
         Result := 0;
 end;
 
-function BcrIN(chan: Byte): Integer;
+function BcrIN(chan: Byte): UInt32;
 begin
     case gConfig.Mode of
       m494:     Result := BcrIn494 + chan;
@@ -359,7 +375,7 @@ begin
     end;
 end;
 
-function BcrOUT(chan: Byte): Integer;
+function BcrOUT(chan: Byte): UInt32;
 begin
     case gConfig.Mode of
       m494:     Result := BcrOut494 + chan;
@@ -369,6 +385,45 @@ begin
     end;
 end;
 
+function IIsiExternal(chan: Byte): UInt32;
+begin
+    case gConfig.Mode of
+      m494:     Result := IIsiExternal494;
+      m490:     Result := IIsiExternal490 + chan;
+      m1230:    Result := IIsiExternal1230 + chan;
+      else      Result := IIsiExternal494;
+    end;
+end;
+
+function IIsiInput(chan: Byte): UInt32;
+begin
+    case gConfig.Mode of
+      m494:     Result := IIsiInput494;
+      m490:     Result := IIsiInput490 + chan;
+      m1230:    Result := IIsiInput1230 + chan;
+      else      Result := IIsiInput494;
+    end;
+end;
+
+function IIsiOutput(chan: Byte): UInt32;
+begin
+    case gConfig.Mode of
+      m494:     Result := IIsiOutput494;
+      m490:     Result := IIsiOutput490 + chan;
+      m1230:    Result := IIsiOutput1230 + chan;
+      else      Result := IIsiOutput494;
+    end;
+end;
+
+function IIsiExtFunc(chan: Byte): UInt32;
+begin
+    case gConfig.Mode of
+      m494:     Result := 0;
+      m490:     Result := 0;
+      m1230:    Result := IIsiExtFunc1230 + chan;
+      else      Result := 0;
+    end;
+end;
 
 { T494Word }
 
@@ -668,6 +723,11 @@ begin
     Result := FValue and BITS17;
 end;
 
+function T494Address.GetValue13: UInt32;
+begin
+    Result := FValue and BITS13;
+end;
+
 function T494Address.GetValue15: UInt32;
 begin
     Result := FValue and BITS15;
@@ -938,6 +998,13 @@ begin
     Result := @FB[i, j];
 end;
 
+function T494Memory.GetSR(s: Byte): P1230Sr;
+begin
+    if (s = 3) then
+        FSR[3].Value := P.Value shr 13;
+    Result := @FSR[s];
+end;
+
 function T494Memory.NativeToBcd(value: UInt64): TBcd;
 var
     n: Byte;
@@ -1197,6 +1264,7 @@ end;
 
 function T494BRegister.GetValue: UInt32;
 begin
+    Result := 0;
     case gConfig.Mode of
       m494:
       begin
@@ -1218,13 +1286,6 @@ begin
             Result := FValue and BITS17;
       end;
     end;
-end;
-
-function T494BRegister.GetValue15: UInt32;
-begin
-    if (gConfig.Mode = m1230) then
-        FValue := FMemory.Fetch(B1230 + FRegNumber - 1, True);
-    Result := FValue and BITS15;
 end;
 
 procedure T494BRegister.SetValue(const Value: UInt32);

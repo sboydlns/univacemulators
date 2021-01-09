@@ -183,7 +183,7 @@ begin
                   else
                   begin
                     FFuncCode := 0;
-                    QueueInterrupt(intIO, IIsiExternal, CINVALID_FUNCTION);
+                    QueueInterrupt(intIO, IIsiExternal(FChannel), CINVALID_FUNCTION);
                   end;
                 end;
                 finally
@@ -205,14 +205,14 @@ begin
     try
         if (FFuncCode <> 0) then
         begin
-            QueueInterrupt(intIO, IIsiExternal, CINVALID_FUNCTION);
+            QueueInterrupt(intIO, IIsiExternal(FChannel), CINVALID_FUNCTION);
             Exit;
         end;
         FFuncCode := (func.Value shr 24) and (not CINTERRUPT);
         FWithExtInterrupt := ((func.Value shr 24) and CINTERRUPT) <> 0;
         FSpaceBefore := (func.Value shr 18) and $3f;
         if (FFuncCode = 0) then
-            QueueInterrupt(intIO, IIsiExternal, CINVALID_FUNCTION)
+            QueueInterrupt(intIO, IIsiExternal(FChannel), CINVALID_FUNCTION)
         else
             FEvent.SetEvent;
     finally
@@ -330,9 +330,9 @@ begin
     FFuncCode := 0;
     Queue(DoOnPrint);
     if (FOutputMonitor and (bcr.Count = 0)) then
-        QueueInterrupt(intIO, IIsiOutput, 0);
+        QueueInterrupt(intIO, IIsiOutput(FChannel), 0);
     if (FWithExtInterrupt) then
-        QueueInterrupt(intIO, IIsiExternal, CNORMAL_COMPLETION);
+        QueueInterrupt(intIO, IIsiExternal(FChannel), CNORMAL_COMPLETION);
 end;
 
 procedure T494Printer.SetLPI(const Value: Byte);
@@ -388,7 +388,7 @@ begin
         TerminateOutput;
         FFuncCode := 0;
         if (FWithExtInterrupt) then
-            QueueInterrupt(intIO, IIsiExternal, CNORMAL_COMPLETION);
+            QueueInterrupt(intIO, IIsiExternal(FChannel), CNORMAL_COMPLETION);
     finally
         Unlock;
     end;

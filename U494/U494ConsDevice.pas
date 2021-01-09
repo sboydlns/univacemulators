@@ -215,7 +215,7 @@ var
         if (OutputActive and (bcr.Count = 0)) then
         begin
             if (FOutputMonitor) then
-                QueueInterrupt(intIO, IIsiOutput, 0);
+                QueueInterrupt(intIO, IIsiOutput(FChannel), 0);
             TerminateOutput;
         end;
     end;
@@ -283,7 +283,7 @@ var
             if (InputActive and (bcr.Count = 0)) then
             begin
                 if (FInputMonitor) then
-                    QueueInterrupt(intIO, IIsiInput, 0);
+                    QueueInterrupt(intIO, IIsiInput(FChannel), 0);
                 TerminateInput;
             end;
         end;

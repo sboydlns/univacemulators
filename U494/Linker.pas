@@ -272,7 +272,7 @@ var
 begin
     outFile := TMemImageStream.Create(FOutFileName, fmCreate);
     try
-        outFile.EmitTransferAddr(FTransferAddr, 0);
+        outFile.EmitTransferAddr(0, FTransferAddr, 0);
         for i := Low(FObjFiles) to High(FObjFiles) do
         begin
             objFile := FObjFiles[i];

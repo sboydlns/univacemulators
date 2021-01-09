@@ -37,11 +37,13 @@ type
     procedure EmitMultiWord(addr: UInt32; words: array of UInt32); virtual; abstract;
     procedure EmitObjEnd(addr: UInt32); virtual; abstract;
     procedure EmitSingleWord(addr: UInt32; rel: TRelocatableType; word: UInt32); virtual; abstract;
-    procedure EmitTransferAddr(addr: UInt32; objSize: UInt32); virtual;
+    procedure EmitTransferAddr(start, trans, objSize: UInt32); virtual;
     function FetchWord(var addr: UInt32; var rel: TRelocatableType; var word: UInt32): Boolean; virtual; abstract;
   end;
 
   TMemImageStream = class(TObjFileStream)
+  protected
+    FTransAddr: UInt32;
   public
     procedure EmitDoubleWord(addr: UInt32; dword: UInt64); override;
     procedure EmitEntryPoint(ID: AnsiString; value: UInt32); override;
@@ -50,8 +52,9 @@ type
     procedure EmitMultiWord(addr: UInt32; words: array of UInt32); override;
     procedure EmitObjEnd(addr: UInt32); override;
     procedure EmitSingleWord(addr: UInt32; rel: TRelocatableType; word: UInt32); override;
-    procedure EmitTransferAddr(addr: UInt32; objSize: UInt32); override;
+    procedure EmitTransferAddr(start, trans, objSize: UInt32); override;
     function FetchWord(var addr: UInt32; var rel: TRelocatableType; var word: UInt32): Boolean; override;
+    property TransAddr: UInt32 read FTransAddr;
   end;
   // 1230 absolute paper tape image
   TAbsoluteStream = class(TMemImageStream)
@@ -60,7 +63,7 @@ type
     FLowerCheck: UInt32;
   public
     destructor Destroy; override;
-    procedure EmitTransferAddr(addr: UInt32; objSize: UInt32); override;
+    procedure EmitTransferAddr(start, trans, objSize: UInt32); override;
     function Write(const Buffer; Count: Longint): Longint; override;
     function WriteNoCheck(const Buffer; Count: Longint): Longint;
   end;
@@ -131,7 +134,7 @@ type
     procedure EmitMultiWord(addr: UInt32; words: array of UInt32); override;
     procedure EmitObjEnd(addr: UInt32); override;
     procedure EmitSingleWord(addr: UInt32; rel: TRelocatableType; word: UInt32); override;
-    procedure EmitTransferAddr(addr: UInt32; objSize: UInt32); override;
+    procedure EmitTransferAddr(start, trans, objSize: UInt32); override;
     function FetchWord(var addr: UInt32; var rel: TRelocatableType; var word: UInt32): Boolean; override;
     procedure FetchExternalsPtr(var ptr: UInt32);
     procedure FetchTransferAddr(var addr: UInt32; var objSize: UInt32);
@@ -146,8 +149,6 @@ type
 
 implementation
 
-uses U494Memory;
-
 { TMemImageStream }
 
 procedure TMemImageStream.EmitDoubleWord(addr: UInt32; dword: UInt64);
@@ -158,7 +159,7 @@ begin
     PadTo(addr);
     word := dword shr 30;
     Write(word, SizeOf(word));
-    word := dword and BITS30;
+    word := dword and $3fffffff;
     Write(word, SizeOf(word));
     Inc(FLocationCounter, 2);
 end;
@@ -201,10 +202,12 @@ begin
     Inc(FLocationCounter);
 end;
 
-procedure TMemImageStream.EmitTransferAddr(addr: UInt32; objSize: UInt32);
+procedure TMemImageStream.EmitTransferAddr(start, trans, objSize: UInt32);
 begin
     inherited;
-    Write(addr, SizeOf(addr));
+    Write(trans, SizeOf(trans));
+    Write(start, SizeOf(start));
+    FLocationCounter := start;
 end;
 
 function TMemImageStream.FetchWord(var addr: UInt32; var rel: TRelocatableType; var word: UInt32): Boolean;
@@ -213,7 +216,20 @@ var
 begin
     Result := True;
     if (Position = 0) then
-        FLocationCounter := UInt32(-1);
+    begin
+        if (Read(temp, SizeOf(temp)) <> SizeOf(temp)) then
+        begin
+            Result := False;
+            Exit;
+        end;
+        FTransAddr := temp;
+        if (Read(temp, SizeOf(temp)) <> SizeOf(temp)) then
+        begin
+            Result := False;
+            Exit;
+        end;
+        FLocationCounter := temp;
+    end;
     if (Read(temp, SizeOf(temp)) <> SizeOf(temp)) then
     begin
         Result := False;
@@ -233,7 +249,7 @@ begin
         raise Exception.Create('EmitTransferAddr must be first method called');
 end;
 
-procedure TObjFileStream.EmitTransferAddr(addr: UInt32; objSize: UInt32);
+procedure TObjFileStream.EmitTransferAddr(start, trans, objSize: UInt32);
 begin
     if (FLocationCounter <> 0) then
         raise Exception.Create('EmitTransferAddr must be first method called');
@@ -318,7 +334,7 @@ begin
     word := dword shr 30;
     Write(flags, SizeOf(flags));
     Write(word, SizeOf(word));
-    word := dword and BITS30;
+    word := dword and $3fffffff;
     Write(flags, SizeOf(flags));
     Write(word, SizeOf(word));
     Inc(FLocationCounter, 2);
@@ -412,14 +428,14 @@ begin
     Inc(FLocationCounter);
 end;
 
-procedure TRelocatableStream.EmitTransferAddr(addr, objSize: UInt32);
+procedure TRelocatableStream.EmitTransferAddr(start, trans, objSize: UInt32);
 var
     flags: Byte;
 begin
     inherited;
     flags := BYTE_SIGN or RS_TRANSFER;
     Write(flags, SizeOf(flags));
-    Write(addr, SizeOf(addr));
+    Write(trans, SizeOf(trans));
     flags := BYTE_SIGN or RS_OBJECT_CODE_SIZE;
     Write(flags, SizeOf(flags));
     Write(objSize, SizeOf(objSize));
@@ -526,7 +542,7 @@ end;
 function TRelocatableStream.NextReference(var ref: TErReference): Boolean;
 begin
     Read(ref, SizeOf(ref));
-    Result := (ref.RefAddress and BITS30) <> BITS30;
+    Result := (ref.RefAddress and $3fffffff) <> $3fffffff;
 end;
 
 procedure TRelocatableStream.PadTo(addr: UInt32);
@@ -587,7 +603,7 @@ begin
     inherited;
 end;
 
-procedure TAbsoluteStream.EmitTransferAddr(addr, objSize: UInt32);
+procedure TAbsoluteStream.EmitTransferAddr(start, trans, objSize: UInt32);
 var
     word: UInt32;
 begin
@@ -596,9 +612,9 @@ begin
     FTransferAddrEmitted := True;
     word := 62;                         // absolute image flag
     Write(word, SizeOf(word));
-    word := ((addr and BITS15) shl 15) or ((addr + objSize - 1) and BITS15);
+    word := ((trans and $7fff) shl 15) or ((trans + objSize - 1) and $7fff);
     Write(word, SizeOf(word));
-    FLocationCounter := addr;
+    FLocationCounter := trans;
     FUpperCheck := 0;
     FLowerCheck := 0;
 end;

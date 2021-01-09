@@ -11,8 +11,7 @@ uses
   U494Opcodes in 'U494Opcodes.pas',
   U494Util in 'U494Util.pas',
   Bcd in '..\Common\Bcd.pas',
-  ObjFile in 'ObjFile.pas',
-  EmulatorTypes in '..\Common\EmulatorTypes.pas';
+  ObjFile in 'ObjFile.pas';
 
 var
     InFile: String;
@@ -101,6 +100,7 @@ begin
     WriteLn('-mem = output memory image (default)');
     WriteLn('-exe = output MOS executable');
     WriteLn('-obj = output relocatable object file for input to linker');
+    WriteLn('-abs = output absolute element that can be loaded from paper tape');
     WriteLn('-O = folder to contain output (memory image or relocatable) file');
     WriteLn('-tab = character used as TAB');
     WriteLn('-sep = character used as dot separator');

@@ -233,7 +233,7 @@ begin
               else
               begin
                 FFuncCode := 0;
-                QueueInterrupt(intIO, IIsiExternal, CILLEGAL_FUNCTION);
+                QueueInterrupt(intIO, IIsiExternal(FChannel), CILLEGAL_FUNCTION);
               end;
             end;
         end;
@@ -246,7 +246,7 @@ begin
     try
         if (FFuncCode <> 0) then
         begin
-            QueueInterrupt(intIO, IIsiExternal, CINAPPROPRAITE_FUNCTION);
+            QueueInterrupt(intIO, IIsiExternal(FChannel), CINAPPROPRAITE_FUNCTION);
             Exit;
         end;
         FFuncCode := (func.Value shr 24) and (not CINTERRUPT);
@@ -254,7 +254,7 @@ begin
         case FFuncCode of
           0:
           begin
-            QueueInterrupt(intIO, IIsiExternal, CILLEGAL_FUNCTION);
+            QueueInterrupt(intIO, IIsiExternal(FChannel), CILLEGAL_FUNCTION);
             Exit;
           end;
           CREAD_TRANSLATE:
@@ -262,21 +262,21 @@ begin
             FReadType := rtTranslate;
             FFuncCode := 0;
             if (FWithExtInterrupt) then
-                QueueInterrupt(intIO, IIsiExternal, CNORMAL_COMPLETION);
+                QueueInterrupt(intIO, IIsiExternal(FChannel), CNORMAL_COMPLETION);
           end;
           CREAD_IMAGE_COL:
           begin
             FReadType := rtImageCol;
             FFuncCode := 0;
             if (FWithExtInterrupt) then
-                QueueInterrupt(intIO, IIsiExternal, CNORMAL_COMPLETION);
+                QueueInterrupt(intIO, IIsiExternal(FChannel), CNORMAL_COMPLETION);
           end;
           CREAD_IMAGE_ROW:
           begin
             FReadType := rtImageRow;
             FFuncCode := 0;
             if (FWithExtInterrupt) then
-                QueueInterrupt(intIO, IIsiExternal, CNORMAL_COMPLETION);
+                QueueInterrupt(intIO, IIsiExternal(FChannel), CNORMAL_COMPLETION);
           end;
           else
           begin
@@ -329,11 +329,11 @@ begin
         FInputActive := False;
         FFuncCode := 0;
         if (FWithExtInterrupt) then
-            QueueInterrupt(intIO, IIsiExternal, CNORMAL_COMPLETION);
+            QueueInterrupt(intIO, IIsiExternal(FChannel), CNORMAL_COMPLETION);
     end else
     begin
         FFuncCode := 0;
-        QueueInterrupt(intIO, IIsiExternal, CINTERLOCK);
+        QueueInterrupt(intIO, IIsiExternal(FChannel), CINTERLOCK);
     end;
 end;
 
@@ -379,15 +379,15 @@ begin
         FFuncCode := 0;
         if (FInputMonitor and (bcr.Count = 0)) then
         begin
-            QueueInterrupt(intIO, IIsiInput, 0);
+            QueueInterrupt(intIO, IIsiInput(FChannel), 0);
             TerminateInput;
         end;
         if (FWithExtInterrupt) then
-            QueueInterrupt(intIO, IIsiExternal, CNORMAL_COMPLETION);
+            QueueInterrupt(intIO, IIsiExternal(FChannel), CNORMAL_COMPLETION);
     end else
     begin
         FFuncCode := 0;
-        QueueInterrupt(intIO, IIsiExternal, CINTERLOCK);
+        QueueInterrupt(intIO, IIsiExternal(FChannel), CINTERLOCK);
     end;
 end;
 
@@ -402,11 +402,11 @@ begin
         FInputActive := False;
         FFuncCode := 0;
         if (FWithExtInterrupt) then
-            QueueInterrupt(intIO, IIsiExternal, CNORMAL_COMPLETION);
+            QueueInterrupt(intIO, IIsiExternal(FChannel), CNORMAL_COMPLETION);
     end else
     begin
         FFuncCode := 0;
-        QueueInterrupt(intIO, IIsiExternal, CINTERLOCK);
+        QueueInterrupt(intIO, IIsiExternal(FChannel), CINTERLOCK);
     end;
 end;
 
@@ -437,7 +437,7 @@ begin
     end;
     if (FInputMonitor and (bcr.Count = 0)) then
     begin
-        QueueInterrupt(intIO, IIsiInput, 0);
+        QueueInterrupt(intIO, IIsiInput(FChannel), 0);
         TerminateInput;
     end;
 end;
@@ -512,7 +512,7 @@ begin
             FPunch.TerminateOutput;
             FReader.TerminateInput;
             if (int) then
-                QueueInterrupt(intIO, IIsiExternal, CNORMAL_COMPLETION);
+                QueueInterrupt(intIO, IIsiExternal(FChannel), CNORMAL_COMPLETION);
         end;
     finally
         Unlock;
@@ -667,7 +667,7 @@ begin
               else
               begin
                 FFuncCode := 0;
-                QueueInterrupt(intIO, IIsiExternal, CILLEGAL_FUNCTION);
+                QueueInterrupt(intIO, IIsiExternal(FChannel), CILLEGAL_FUNCTION);
               end;
             end;
         end;
@@ -680,7 +680,7 @@ begin
     try
         if (FFuncCode <> 0) then
         begin
-            QueueInterrupt(intIO, IIsiExternal, CINAPPROPRAITE_FUNCTION);
+            QueueInterrupt(intIO, IIsiExternal(FChannel), CINAPPROPRAITE_FUNCTION);
             Exit;
         end;
         FFuncCode := (func.Value shr 24) and (not CINTERRUPT);
@@ -688,7 +688,7 @@ begin
         case FFuncCode of
           0:
           begin
-            QueueInterrupt(intIO, IIsiExternal, CILLEGAL_FUNCTION);
+            QueueInterrupt(intIO, IIsiExternal(FChannel), CILLEGAL_FUNCTION);
             Exit;
           end;
           CPUNCH_TRANSLATE:
@@ -696,21 +696,21 @@ begin
             FPunchType := rtTranslate;
             FFuncCode := 0;
             if (FWithExtInterrupt) then
-                QueueInterrupt(intIO, IIsiExternal, CNORMAL_COMPLETION);
+                QueueInterrupt(intIO, IIsiExternal(FChannel), CNORMAL_COMPLETION);
           end;
           CPUNCH_IMAGE_COL:
           begin
             FPunchType := rtImageCol;
             FFuncCode := 0;
             if (FWithExtInterrupt) then
-                QueueInterrupt(intIO, IIsiExternal, CNORMAL_COMPLETION);
+                QueueInterrupt(intIO, IIsiExternal(FChannel), CNORMAL_COMPLETION);
           end;
           CPUNCH_IMAGE_ROW:
           begin
             FPunchType := rtImageRow;
             FFuncCode := 0;
             if (FWithExtInterrupt) then
-                QueueInterrupt(intIO, IIsiExternal, CNORMAL_COMPLETION);
+                QueueInterrupt(intIO, IIsiExternal(FChannel), CNORMAL_COMPLETION);
           end;
           else
           begin
@@ -796,13 +796,13 @@ begin
         FFuncCode := 0;
         bcr := FMemory.FetchBcr(BcrOut(FChannel), True);
         if (FInputMonitor and (bcr.Count = 0)) then
-            QueueInterrupt(intIO, IIsiOutput, 0);
+            QueueInterrupt(intIO, IIsiOutput(FChannel), 0);
         if (FWithExtInterrupt) then
-            QueueInterrupt(intIO, IIsiExternal, CNORMAL_COMPLETION);
+            QueueInterrupt(intIO, IIsiExternal(FChannel), CNORMAL_COMPLETION);
     end else
     begin
         FFuncCode := 0;
-        QueueInterrupt(intIO, IIsiExternal, CINTERLOCK);
+        QueueInterrupt(intIO, IIsiExternal(FChannel), CINTERLOCK);
     end;
 end;
 
@@ -848,13 +848,13 @@ begin
         FOutputActive := False;
         FFuncCode := 0;
         if (FInputMonitor and (bcr.Count = 0)) then
-            QueueInterrupt(intIO, IIsiOutput, 0);
+            QueueInterrupt(intIO, IIsiOutput(FChannel), 0);
         if (FWithExtInterrupt) then
-            QueueInterrupt(intIO, IIsiExternal, CNORMAL_COMPLETION);
+            QueueInterrupt(intIO, IIsiExternal(FChannel), CNORMAL_COMPLETION);
     end else
     begin
         FFuncCode := 0;
-        QueueInterrupt(intIO, IIsiExternal, CINTERLOCK);
+        QueueInterrupt(intIO, IIsiExternal(FChannel), CINTERLOCK);
     end;
 end;
 
@@ -877,13 +877,13 @@ begin
         FFuncCode := 0;
         bcr := FMemory.FetchBcr(BcrOut(FChannel), True);
         if (FInputMonitor and (bcr.Count = 0)) then
-            QueueInterrupt(intIO, IIsiOutput, 0);
+            QueueInterrupt(intIO, IIsiOutput(FChannel), 0);
         if (FWithExtInterrupt) then
-            QueueInterrupt(intIO, IIsiExternal, CNORMAL_COMPLETION);
+            QueueInterrupt(intIO, IIsiExternal(FChannel), CNORMAL_COMPLETION);
     end else
     begin
         FFuncCode := 0;
-        QueueInterrupt(intIO, IIsiExternal, CINTERLOCK);
+        QueueInterrupt(intIO, IIsiExternal(FChannel), CINTERLOCK);
     end;
 end;
 

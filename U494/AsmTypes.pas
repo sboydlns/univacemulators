@@ -143,17 +143,23 @@ type
     procedure SetKhat(const Value: Byte);
     function GetF: Byte;
     procedure SetF(const Value: Byte);
+    function GetJ77: Byte;
+    procedure SetJ77(const Value: Byte);
+    function GetY77: UInt32;
+    procedure SetY77(const Value: UInt32);
   public
     procedure Clear;
     property b: Byte read GetB write SetB;
     property f: Byte read GetF write SetF;
     property g: Byte read GetG write SetG;
     property j: Byte read GetJ write SetJ;
+    property j77: Byte read GetJ77 write SetJ77;
     property jhat: Byte read GetJhat write SetJhat;
     property k: Byte read GetK write SetK;
     property khat: Byte read GetKhat write SetKhat;
     property Value: UInt32 read FValue write FValue;
     property y: UInt32 read GetY write SetY;
+    property y77: UInt32 read GetY77 write SetY77;
   end;
 
 implementation
@@ -454,6 +460,11 @@ begin
     Result := (FValue shr 21) and $7;
 end;
 
+function TInstruction.GetJ77: Byte;
+begin
+    Result := (FValue shr 9) and $f;
+end;
+
 function TInstruction.GetJhat: Byte;
 begin
     Result := (FValue shr 20) and $f;
@@ -474,6 +485,11 @@ begin
     Result := FValue and $7fff;
 end;
 
+function TInstruction.GetY77: UInt32;
+begin
+    Result := FValue and $ff;
+end;
+
 procedure TInstruction.SetB(const Value: Byte);
 begin
     FValue := (FValue and (not ($7 shl 15))) or ((Value and $7) shl 15);
@@ -492,6 +508,11 @@ end;
 procedure TInstruction.SetJ(const Value: Byte);
 begin
     FValue := (FValue and (not ($7 shl 21))) or ((Value and $7) shl 21);
+end;
+
+procedure TInstruction.SetJ77(const Value: Byte);
+begin
+    FValue := (FValue and (not ($f shl 9))) or ((Value and $f) shl 9);
 end;
 
 procedure TInstruction.SetJhat(const Value: Byte);
@@ -518,6 +539,17 @@ begin
     else
         itemp := Value and $7fff;
     FValue := (FValue and (not $7fff)) or itemp;
+end;
+
+procedure TInstruction.SetY77(const Value: UInt32);
+var
+    itemp: UInt32;
+begin
+    if (Integer(Value) < 0) then
+        itemp := (Value - 1) and $ff
+    else
+        itemp := Value and $ff;
+    FValue := (FValue and (not $ff)) or itemp;
 end;
 
 end.

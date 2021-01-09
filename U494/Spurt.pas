@@ -48,11 +48,15 @@ type
     function AdjustIdent(l: AnsiString): AnsiString; overload;
     function AdjustIdent(l: String): String; overload;
     procedure AllocValue(var ops: AnsiString);
+    procedure Do77(lineNum: Integer; ops: AnsiString; op: TOpcode);
+    procedure DoACONTROL(lineNum: Integer; ops: AnsiString; op: TOpcode);
     procedure DoALLOCATION(lineNum: Integer; ops: AnsiString; op: TOpcode);
     procedure DoCLEAR(lineNum: Integer; ops: AnsiString; op: TOpcode);
     procedure DoCCONTROL(lineNum: Integer; ops: AnsiString; op: TOpcode);
     procedure DoCOMMENT(lineNum: Integer; ops: AnsiString; op: TOpcode);
+    procedure DoDEC(lineNum: Integer; ops: AnsiString; op: TOpcode);
     procedure DoDOTDOT(lineNum: Integer; ops: AnsiString; op: TOpcode);
+    procedure DoENDIT(lineNum: Integer; ops: AnsiString; op: TOpcode);
     procedure DoENTRY(lineNum: Integer; ops: AnsiString; op: TOpcode);
     procedure DoEQUALS(lineNum: Integer; ops: AnsiString; op: TOpcode);
     procedure DoEXIT(lineNum: Integer; ops: AnsiString; op: TOpcode);
@@ -63,6 +67,7 @@ type
     procedure DoIO(lineNum: Integer; ops: AnsiString; op: TOpcode);
     procedure DoMEANS(lineNum: Integer; ops: AnsiString; op: TOpcode);
     procedure DoMOVE(lineNum: Integer; ops: AnsiString; op: TOpcode);
+    procedure DoORG(lineNum: Integer; ops: AnsiString; op: TOpcode);
     procedure DoOUTPUTS(lineNum: Integer; ops: AnsiString; op: TOpcode);
     procedure DoPROGRAM(lineNum: Integer; ops: AnsiString; op: TOpcode);
     procedure DoPUT(lineNum: Integer; ops: AnsiString; op: TOpcode);
@@ -97,7 +102,7 @@ end;
 
 implementation
 
-uses U494Util, AnsiStrings, EmulatorTypes;
+uses Math, U494Util, AnsiStrings, EmulatorTypes;
 
 function Opcode(mnem: String; op: Byte; inst: T494InstructionType; opt: T494OperandType): TOpcode;
 begin
@@ -223,21 +228,21 @@ begin
             case op.OperandType of
               otGeneral:    op.SpurtProc := DoGeneral;
               otBRegister:  op.SpurtProc := DoGeneral;
-              ot77: ;
+              ot77:         op.SpurtProc := Do77;
               otIO:         op.SpurtProc := DoIO;
             end;
         end;
     end;
-//    for i := Low(U494ExtOpcodes) to High(U494ExtOpcodes) do
-//    begin
-//        if (U494ExtOpcodes[i].AsmMnemonic <> 'UNK') then
-//        begin
-//            op := Opcode(U494ExtOpcodes[i].AsmMnemonic, U494ExtOpcodes[i].Opcode,
-//                         U494ExtOpcodes[i].InstType, U494ExtOpcodes[i].OperandType);
-//            FOpcodes.Add(U494ExtOpcodes[i].AsmMnemonic, op);
-//            op.Proc := Do77;
-//        end;
-//    end;
+    for i := Low(U1230ExtOpcodes) to High(U1230ExtOpcodes) do
+    begin
+        if (U1230ExtOpcodes[i].SpurtMnemonic <> 'UNK') then
+        begin
+            op := Opcode(U1230ExtOpcodes[i].SpurtMnemonic, U1230ExtOpcodes[i].Opcode,
+                         U1230ExtOpcodes[i].InstType, U1230ExtOpcodes[i].OperandType);
+            FOpcodes.Add(U1230ExtOpcodes[i].SpurtMnemonic, op);
+            op.SpurtProc := Do77;
+        end;
+    end;
     for i := Low(U494PsuedoOps) to High(U494PsuedoOps) do
     begin
         if (U494PsuedoOps[i].SpurtMnemonic <> 'UNK') then
@@ -248,7 +253,7 @@ begin
             case op.OperandType of
               otGeneral:    op.SpurtProc := DoGeneral;
               otBRegister:  op.SpurtProc := DoGeneral;
-              ot77: ;
+              ot77:         op.SpurtProc := Do77;
               otIO:         op.SpurtProc := DoIO;
             end;
         end;
@@ -259,6 +264,7 @@ begin
                          Opcode(SpurtDirectives[i].SpurtMnemonic, SpurtDirectives[i].Opcode,
                          SpurtDirectives[i].InstType, SpurtDirectives[i].OperandType));
     //
+    FOpcodes.Items['A-CONTROL'].SpurtProc := DoACONTROL;
     FOpcodes.Items['C-CONTROL'].SpurtProc := DoCCONTROL;
     FOpcodes.Items['OUTPUTS'].SpurtProc := DoOUTPUTS;
     FOpcodes.Items['ALLOCATION'].SpurtProc := DoALLOCATION;
@@ -282,6 +288,9 @@ begin
     FOpcodes.Items['RIL'].SpurtProc := DoRIL;
     FOpcodes.Items['RIL-EX'].SpurtProc := DoRILEX;
     FOpcodes.Items['FD'].SpurtProc := DoFD;
+    FOpcodes.Items['ORG'].SpurtProc := DoORG;
+    FOpcodes.Items['ENDIT'].SpurtProc := DoENDIT;
+    FOpcodes.Items['DEC'].SpurtProc := DoDEC;
     FOpcodes.Items['..'].SpurtProc := DoDOTDOT;
     // Create system defined identifiers
     FLocationCounter := Symbol('$', 0, True, stSystem);
@@ -448,6 +457,10 @@ begin
     FSymbols.Add('DIV$ANOT', Symbol('DIV$ANOT', 5, False, stSystem));
     FSymbols.Add('DIV$APOS', Symbol('DIV$APOS', 6, False, stSystem));
     FSymbols.Add('DIV$ANEG', Symbol('DIV$ANEG', 7, False, stSystem));
+    //
+    FSymbols.Add('SQRT$SKIP', Symbol('SQRT$SKIP', 1, False, stSystem));
+    FSymbols.Add('SQRT$REM', Symbol('SQRT$REM', 2, False, stSystem));
+    FSymbols.Add('SQRT$NOREM', Symbol('SQRT$NOREM', 3, False, stSystem));
     // Special khat designators for EX-COM / EX-FCT
     FSymbols.Add('EX-COM$', Symbol('EX-COM$', 2, False, stSystem));
     FSymbols.Add('EX-COM$FORCE', Symbol('EX-COM$FORCE', 3, False, stSystem));
@@ -472,6 +485,123 @@ begin
     inherited;
 end;
 
+procedure TAssembler.Do77(lineNum: Integer; ops: AnsiString; op: TOpcode);
+var
+    token: AnsiString;
+    reg: Integer;
+    y: UInt32;
+    b: Byte;
+    rel: TRelocatableType;
+    sym: TSymbol;
+begin
+    if (op.Mnemonic = 'NORM.AQ') then
+    begin
+        y := GetY(lineNum, ops, rel, b);
+        FCurInst.y := y;
+        FCurInst.b := b;
+    end else if ((op.Mnemonic = 'ENTSR') or (op.Mnemonic = 'STRSR')) then
+    begin
+        GetToken(ops, token);
+        if (token = '.') then
+            GetToken(ops, token);
+        if (FirstChar(token) = 'C') then
+        begin
+            if ((not FSymbols.TryGetValue(token, sym)) or (sym.DefCount = 0)) then
+                raise Exception.CreateFmt('%s is undefined', [token]);
+            FCurInst.j77 := sym.Value;
+            GetToken(ops, token);
+            // Get new register value
+            if (token <> '.') then
+                raise Exception.Create('ENTSR.C requires 2 operands');
+            y := GetY(lineNum, ops, rel, b);
+            // Get INPUT / OUTPUT
+            GetToken(ops, token);
+            if (token <> '.') then
+                raise Exception.Create('ENTSR.C requires 2 operands');
+            if (token = 'INPUT') then
+                FCurInst.g := FCurInst.g + 1
+            else if (token = 'OUTPUT') then
+                FCurInst.g := FCurInst.g + 2
+            else if (token = 'EF') then
+                FCurInst.g := FCurInst.g + 3
+            else
+                raise Exception.Create('INPUT or OUTPUT or EF expected');
+            FCurInst.b := b;
+            FCurInst.j77 := sym.Value;
+            FCurInst.y77 := y;
+        end else
+        begin
+            GetNumber(token, reg);
+            if ((reg < 0) or (reg > 2)) then
+                raise Exception.Create('Invalid SR register number');
+            FCurInst.j77 := reg;
+            GetToken(ops, token);
+            if (token <> '.') then
+                ops := token + ops;
+            y := GetY(lineNum, ops, rel, b);
+            FCurInst.b := b;
+            FCurInst.y77 := y;
+        end;
+    end else if ((op.Mnemonic = 'ENTSR0') or (op.Mnemonic = 'STRSR0')) then
+    begin
+        FCurInst.j77 := 0;
+        GetToken(ops, token);
+        if (token <> '.') then
+            ops := token + ops;
+        y := GetY(lineNum, ops, rel, b);
+        FCurInst.b := b;
+        FCurInst.y77 := y;
+    end else if ((op.Mnemonic = 'ENTSR1') or (op.Mnemonic = 'STRSR1')) then
+    begin
+        FCurInst.j77 := 1;
+        GetToken(ops, token);
+        if (token <> '.') then
+            ops := token + ops;
+        y := GetY(lineNum, ops, rel, b);
+        FCurInst.b := b;
+        FCurInst.y77 := y;
+    end else if ((op.Mnemonic = 'ENTSR2') or (op.Mnemonic = 'STRSR2')) then
+    begin
+        FCurInst.j77 := 2;
+        GetToken(ops, token);
+        if (token <> '.') then
+            ops := token + ops;
+        y := GetY(lineNum, ops, rel, b);
+        FCurInst.b := b;
+        FCurInst.y77 := y;
+    end else if ((op.Mnemonic = 'ECDM') or (op.Mnemonic = 'DCDM')) then
+    begin
+        GetToken(ops, token);
+        if (token = '.') then
+            GetToken(ops, token);
+        if (FirstChar(token) = 'C') then
+        begin
+            if ((not FSymbols.TryGetValue(token, sym)) or (sym.DefCount = 0)) then
+                raise Exception.CreateFmt('%s is undefined', [token]);
+            FCurInst.j77 := sym.Value;
+            GetToken(ops, token);
+            if (token = '.') then
+                GetToken(ops, token);
+            if (token = 'OUTPUT') then
+                FCurInst.g := FCurInst.g + 1
+            else if (token <> 'INPUT') then
+                raise Exception.Create('INPUT or OUTPUT EXPECTED');
+        end else
+        begin
+            raise Exception.CreateFmt('%s is not a valid channel identifier', [token]);
+        end;
+    end;
+    FOutFile.EmitSingleWord(FLocationCounter.Value, rel, FCurInst.Value);
+    FListFile.Value := FCurInst.Value;
+    FListFile.Print;
+end;
+
+procedure TAssembler.DoACONTROL(lineNum: Integer; ops: AnsiString; op: TOpcode);
+// As far as I can tell this is a fairly useless header which tells us that we are
+// processing AS-1 source code.
+begin
+end;
+
 procedure TAssembler.DoALLOCATION(lineNum: Integer; ops: AnsiString; op: TOpcode);
 begin
     FAllocationType := atDirect;
@@ -486,12 +616,9 @@ begin
 end;
 
 procedure TAssembler.DoCCONTROL(lineNum: Integer; ops: AnsiString; op: TOpcode);
+// As far as I can tell this is a fairly useless header which tells us that we are
+// processing CS-1 source code.
 begin
-    if (FPass = 2) then
-    begin
-        FListFile.Print;
-        FListFile.Print('**** Warning: Not implemented');
-    end;
 end;
 
 procedure TAssembler.DoCLEAR(lineNum: Integer; ops: AnsiString; op: TOpcode);
@@ -537,9 +664,56 @@ begin
         FListFile.Print;
 end;
 
+procedure TAssembler.DoDEC(lineNum: Integer; ops: AnsiString; op: TOpcode);
+var
+    val: Double;
+    split, exp, ival: Integer;
+begin
+    if (FPass = 1) then
+    begin
+        Inc(FLocationCounter.Value);
+    end else
+    begin
+        if (ops = '') then
+        begin
+            val := 0;
+        end else
+        begin
+            split := AnsiPos(AnsiString('B'), ops);
+            if (split > 0) then
+            begin
+                val := StrToFloat(Copy(ops, 1, split - 1));
+                exp := StrToInt(Copy(ops, split + 1));
+                val := val * Power(2, exp);
+            end else
+                val := StrToFloat(ops);
+            ival := Trunc(val);
+            FOutFile.EmitSingleWord(FLocationCounter.Value, rtNone, UInt32(ival));
+            FListFile.Value := UInt32(ival);
+            FListFile.Print;
+            Inc(FLocationCounter.Value);
+        end;
+    end;
+end;
+
 procedure TAssembler.DoDOTDOT(lineNum: Integer; ops: AnsiString; op: TOpcode);
 begin
     FAllocationType := atNone;
+    if (FPass = 2) then
+        FListFile.Print;
+end;
+
+procedure TAssembler.DoENDIT(lineNum: Integer; ops: AnsiString; op: TOpcode);
+var
+    token: AnsiString;
+    sym: TSymbol;
+begin
+    GetToken(ops, token);
+    if (token = '') then
+        Exit;
+    if ((not FSymbols.TryGetValue(AdjustIdent(token), sym)) or (sym.DefCount = 0)) then
+        raise Exception.CreateFmt('%s is undefined', [token]);
+    FTransferAddr := sym.Value;
     if (FPass = 2) then
         FListFile.Print;
 end;
@@ -1340,6 +1514,23 @@ begin
     end;
 end;
 
+procedure TAssembler.DoORG(lineNum: Integer; ops: AnsiString; op: TOpcode);
+var
+    addr: Integer;
+begin
+    GetNumber(ops, addr);
+    FLocationCounter.Value := addr;
+    if (FPass = 2) then
+    begin
+        if (not FTransferAddrEmited) then
+        begin
+            FOutFile.EmitTransferAddr(FLocationCounter.Value, FTransferAddr, FObjCodeSize);
+            FTransferAddrEmited := True;
+        end;
+        FListFile.Print;
+    end;
+end;
+
 procedure TAssembler.DoOUTPUTS(lineNum: Integer; ops: AnsiString; op: TOpcode);
 begin
     if (FPass = 2) then
@@ -1369,7 +1560,7 @@ begin
         { TODO : This is probably incorrect, but it will do as a starting point. }
         if (not FTransferAddrEmited) then
         begin
-            FOutFile.EmitTransferAddr(FTransferAddr, FObjCodeSize);
+            FOutFile.EmitTransferAddr(FTransferAddr, FTransferAddr, FObjCodeSize);
             FTransferAddrEmited := True;
         end;
         FListFile.Print;
@@ -1905,6 +2096,13 @@ begin
             end;
         end;
     end;
+    // Special for Joe Cousins source
+    if (AnsiPos(AnsiString('COMMENT'), lbl) = 1) then
+    begin
+        operands := AnsiString('COMMENT') + '.' + Copy(lbl, 8) + operands;
+        lbl := '';
+    end;
+    //
     c := FirstChar(lbl);
     if ((c = 'O') or (c = 'X') or ((c >= '0') and (c<= '9'))) then
         raise Exception.Create('Label may not start with ''O'', ''X'' or ''0'' thru ''9''');

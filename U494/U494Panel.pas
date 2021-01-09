@@ -38,12 +38,8 @@ type
     Panel1: TPanel;
     Label6: TLabel;
     Label7: TLabel;
-    Label8: TLabel;
-    Label30: TLabel;
     AEdt: TEdit;
     QEdt: TEdit;
-    XEdt: TEdit;
-    YEdt: TEdit;
     Panel2: TPanel;
     Label10: TLabel;
     Label11: TLabel;
@@ -59,7 +55,7 @@ type
     ExecB5Edt: TEdit;
     ExecB6Edt: TEdit;
     ExecB7Edt: TEdit;
-    Panel3: TPanel;
+    UserBPanel: TPanel;
     Label19: TLabel;
     Label20: TLabel;
     Label21: TLabel;
@@ -104,6 +100,12 @@ type
     PTMountBtn: TButton;
     PTUnmountBtn: TButton;
     PTLoadedLbl: TLabel;
+    SR0Edt: TEdit;
+    SR1Edt: TEdit;
+    SR2Edt: TEdit;
+    SR0Lbl: TLabel;
+    Label30: TLabel;
+    Label32: TLabel;
     procedure TimerTimer(Sender: TObject);
     procedure InputEdtKeyPress(Sender: TObject; var Key: Char);
     procedure StartBtnClick(Sender: TObject);
@@ -256,6 +258,8 @@ begin
             FPrinterFrame.Align := alClient;
         end else
             PrinterPage.TabVisible := False;
+        if (gConfig.Mode <> m494) then
+            UserBPanel.Visible := False;
         FDebuggerState := udsContinue;
         FSystem.Cpu.OnLog := DoLog;
         FDebugOS := True;
@@ -834,15 +838,10 @@ begin
         fobj := TMemImageStream.Create(fname, fmOpenRead or fmShareDenyNone);
         while (fobj.FetchWord(addr, rel, value)) do
         begin
-            if (addr = UInt32(-1)) then
-            begin
-                FSystem.Memory.P := value;
-            end else
-            begin
-                word.Value := value;
-                FSystem.Memory.Store(addr, word, True);
-            end;
+            word.Value := value;
+            FSystem.Memory.Store(addr, word, True);
         end;
+        FSystem.Memory.P.Value := fobj.TransAddr;
         fobj.Free;
     except
       on E: Exception do
@@ -852,7 +851,6 @@ begin
           Exit;
       end;
     end;
-
 end;
 
 procedure TU494PanelFrm.LoadMemory;
@@ -944,10 +942,12 @@ begin
              FSystem.Memory.A := value
         else if (words[1] = 'Q') then
              FSystem.Memory.Q := value
-        else if (words[1] = 'X') then
-             FSystem.Memory.X := value
-        else if (words[1] = 'Y') then
-             FSystem.Memory.Y := value
+        else if (words[1] = 'SR0') then
+             FSystem.Memory.SR[0].Value := value.Value
+        else if (words[1] = 'SR1') then
+             FSystem.Memory.SR[1].Value := value.Value
+        else if (words[1] = 'SR2') then
+             FSystem.Memory.SR[2].Value := value.Value
         else if (words[1] = 'K') then
              FSystem.Memory.K := value
         else if (words[1] = 'EB1') then
@@ -1079,8 +1079,9 @@ begin
         IasrEdt.Text := Copy(FormatOctal(FSystem.Memory.IASR.Value), 9);
         AEdt.Text := FormatOctal(FSystem.Memory.A.Value);
         QEdt.Text := FormatOctal(FSystem.Memory.Q.Value);
-        XEdt.Text := FormatOctal(FSystem.Memory.X.Value);
-        YEdt.Text := FormatOctal(FSystem.Memory.Y.Value);
+        SR0Edt.Text := Copy(FormatOctal(FSystem.Memory.SR[0].Value), 9);
+        SR1Edt.Text := Copy(FormatOctal(FSystem.Memory.SR[1].Value), 9);
+        SR2Edt.Text := Copy(FormatOctal(FSystem.Memory.SR[2].Value), 9);
         ExecB1Edt.Text := Copy(FormatOctal(FSystem.Memory.B[0, 1].Value), 5);
         ExecB2Edt.Text := Copy(FormatOctal(FSystem.Memory.B[0, 2].Value), 5);
         ExecB3Edt.Text := Copy(FormatOctal(FSystem.Memory.B[0, 3].Value), 5);

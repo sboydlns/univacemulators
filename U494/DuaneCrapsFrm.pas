@@ -60,7 +60,7 @@ begin
                 itemp := Octal(tokens[2] + tokens[3]);
                 if (first) then
                 begin
-                    ofile.EmitTransferAddr(addr, 0);
+                    ofile.EmitTransferAddr(addr, addr, 0);
                     first := False;
                 end;
                 ofile.EmitSingleWord(addr, rtNone, itemp);
