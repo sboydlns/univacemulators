@@ -229,9 +229,14 @@ begin
             Break;
         end;
     end;
-    if (FInputMonitor and (bcr.Count = 0)) then
-        QueueInterrupt(intIO, IIsiInput(FChannel), 0);
-    TerminateInput;
+    Lock;
+    try
+        if (FInputMonitor and (bcr.Count = 0)) then
+            QueueInterrupt(intIO, IIsiInput(FChannel), 0);
+        TerminateInput;
+    finally
+        Unlock;
+    end;
     func := 0;
 end;
 
@@ -255,8 +260,13 @@ begin
     end;
     if (FInputMonitor and (bcr.Count = 0)) then
     begin
-        QueueInterrupt(intIO, IIsiInput(FChannel), 0);
-        TerminateInput;
+        Lock;
+        try
+            QueueInterrupt(intIO, IIsiInput(FChannel), 0);
+            TerminateInput;
+        finally
+            Unlock;
+        end;
     end;
 end;
 
@@ -401,8 +411,13 @@ begin
     end;
     if (FOutputMonitor and (bcr.Count = 0)) then
     begin
-        QueueInterrupt(intIO, IIsiOutput(FChannel), 0);
-        TerminateOutput;
+        Lock;
+        try
+            QueueInterrupt(intIO, IIsiOutput(FChannel), 0);
+            TerminateOutput;
+        finally
+            Unlock;
+        end;
     end;
 end;
 

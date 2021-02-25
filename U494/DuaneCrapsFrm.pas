@@ -30,7 +30,7 @@ procedure TForm3.OkBtnClick(Sender: TObject);
 var
     ifname, ofname: String;
     line: AnsiString;
-    addr, itemp: UInt32;
+    addr, itemp, osize: UInt32;
     first: Boolean;
     tokens: TStringList;
     ifile: TSrcFileStream;
@@ -50,6 +50,11 @@ begin
             // Burn 1st 2 lines
             line := ifile.ReadLine;
             line := ifile.ReadLine;
+            // Parse from .. to
+            tokens.DelimitedText := line;
+            addr := Octal(tokens[1]);
+            itemp := Octal(tokens[3]);
+            osize := itemp - addr;
             while (not ifile.Eof) do
             begin
                 line := ifile.ReadLine;
@@ -60,7 +65,7 @@ begin
                 itemp := Octal(tokens[2] + tokens[3]);
                 if (first) then
                 begin
-                    ofile.EmitTransferAddr(addr, addr, 0);
+                    ofile.EmitTransferAddr(addr, addr, osize);
                     first := False;
                 end;
                 ofile.EmitSingleWord(addr, rtNone, itemp);

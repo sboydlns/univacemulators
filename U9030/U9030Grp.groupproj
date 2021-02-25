@@ -1,0 +1,48 @@
+﻿	<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+		<PropertyGroup>
+			<ProjectGuid>{85A86377-5B0B-40CD-989A-C6E44543631A}</ProjectGuid>
+		</PropertyGroup>
+		<ItemGroup>
+			<Projects Include="DmpRst.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="U8418Util.dproj">
+				<Dependencies/>
+			</Projects>
+		</ItemGroup>
+		<ProjectExtensions>
+			<Borland.Personality>Default.Personality.12</Borland.Personality>
+			<Borland.ProjectType/>
+			<BorlandProject>
+				<Default.Personality/>
+			</BorlandProject>
+		</ProjectExtensions>
+		<Target Name="DmpRst">
+			<MSBuild Projects="DmpRst.dproj"/>
+		</Target>
+		<Target Name="DmpRst:Clean">
+			<MSBuild Targets="Clean" Projects="DmpRst.dproj"/>
+		</Target>
+		<Target Name="DmpRst:Make">
+			<MSBuild Targets="Make" Projects="DmpRst.dproj"/>
+		</Target>
+		<Target Name="U8418Util">
+			<MSBuild Projects="U8418Util.dproj"/>
+		</Target>
+		<Target Name="U8418Util:Clean">
+			<MSBuild Targets="Clean" Projects="U8418Util.dproj"/>
+		</Target>
+		<Target Name="U8418Util:Make">
+			<MSBuild Targets="Make" Projects="U8418Util.dproj"/>
+		</Target>
+		<Target Name="Build">
+			<CallTarget Targets="DmpRst;U8418Util"/>
+		</Target>
+		<Target Name="Clean">
+			<CallTarget Targets="DmpRst:Clean;U8418Util:Clean"/>
+		</Target>
+		<Target Name="Make">
+			<CallTarget Targets="DmpRst:Make;U8418Util:Make"/>
+		</Target>
+		<Import Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')" Project="$(BDS)\Bin\CodeGear.Group.Targets"/>
+	</Project>

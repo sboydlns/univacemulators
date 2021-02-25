@@ -27,13 +27,15 @@ type
     FEvent: TEvent;
     FCrit: TCriticalSection;
     FWaitExec: Boolean;
+    FExternalActive: Boolean;
     FInputActive: Boolean;
     FOutputActive: Boolean;
+    FExternalMonitor: Boolean;
     FInputMonitor: Boolean;
     FOutputMonitor: Boolean;
-    FInpIntEnable: Boolean;
-    FOutIntEnable: Boolean;
-    FExtIntEnable: Boolean;
+    FInpIntLockout: Boolean;
+    FOutIntLockout: Boolean;
+    FExtIntLockout: Boolean;
     function FetchInputBcr: T494Word;
     function FetchOutputBcr: T494Word;
     procedure Lock;
@@ -44,18 +46,22 @@ type
 public
     constructor Create(cpu: T494Cpu; mem: T494Memory; chan: Byte); virtual;
     destructor Destroy; override;
+    procedure ActivateExternal(withMon: Boolean); virtual;
     procedure ActivateInput(withMon: Boolean); virtual;
     procedure ActivateOutput(withMon: Boolean); virtual;
     procedure Clear; virtual; abstract;
     procedure ExternalFunction(func: T494Word); virtual; abstract;
+    procedure ExternalFunctionWithMonitor(func: T494Word); virtual;
+    function ExternalActive: Boolean; virtual;
     function InputActive: Boolean; virtual;
     function OutputActive: Boolean; virtual;
     procedure Terminate; reintroduce;
+    procedure TerminateExternal; virtual;
     procedure TerminateInput; virtual;
     procedure TerminateOutput; virtual;
-    property InpIntEnable: Boolean read FInpIntEnable write FInpIntEnable;
-    property OutIntEnable: Boolean read FOutIntEnable write FOutIntEnable;
-    property ExtIntEnable: Boolean read FExtIntEnable write FExtIntEnable;
+    property InpIntLockout: Boolean read FInpIntLockout write FInpIntLockout;
+    property OutIntLockout: Boolean read FOutIntLockout write FOutIntLockout;
+    property ExtIntLockout: Boolean read FExtIntLockout write FExtIntLockout;
   end;
 
   T494CardDevice = class(T494Device)
@@ -241,6 +247,7 @@ public
     procedure SB;
     procedure SBW;
     procedure SC;
+    procedure SC1230;
     procedure SCN;
     procedure SESR;
     procedure SFS;
@@ -617,7 +624,7 @@ begin
       3:
       begin
         if (Assigned(FChannels[chan])) then
-            FChannels[chan].ExtIntEnable := (FMemory.Inst.b = 0);
+            FChannels[chan].ExtIntLockout := (FMemory.Inst.b <> 0);
       end
     end;
 end;
@@ -654,6 +661,19 @@ begin
         if (Assigned(FChannels[chan])) then
             FChannels[chan].TerminateOutput;
       end;
+      1:
+      begin
+        if (Assigned(FChannels[chan])) then
+            FChannels[chan].TerminateExternal;
+      end;
+      2:
+      begin
+        if (Assigned(FChannels[chan])) then
+        begin
+            FChannels[chan].TerminateExternal;
+            FChannels[chan].TerminateOutput;
+        end;
+      end
       else
       begin
         raise Exception.CreateFmt('TERMOT1230 k designator %d not implemented', [FMemory.Inst.khat]);
@@ -848,7 +868,6 @@ begin
     FStdInstProcs[12] := SQ;
     FStdInstProcs[13] := SA;
     FStdInstProcs[14] := SB;
-    FStdInstProcs[15] := SC;
     FStdInstProcs[16] := A;
     FStdInstProcs[17] := AN;
     FStdInstProcs[18] := M;
@@ -892,6 +911,7 @@ begin
       m494:
       begin
         FStdInstProcs[11] := EXF;
+        FStdInstProcs[15] := SC;
         FStdInstProcs[50] := JACTI;
         FStdInstProcs[51] := JACTO;
         FStdInstProcs[54] := TERMIN;
@@ -904,6 +924,7 @@ begin
       m490:
       begin
         FStdInstProcs[11] := EXF490;
+        FStdInstProcs[15] := SC;
         FStdInstProcs[50] := JACTI490;
         FStdInstProcs[51] := JACTO490;
         FStdInstProcs[54] := TERMIN490;
@@ -916,6 +937,7 @@ begin
       m1230:
       begin
         FStdInstProcs[11] := EXF1230;
+        FStdInstProcs[15] := SC1230;
         FStdInstProcs[50] := JACTI490;
         FStdInstProcs[51] := JACTO490;
         FStdInstProcs[54] := TERMIN1230;
@@ -1075,6 +1097,7 @@ begin
         // 1230 square root function
         if (FMemory.Q.Value >= 0) then
         begin
+            aq := FMemory.Q.Value;
             FMemory.Q.Value := Trunc(Sqrt(aq));
             FMemory.A.Value := aq - (FMemory.Q.Value * FMemory.Q.Value);
         end else
@@ -1651,7 +1674,7 @@ end;
 procedure T494Cpu.Execute;
 var
     b: Byte;
-    bval: UInt32;
+    bval, b7: UInt32;
     holdp: T494Address;
 begin
     // If an interrupt is pending, do not execute the current instruction.
@@ -1667,6 +1690,11 @@ begin
         FPLockedOut := False;
         holdp := FMemory.P;
 
+        // Cache b7 for later use in the loop control code for repeated instructions.
+        // This is necessary because 642 and 1230 code can modify the value of the b
+        // registers by storing values into memory. So, it is possible for a repeated
+        // instruction to modify b7 causing mayhem.
+        b7 := FMemory.B[FMemory.IFR.f6, 7].Value;
         FCurInstProc;
         case FCurOpcode.JInterpret of
             jiNormal:   NormalSkip;
@@ -1728,7 +1756,7 @@ begin
             begin
                 // Second and sebsequent passes of repeated instructions.
                 // Adjust effective operand as required.
-                FMemory.B[FMemory.IFR.f6, 7].Value := FMemory.B[FMemory.IFR.f6, 7].Value - 1;
+                FMemory.B[FMemory.IFR.f6, 7].Value := b7 - 1;
                 case FMemory.IFR.f2 of
                   1:
                   begin
@@ -1827,11 +1855,27 @@ var
 begin
     chan := FMemory.Inst.jhat;
     case FMemory.Inst.khat of
-      0,
-      1,
-      3:    raise Exception.CreateFmt('EXF1230 designator %d not implemented', [FMemory.Inst.khat]);
+      0:
+      begin
+        if (Assigned(FChannels[chan])) then
+            FChannels[chan].ExternalFunctionWithMonitor(FMemory.Fetch(FMemory.Operand.Value));
+      end;
+      1:
+      begin
+        // This is supposed to be the "with force" option. But I don't think I care about
+        // forcing the external command to proceed.
+        if (Assigned(FChannels[chan])) then
+            FChannels[chan].ExternalFunctionWithMonitor(FMemory.Fetch(FMemory.Operand.Value));
+      end;
       2:
       begin
+        if (Assigned(FChannels[chan])) then
+            FChannels[chan].ExternalFunction(FMemory.Fetch(FMemory.Operand.Value));
+      end;
+      3:
+      begin
+        // This is supposed to be the "with force" option. But I don't think I care about
+        // forcing the external command to proceed.
         if (Assigned(FChannels[chan])) then
             FChannels[chan].ExternalFunction(FMemory.Fetch(FMemory.Operand.Value));
       end;
@@ -2390,9 +2434,8 @@ begin
       3:    bcr := operand;
     end;
     FMemory.Store(addr.Value, bcr);
-    if (not Assigned(FChannels[chan])) then
-        Exit;
-    FChannels[chan].ActivateInput(False);
+    if (Assigned(FChannels[chan])) then
+        FChannels[chan].ActivateInput(False);
 end;
 
 procedure T494Cpu.INN490;
@@ -3723,7 +3766,12 @@ begin
     end;
     FMemory.Store(addr.Value, bcr);
     if (Assigned(FChannels[chan])) then
-        FChannels[chan].ActivateOutput(True);
+    begin
+        if (FMemory.Inst.khat = 2) then
+            FChannels[chan].ActivateExternal(True)
+        else
+            FChannels[chan].ActivateOutput(True);
+    end;
 end;
 
 procedure T494Cpu.OUTMON490;
@@ -3801,7 +3849,12 @@ begin
     end;
     FMemory.Store(addr.Value, bcr);
     if (Assigned(FChannels[chan])) then
-        FChannels[chan].ActivateOutput(False);
+    begin
+        if (FMemory.Inst.khat = 2) then
+            FChannels[chan].ActivateExternal(False)
+        else
+            FChannels[chan].ActivateOutput(False);
+    end;
 end;
 
 procedure T494Cpu.OUT490;
@@ -4396,6 +4449,37 @@ begin
         FMemory.Store(FMemory.Operand.Value, FMemory.IoStatus);
 end;
 
+procedure T494Cpu.SC1230;
+var
+    chan: Byte;
+    operand: T494Word;
+begin
+    operand := IOFetch;
+    chan := FMemory.Inst.jhat;
+    if (not Assigned(FChannels[chan])) then
+        Exit;
+    case FMemory.Inst.khat of
+      0:
+      begin
+        if (FChannels[chan].ExternalActive) then
+            FMemory.P := operand.Value;
+      end;
+      1:
+      begin
+        if (FChannels[chan].ExternalActive) then
+            FMemory.P := operand.H2.Value;
+      end;
+      2:
+      begin
+        FMemory.Store(FMemory.Operand.Value, FMemory.IoStatus);
+      end;
+      3:
+      begin    // Octal 520 + channel # is external function status
+        FMemory.Store(FMemory.Operand.Value, FMemory.Fetch(336 + chan));
+      end;
+    end;
+end;
+
 procedure T494Cpu.SCN;
 var
     value: Byte;
@@ -4572,17 +4656,39 @@ end;
 
 { T494Device }
 
+procedure T494Device.ActivateExternal(withMon: Boolean);
+begin
+    Lock;
+    try
+        FExternalMonitor := withMon;
+        FExternalActive := True;
+    finally
+        Unlock;
+    end;
+    FEvent.SetEvent;
+end;
+
 procedure T494Device.ActivateInput(withMon: Boolean);
 begin
-    FInputMonitor := withMon;
-    FInputActive := True;
+    Lock;
+    try
+        FInputMonitor := withMon;
+        FInputActive := True;
+    finally
+        Unlock;
+    end;
     FEvent.SetEvent;
 end;
 
 procedure T494Device.ActivateOutput(withMon: Boolean);
 begin
-    FOutputMonitor := withMon;
-    FOutputActive := True;
+    Lock;
+    try
+        FOutputMonitor := withMon;
+        FOutputActive := True;
+    finally
+        Unlock;
+    end;
     FEvent.SetEvent;
 end;
 
@@ -4607,6 +4713,17 @@ begin
     FreeAndNil(FEvent);
     FreeAndNil(FCrit);
     inherited Destroy;
+end;
+
+function T494Device.ExternalActive: Boolean;
+begin
+    Result := FExternalActive;
+end;
+
+procedure T494Device.ExternalFunctionWithMonitor(func: T494Word);
+begin
+    FExternalMonitor := True;
+    ExternalFunction(func);
 end;
 
 function T494Device.FetchInputBcr: T494Word;
@@ -4638,6 +4755,25 @@ procedure T494Device.QueueInterrupt(itype: T494InterruptType; vector: Smallint; 
 var
     int: T494Interrupt;
 begin
+    // Do not queue interrupts if interrups are disabled for this device
+    case gConfig.Mode of
+      m490:
+      begin
+        if (FInpIntLockout and (vector >= IIsiInput490) and (vector < (IIsiInput490 + 16))) then
+            Exit;
+        if (FOutIntLockout and (vector >= IIsiOutput490) and (vector < (IIsiOutput490 + 16))) then
+            Exit;
+      end;
+      m1230:
+      begin
+        if (FInpIntLockout and (vector >= IIsiInput1230) and (vector < (IIsiInput1230 + 16))) then
+            Exit;
+        if (FOutIntLockout and (vector >= IIsiOutput1230) and (vector < (IIsiOutput1230 + 16))) then
+            Exit;
+        if (FExtIntLockout and (vector >= IIsiExternal1230) and (vector < (IIsiExternal1230 + 16))) then
+            Exit;
+      end;
+    end;
     int.IType := itype;
     int.Vector := vector;
     int.Channel := FChannel;
@@ -4661,16 +4797,37 @@ begin
     inherited Terminate;
 end;
 
+procedure T494Device.TerminateExternal;
+begin
+    Lock;
+    try
+        FExternalMonitor := False;
+        FExternalActive := False;
+    finally
+        Unlock;
+    end;
+end;
+
 procedure T494Device.TerminateInput;
 begin
-    FInputMonitor := False;
-    FInputActive := False;
+    Lock;
+    try
+        FInputMonitor := False;
+        FInputActive := False;
+    finally
+        Unlock;
+    end;
 end;
 
 procedure T494Device.TerminateOutput;
 begin
-    FOutputMonitor := False;
-    FOutputActive := False;
+    Lock;
+    try
+        FOutputMonitor := False;
+        FOutputActive := False;
+    finally
+        Unlock;
+    end;
 end;
 
 procedure T494Device.Unlock;

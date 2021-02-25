@@ -1497,10 +1497,10 @@
                    SZ,W      CSI$BFR
        CSI$READ    SLJ       CSI$CHARW
                    SLJ       CSI$GET
-       CSI$ECHO    SA,W      CSI$EBFR
-                   I$LOCK
+       CSI$ECHO    I$LOCK
                    ECSR      CHANZERO
                    JACTO     CSI$WAITIO
+                   SA,W      CSI$EBFR
                    OUT,W     CSI$EBCW
                    I$UNLOCK
                    LQ        77
@@ -2227,7 +2227,7 @@
                    J         CST$COPY            . NO
                    LA,W      0,B5                . YES, SAVE TRANSFER ADDR
                    SA,W      CST$XFER
-                   LB        B5,2,B5
+                   LB        B5,3,B5
        CST$COPY    LA,W      0,B5                . COPY DATA TO PGM MEMORY
                    SA,W      0,B7
                    TBI,X     B7,77777 

@@ -41,10 +41,10 @@ const
     IIsiOutput494 = 22;
     IIsiExternal490 = 16;
     IIsiInput490 = 32;
-    IIsiOutput490 = 64;
+    IIsiOutput490 = 48;
     IIsiExternal1230 = 16;
     IIsiInput1230 = 32;
-    IIsiOutput1230 = 64;
+    IIsiOutput1230 = 48;
     IIsiExtFunc1230 = 320;
     // 1230 B register memory start
     B1230 = 113;

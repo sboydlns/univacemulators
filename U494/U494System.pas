@@ -304,7 +304,7 @@ begin
         if (ms > 0) then
         begin
             QueryPerformanceCounter(intervalStart);
-            word.Value := (word.Value + ms) and $3ffff;
+            word.Value := (word.Value + ms) and BITS30;
             FMemory.Store(RTClock1230, word, True);
         end;
     end;

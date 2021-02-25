@@ -1,0 +1,3772 @@
+                   A-CONTROL
+                   
+                   COMMENT.+++++++++++++++++++++++++++
+                   COMMENT. A PORT OF THE ORIGINAL TEXT BASED STAR
+                   COMMENT. TREK STRATEGY GAME WRITTEN BY MIKE
+                   COMMENT. MAYFIELD IN ABOUT 1971. ORIGINALLY FOR
+                   COMMENT. SDS SIGMA 7 MAINFRAME. PORTED TO THE 
+                   COMMENT. UNIVAC 1230 BY STEPHEN W. BOYD DURING
+                   COMMENT. THE COVID LOCK DOWN OF 2020-2021.
+                   COMMENT.
+                   COMMENT. THE ORIGINAL PROGRAM WAS WRITTEN IN BASIC,
+                   COMMENT. SO THE VARIABLE NAMES LEAVE SOMETHING TO BE 
+                   COMMENT. DESIRED. THIS PROGRAM WAS CONVERTED FROM A
+                   COMMENT. PASCAL PORT OF THE ORIGINAL BASIC. SO, THE
+                   COMMENT. RESULTING ASSEMBLER CODE IS A BIT OF A MESS.
+                   COMMENT.
+                   COMMENT. THIS PROGRAM USES INTERRUPTS TO SYNCHRONIZE
+                   COMMENT. THE CONSOLE I/O RATHER THAT THE SIMPLER 'WAIT
+                   COMMENT. ON DEVICE ACTIVE' PARADIGM IN ORDER TO TEST
+                   COMMENT. THE INTERRUPT FUNCTIONALITY OF THE 1230 
+                   COMMENT. EMULATION.
+                   COMMENT. 
+                   COMMENT. ALL REAL NUMBERS USED IN THIS PROGRAM ARE IMPLEMETED
+                   COMMENT. AS SCALED INTEGERS WITH 3 ASSUMED DECIMAL PLACES.
+                   COMMENT.+++++++++++++++++++++++++++
+                   
+       STARTREK    ALLOCATION
+       STARTREK    1000
+       
+       STARTREK    PROGRAM
+       
+       CONS        MEANS.C4
+       
+       CONSEXT     EQUALS.24
+       CONSIMON    EQUALS.44
+       CONSOMON    EQUALS.64
+       RTCLOCK     EQUALS.160
+       MONITOR     EQUALS.75000
+       
+       STARTREK    RJP.INIT
+                   RJP.INSTRCTNS
+                   RJP.THEGAME
+                   
+       EOJ         JP.MONITOR                    ALL DONE, RETURN TO MONITOR
+                   
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. RETURN THE QUARE OF A FLOATING POINT NUMBER
+                   COMMENT.
+                   COMMENT. NUMBER PASSED IN Q
+                   COMMENT.
+                   COMMENT. RESULT RETURNED IN Q
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       POW2        ENTRY
+       
+                   STR.Q.W(P2$SAVE)
+                   MUL.W(P2$SAVE)
+                   CL.A
+                   DIV.1000D
+                   
+                   EXIT
+                   
+       P2$SAVE     RESERVE.1                   
+                                      
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. COMPUTE 10*N FOR N > 0
+                   COMMENT. 
+                   COMMENT. N PASSED IN Q
+                   COMMENT. 
+                   COMMENT. RESULT RETURNED IN Q
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       POW10       ENTRY
+       
+                   STR.B1.W(P10$B1)
+                   STR.A.W(P10$A)
+                   ENT.Y+Q.X(-1).APOS
+                   JP.P10$98
+                   ENT.B1.A
+                   ENT.Q.1
+       P10$1       MUL.10D
+                   BJP.B1.P10$1
+                   JP.P10$99
+                            
+       P10$98      ENT.Q.1                       RETURN 1 IF ILLEGAL EXP.
+       
+       P10$99      ENT.B1.W(P10$B1)
+                   ENT.A.W(P10$A) 
+                   EXIT
+                   
+       P10$A       RESERVE.1                   
+       P10$B1      RESERVE.1                                      
+                                      
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. RETURN THE INTEGER PART OF A SCALED INTEGER VALUE
+                   COMMENT.
+                   COMMENT. VALUE PASSED AND RETURNED IN Q
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       TRUNC       ENTRY
+       
+                   STR.A.W(CVT$A)
+                   CL.A
+                   DIV.1000D
+                   ENT.A.W(CVT$A)
+                   
+                   EXIT                   
+                   
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. RETURN THE ROUNDED INTEGER PART OF A SCALED INTEGER VALUE
+                   COMMENT.
+                   COMMENT. VALUE PASSED AND RETURNED IN Q
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       ROUND       ENTRY
+       
+                   STR.A.W(CVT$A)
+                   CL.A
+                   DIV.1000D
+                   COM.A.500D.YMORE
+                   ADD.Q.1
+                   ENT.A.W(CVT$A)
+       
+                   EXIT
+                   
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. Get distance of Enterprise from Klingon number I
+                   COMMENT.
+                   COMMENT. I PASSED IN B5
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       FND         ENTRY
+       
+                   ENT.Q.W(K+0+B5)               Pow2(K[I,1]-S1)
+                   MUL.1000D
+                   SUB.Q.W(S1)
+                   RJP.POW2
+                   STR.Q.W(F$SAVE)
+                   ENT.Q.W(K+1+B5)               Pow2(K[I,2]-S2)
+                   MUL.1000D
+                   SUB.Q.W(S2)
+                   RJP.POW2
+                   ADD.Q.W(F$SAVE)
+                   
+                   COMMENT.THE 1230 ONLY HAS AN INTEGER SQUARE ROOT INSTRUCTION.
+                   COMMENT.SO WE HAVE TO GET CREATIVE.
+                   COMMENT.SINCE (X*Y)^N = X^N*Y^N WE CAN SAFELY STATE THAT
+                   COMMENT.(X*100)^0.5 = X^0.5*10^0.5 = X^0.5*10.
+                   COMMENT.SO IF MULTIPLY TO ORIGINAL NUMBER BY 100 AND
+                   COMMENT.THEN DIVIDE THE RESULT BY 10 WE SHOULD GET A
+                   COMMENT.GOOD APPROXIMATION OF THE ACTUAL SQUARE ROOT.
+                   COMMENT.
+                   COMMENT.SINCE THE ABOUT BIT OF MATH GIVES US A SCALED
+                   COMMENT.INTEGER WITH 3 DECIMALS, MULTIPLING THE RESULT OF
+                   COMMENT.THE ABOVE BY 10 WILL GIVE US X*(10^4). THEN MULTIPLYING
+                   COMMENT.THE SQUARE ROOT BY 10 WILL GIVE US THE SQUARE ROOT
+                   COMMENT TO 3 DECIMALS.
+                   COMMENT.
+                   COMMENT.FOR EXAMPLE:
+                   COMMENT.  
+                   COMMENT.SUPPOSE
+                   COMMENT.  Pow2(K[I,1]-S1)+Pow2(K[I,2]-S2) = 2.0
+                   COMMENT.THEN THE RESULT OF THE ABOVE WOULD BE 2000
+                   COMMENT.(REMEMBER IT IS A SCALED INTEGER WITH 3 DECIMALS).
+                   COMMENT.  2000*10 = 20000
+                   COMMENT.  20000^0.5 = 141
+                   COMMENT.  141*10 = 1410
+                   COMMENT.WHICH IS THE SQUARE ROOT OF 2 AS A SCALED INTEGER. 
+
+                   MUL.10D                   
+                   SQRT                          Sqrt(Pow2(K[I,1]-S1)+Pow2(K[I,2]-S2))
+                   MUL.10D                       FORCE BACK TO 3 DECIMALS
+       
+                   EXIT
+                   
+       F$SAVE      RESERVE.1                                                         
+                   
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. RETURN A RANDOM NUMBER BETWEEN 1 AND 8 IN A
+                   COMMENT.++++++++++++++++++++++++++++
+       
+       FNR         ENTRY
+       
+                   ENT.A.8D
+                   RJP.RANDOM
+                   ADD.A.1
+                   
+                   EXIT 
+                   
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. CONVERT AN INTEGER TO FIELDATA (MAX 5 CHARS)
+                   COMMENT. WITH LEADING ZERO SUPPRESSION
+                   COMMENT.
+                   COMMENT. NUMBER TO CONVERT IN Q
+                   COMMENT. 
+                   COMMENT. RESULT RETURNED IN Q
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       INT2STR     ENTRY
+
+                   STR.A.W(CVT$A)                SAVE REGISTERS       
+                   
+                   COM.Q.1.YLESS                 NUM = 0?
+                   JP.I2S$ZERO                   YES
+                   
+                   CL.W(CVT$RSLT)                CLEAR RESULT
+                   ENT.B1.4                      INIT LOOP COUNT
+       I2S$1       ENT.A.W(CVT$RSLT)             SHIFT RESULT TO HOLD NEXT DIGIT
+                   RSH.A.6D
+                   SEL.CL.W(CVT$HI6)             CLEAR HIGH 6 BITS
+                   STR.A.W(CVT$RSLT)
+                   CL.A                          NEXT DIGIT
+                   DIV.10D           
+                   ADD.A.60
+                   LSH.A.24D                     ADD TO RESULT
+                   SEL.SET.W(CVT$RSLT)
+                   STR.A.W(CVT$RSLT)                   
+                   COM.Q.1.YLESS                 NUM = 0?
+                   JP.I2S$DONE                   YES
+                   BJP.B1.I2S$1
+                   
+       I2S$DONE    ENT.Q.W(CVT$RSLT)             RETURN RESULT
+                   JP.I2S$RTRN                   
+       
+       I2S$ZERO    ENT.Q.W(CVT$ZERO)             RESULT = '0'
+
+       I2S$RTRN    ENT.A.W(CVT$A)                RESTORE REGISTER
+                   EXIT
+                   
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. CONVERT AN INTEGER TO 3 FIELDATA CHARACTERS
+                   COMMENT. WITHOUT LEADING ZERO SUPPRESSION.
+                   COMMENT.
+                   COMMENT. NUMBER TO CONVERT IN Q
+                   COMMENT. 
+                   COMMENT. RESULT RETURNED IN Q
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       INT2STR3    ENTRY
+
+                   STR.A.W(CVT$A)                SAVE REGISTERS
+                   
+                   CL.W(CVT$RSLT)                CLEAR THE RESULT
+                   ENT.B1.2                      INIT LOOP COUNT
+       I2S3$1      ENT.A.W(CVT$RSLT)             SHIFT RESULT TO HOLD NEXT DIGIT
+                   RSH.A.6D
+                   SEL.CL.W(CVT$HI6)             CLEAR HIGH 6 BITS
+                   STR.A.W(CVT$RSLT)
+                   CL.A                          NEXT DIGIT
+                   DIV.10D           
+                   ADD.A.60
+                   LSH.A.24D                     ADD TO RESULT
+                   SEL.SET.W(CVT$RSLT)
+                   STR.A.W(CVT$RSLT)                   
+                   BJP.B1.I2S3$1
+                   
+                   ENT.Q.W(CVT$RSLT)             RETURN RESULT
+                   ENT.A.W(CVT$A)                RESTORE A
+                   
+                   EXIT
+                   
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. CONVERT A SCALED INTEGER TO FIELDATA
+                   COMMENT.
+                   COMMENT. NUMBER TO CONVERT IN Q
+                   COMMENT. 
+                   COMMENT. INTEGER PART RETURNED IN A, FRACTIONAL
+                   COMMENT. PART (WITH LEADING DECIMAL POINT) IN Q
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       FLT2STR     ENTRY
+                   
+                   CL.A                          GET FRACTIONAL PART
+                   DIV.1000D
+                   STR.A.W(CVT$A)
+                   RJP.INT2STR
+                   STR.Q.W(CVT$Q)
+                   ENT.Q.W(CVT$A)
+                   RJP.INT2STR3
+                   ENT.A.W(CVT$DOT)              ADD THE DECIMAL
+                   RSH.AQ.6
+                   STR.Q.A
+                   ENT.Q.W(CVT$Q)
+                   
+                   EXIT                                                   
+       
+       CVT$A       RESERVE.1
+       CVT$Q       RESERVE.1
+       CVT$RSLT    RESERVE.1
+       CVT$ZERO    FD.0.0
+       CVT$DOT     FD.0.    .
+       CVT$HI6     7700000000
+       
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. RETURN 1 IN Q IF END OF TIME
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       ISEOT       ENTRY
+       
+                   ENT.Q.W(T0)
+                   ADD.Q.W(T9)
+                   MUL.1000D
+                   COM.Q.W(T).YMORE              T>T0+T9
+                   ENT.Q.0.SKIP                  NO
+                   ENT.Q.1                       YES
+                   
+                   EXIT
+       
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. INITIALIZATION
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       INIT        ENTRY
+       
+                   SIL.ALL                       INHIBIT INTERRUPTS
+                   
+                   ENT.Q.W(CONSIMON)             SAVE OLD INT HANDLERS
+                   STR.Q.W(CONSISAV)
+                   ENT.Q.W(CONSOMON)
+                   STR.Q.W(CONSOSAV)
+                   ENT.Q.W(CONSEXT)
+                   STR.Q.W(CONSESAV)
+
+                   ENT.Q.W(CONSIJMP)             CONSOLE INP MON HANDLER
+                   STR.Q.W(CONSIMON)
+                   ENT.Q.W(CONSOJMP)             CONSOLE OUT MON HANDLER
+                   STR.Q.W(CONSOMON)
+                   ENT.Q.W(CONSEJMP)             CONSOLE EXT INTERRUPT HANDLER
+                   STR.Q.W(CONSEXT)
+                   
+                   RPL.Y+1.W(G$INIT)             SET CONS INPUT NOT INIT FLAG
+                   
+                   EX-COM.CONS.W(CONSFUNC)       ENABLE CONS KBD AND PRINTER
+                   
+                   RIL.ALL                       ENABLE INTERRUPTS
+                   
+                   EXIT
+                   
+                   COMMENT.+++++++++++++++++++++++++++
+                   COMMENT. INTIALIZE THE GAME VARIABLES
+                   COMMENT.+++++++++++++++++++++++++++
+                   
+       INITGAME    ENTRY                   
+                   
+                   ENT.A.20D                     INITIALIZE STAR DATE
+                   RJP.RANDOM
+                   ADD.A.20D
+                   STR.A.Q
+                   MUL.100D
+                   STR.Q.W(T0)
+                   MUL.1000D                     SCALE TO 3 DECIMALS
+                   STR.Q.W(T)
+                   
+                   ENT.A.10D
+                   RJP.RANDOM
+                   ADD.A.25D
+                   STR.A.W(T9)
+                   
+                   CL.W(D0)
+                   ENT.A.W(E0)
+                   STR.A.W(E)
+                   ENT.A.W(P0)
+                   STR.A.W(P)
+                   CL.W(S)
+                   CL.W(BB9)
+                   CL.W(K9)                      K9 := 0
+                   CL.W(I$X$)                    SX := ''
+                   ENT.A.W(I$IS)                 SX0 := ' IS '
+                   STR.A.W(I$X0$)
+                   
+                   COMMENT.INITIALIZE ENTERPRIZE'S POSITION
+                   
+                   RJP.FNR
+                   STR.A.W(Q1)
+                   RJP.FNR
+                   STR.A.W(Q2)
+                   RJP.FNR
+                   STR.A.Q
+                   MUL.1000D                     SCALE TO 3 DECIMALS
+                   STR.Q.W(S1)                   
+                   RJP.FNR
+                   STR.A.Q
+                   MUL.1000D                     SCALE TO 3 DECIMALS
+                   STR.Q.W(S2)
+                   RPT.8D.ADV
+                   CL.W(D)
+                   
+                   COMMENT.SETUP WHAT EXHISTS IN GALAXY . . .         
+                   COMMENT.K3= # KLINGONS  B3= # STARBASES  S3= # STARS 
+                   
+                   RPT.64D.ADV
+                   CL.W(Z)                       CLEAR Z ARRAY
+                   
+                   ENT.B1.0                      I := 1
+                   ENT.B2.0                      J := 1
+                   
+                   COMMENT.FOR LOOP START
+       IG$1        CL.W(K3)                      K3 := 0
+                   ENT.A.100D                    R1 := RANDOM(100)
+                   RJP.RANDOM
+                   STR.A.W(R1)
+                   COM.A.80D.YLESS               IF R1 >= 80 THEN K3 := 1
+                   JP.$+3
+                   ENT.Q.1
+                   STR.Q.W(K3)
+                   COM.A.95D.YLESS               IF R1 >= 95 THEN K3 := 2
+                   JP.$+3
+                   ENT.Q.2
+                   STR.Q.W(K3)
+                   COM.A.98D.YLESS               IF R1 >= 98 THEN K3 = 3    
+                   JP.$+3
+                   ENT.Q.3D
+                   STR.Q.W(K3)
+                   ENT.Q.W(K3)                   K9 := K9 + K3
+                   RPL.Y+Q.W(K9)
+                   CL.W(BB3)                     B3 := 0
+                   ENT.A.100D                    IF RANDOM(100)>=96 THEN B3:=1
+                   RJP.RANDOM
+                   COM.A.96D.YMORE
+                   RPL.Y+1.W(BB3)
+                   ENT.Q.W(BB3)                  B9 := B9 + B3
+                   RPL.Y+Q.W(BB9)
+                   
+                   
+                   ENT.Q.B1                      CALC OFFSET TO G[I,J] TO B3
+                   MUL.9D
+                   ADD.Q.B2
+                   STR.Q.A
+                   ENT.B3.A
+                   ENT.Q.W(K3)                   K3*100+B3*10+FNR
+                   MUL.100D
+                   STR.Q.W(I$TEMP)
+                   ENT.Q.W(BB3)
+                   MUL.10D
+                   RPL.Y+Q.W(I$TEMP)
+                   RJP.FNR
+                   ADD.A.W(I$TEMP)
+                   STR.A.W(G+B3)                 G[I,J]:=K3*100+B3*10+FNR
+                   
+                   BSK.B2.7D                     J <= 8?
+                   JP.IG$1                       YES
+                   BSK.B1.7D                     I <= 8?
+                   JP.IG$1                       YES
+                   COMMENT.FOR LOOP END
+                   
+                   ENT.A.W(BB9).AZERO            B9 = 0?
+                   JP.IG$2                       NO
+                   RJP.GOFFSET                   CALC OFFSET TO G[Q1,Q2]
+                   ENT.A.W(G+B7)
+                   COM.A.201D.YMORE              G[Q1,Q2] < 200?
+                   JP.IG$3                       NO
+                   ADD.A.100D                    G[Q1,Q2] := G[Q1,Q2] + 100
+                   STR.A.W(G+B7)
+                   RPL.Y+1.W(K9)                 K9 := K9 + 1
+       IG$3        ENT.A.1                       B9 := 1
+                   STR.A.W(BB9)
+                   ENT.Q.10D                     G[Q1,Q2] := G[Q1,Q2] + 10
+                   RPL.Y+Q.W(G+B7)
+                   RJP.FNR                       Q1 := FNR
+                   STR.A.W(Q1)
+                   RJP.FNR                       Q2 := FNR
+                   STR.A.W(Q2)
+                   
+       IG$2        ENT.A.W(K9)                   K7 := K9
+                   STR.A.W(K7)
+                   ENT.A.W(BB9)                  B9 <> 1?
+                   SUB.A.1.ANOT
+                   JP.IG$4                       NO
+                   ENT.A.W(I$S)                  SX := 'S'
+                   STR.A.W(I$X$)
+                   ENT.A.W(I$ARE)                SX0 = ' ARE '
+                   STR.A.W(I$X0$)
+                   
+                   COMMENT.PUT VARIABLE DATA INTO ORDERS
+                   
+       IG$4        ENT.Q.W(K9)
+                   RJP.INT2STR
+                   STR.Q.W(P$KLINGONS)
+                   
+                   ENT.Q.W(T0)
+                   ADD.Q.W(T9)
+                   RJP.INT2STR
+                   STR.Q.W(P$ENDDT)
+                   
+                   ENT.Q.W(T9)
+                   RJP.INT2STR
+                   STR.Q.W(P$DAYS)
+                   
+                   ENT.Q.W(BB9)
+                   RJP.INT2STR
+                   STR.Q.W(P$BASES)
+                   
+                   ENT.Q.W(I$X0$)
+                   STR.Q.W(P$X0)
+                   ENT.Q.W(I$X$)
+                   STR.Q.W(P$X)
+                   
+                   ENT.B1.PLANS
+                   RJP.TYPE
+                   RJP.GETC
+                   
+                   EXIT
+                   
+       I$X$        RESERVE.1
+       I$X0$       RESERVE.1
+       I$S         FD.0.S
+       I$ARE       FD.0. ARE
+       I$IS        FD.0. IS
+       I$TEMP      RESERVE.1
+       
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. RETURN A RANDOM FLOATING POINT VALUE, FROM 0 TO 1.
+                   COMMENT.
+                   COMMENT. THIS ACTUALLY RETURNS A SCALED INTEGER VALUE IN A.
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       RND         ENTRY
+       
+                   ENT.A.999D
+                   RJP.RANDOM
+       
+                   EXIT
+       
+       RND$Q       RESERVE.1
+       R$MAX       536870000D                    MAXINT
+       R$MAX1      536869000D                    MAXINT - 1  
+       
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. QUADRANT NAME IN G2$ FROM Z4,Z5 (=Q1,Q2)
+                   COMMENT. CALL WITH G5=1 TO GET REGION NAME ONLY
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       QUADNAME    ENTRY
+       
+                   RPT.4.ADV                     CLEAR RESULT
+                   CL.W(G2$)
+                   
+                   ENT.A.W(Z5)                   Z5<=4?
+                   COM.A.5D.YMORE                
+                   JP.QN$1                       NO
+                   
+                   ENT.Q.W(Z4)                   GET REGION NAME FROM REGIONS1
+                   SUB.Q.1
+                   MUL.3D
+                   STR.Q.A
+                   ENT.B1.A
+                   ENT.A.W(REGIONS1+B1)
+                   STR.A.W(G2$)
+                   ENT.A.W(REGIONS1+1+B1)
+                   STR.A.W(G2$+1)
+                   ENT.A.W(REGIONS1+2+B1)
+                   STR.A.W(G2$+2)
+                   JP.QN$2
+       
+       QN$1        ENT.Q.W(Z4)                   GET REGION NAME FROM REGIONS2
+                   SUB.Q.1
+                   MUL.3D
+                   STR.Q.A
+                   ENT.B1.A
+                   ENT.A.W(REGIONS2+B1)
+                   STR.A.W(G2$)
+                   ENT.A.W(REGIONS2+1+B1)
+                   STR.A.W(G2$+1)
+                   ENT.A.W(REGIONS2+2+B1)
+                   STR.A.W(G2$+2)
+
+       QN$2        ENT.A.W(G5)                   G5<>1?
+                   SUB.A.1.ANOT
+                   JP.QN$3                       NO
+                   
+                   ENT.B1.W(Z5)                  GET REGION NUMBER FROM REGIONS3
+                   BJP.B1.$+1
+                   ENT.A.W(REGIONS3+B1)
+                   STR.A.W(G2$+3)
+                          
+       QN$3        EXIT 
+       
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. RETURN OFFSET INTO Q$ USING Z1, Z2 AS INDICES
+                   COMMENT. 
+                   COMMENT. OFFSET RETURNED IN B7
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       QOFFSET     ENTRY
+
+                   STR.A.W(QO$A)
+                   ENT.A.W(Z1)                   CALC OFFSET INTO Q$
+                   SUB.A.1
+                   LSH.A.3
+                   ADD.A.W(Z2)
+                   SUB.A.1
+                   ENT.B7.A
+                   ENT.A.W(QO$A)
+
+                   EXIT
+                   
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. RETURN OFFSET INTO Z USING Q1, Q2 AS INDICES
+                   COMMENT. 
+                   COMMENT. OFFSET RETURNED IN B7
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       ZOFFSET     ENTRY
+
+                   STR.A.W(QO$A)
+                   ENT.A.W(Q1)                   CALC OFFSET INTO Q$
+                   SUB.A.1                   
+                   LSH.A.3
+                   ADD.A.W(Q2)
+                   SUB.A.1
+                   ENT.B7.A
+                   ENT.A.W(QO$A)
+
+                   EXIT
+                   
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. RETURN OFFSET INTO G USING Q1, Q2 AS INDICES
+                   COMMENT. 
+                   COMMENT. OFFSET RETURNED IN B7
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       GOFFSET     ENTRY
+
+                   STR.A.W(QO$A)
+                   STR.Q.W(QO$Q)
+                   ENT.Q.W(Q1)                   CALC OFFSET INTO Q$
+                   SUB.Q.1                   
+                   MUL.9D
+                   ADD.Q.W(Q2)
+                   SUB.Q.1
+                   STR.Q.A
+                   ENT.B7.A
+                   ENT.A.W(QO$A)
+                   ENT.Q.W(QO$Q)
+
+                   EXIT
+                   
+       QO$A        RESERVE.1
+       QO$Q        RESERVE.1 
+       
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. STRING COMPARISON IN QUADRANT ARRAY 
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       STRCOMP     ENTRY
+
+                   RJP.QOFFSET
+                   ENT.A.1
+                   STR.A.W(Z3)                   DEFAULT TO EQUAL
+                   ENT.A.W(Q$+B7)
+                   SUB.A.W(A$).AZERO
+                   CL.W(Z3)                      SHOW NOT EQUAL                   
+                          
+                   EXIT                   
+                                           
+                                                              
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. INSERT IN STRING ARRAY FOR QUADRANT 
+                   COMMENT.
+                   COMMENT. QUADRANT IS AN 8X8 ARRAY OF WORDS
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       INSINQUAD   ENTRY
+       
+                   RJP.QOFFSET
+                   ENT.A.W(A$)                   Q$+B7 := A$
+                   STR.A.W(Q$+B7)
+       
+                   EXIT 
+                   
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. FIND AN EMPTY PLACE IN THE QUADRANT ARRAY
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       FINDEMPTY   ENTRY
+       
+       FE$1        RJP.FNR                       R1:=FNR
+                   STR.A.W(R1)
+                   STR.A.W(Z1)                   Z1:=R1
+                   RJP.FNR                       R2:=FNT
+                   STR.A.W(R2)
+                   STR.A.W(Z2)                   Z2:=R2
+                   ENT.A.W(SPACES)               A$:='   '
+                   STR.A.W(A$)
+                   RJP.STRCOMP
+                   ENT.A.W(Z3).ANOT              Z3=0?
+                   JP.FE$1                       YES
+       
+                   EXIT                                     
+
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. COME HERE ANY TIME NEW QUADRANT ENTERED
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       NEWQUAD     ENTRY
+       
+                   ENT.A.W(Q1)                   Z4 := Q1
+                   STR.A.W(Z4)
+                   ENT.A.W(Q2)                   Z5 := Q2
+                   STR.A.W(Z5)
+                   CL.W(K3)                      K3 := 0
+                   CL.W(BB3)                     B3 := 0
+                   CL.W(S3)                      S3 := 0
+                   CL.W(G5)                      G5 := 0
+                   RJP.RND                       D4 := 0.5 * RND
+                   ENT.Q.A
+                   CL.A
+                   DIV.2D
+                   STR.Q.W(D4)
+                   RJP.ZOFFSET                   CALC OFFSET INTO Z
+                   ENT.B1.B7
+                   RJP.GOFFSET                   CALC OFFSET INTO G
+                   ENT.A.W(G+B7)                 Z[Q1,Q2] := G[Q1,Q2]
+                   STR.A.W(Z+B1)
+                   
+                   ENT.A.0                       Q1>=1 AND Q1<=8?
+                   ENT.Q.8D
+                   COM.AQ.W(Q1).YIN
+                   JP.NQ$1                       NO
+                   COM.AQ.W(Q2).YIN              Q2>=1 AND Q2<=8?
+                   JP.NQ$1                       NO
+                   RJP.QUADNAME
+                   ENT.Q.W(T)                    T0<>T?
+                   RJP.TRUNC
+                   SUB.Q.W(T0).QZERO
+                   JP.NQ$2                YES
+                   
+                   MOVE.4.G2$.QB$QUAD
+                   ENT.B1.QBEGIN
+                   RJP.TYPE
+                   JP.NQ$3
+                   
+       NQ$2        MOVE.4.G2$.QE$QUAD
+                   ENT.B1.QENTER
+                   RJP.TYPE
+                   
+       NQ$3        NO-OP                         END IF T0<>T 
+                   RJP.GOFFSET                   CALC OFFSET INTO G
+                   ENT.Q.W(G+B7)                 K3 := G[Q1,Q2] DIV 100
+                   CL.A
+                   DIV.100D
+                   STR.Q.W(K3)
+                   
+                   ENT.Q.A                       B3:=(G[Q1,Q2] div 10)-10*K3
+                   CL.A
+                   DIV.10D
+                   STR.Q.W(BB3)
+                   
+                   STR.A.W(S3)                   S3:=G[Q1,Q2]-100*K3-10*B3
+            
+                   ENT.A.W(K3).ANOT              K3 <> 0?
+                   JP.NQ$4                       NO
+                   ENT.B1.COMBATAREA
+                   RJP.TYPE
+                   ENT.A.W(S)                    S <= 200
+                   COM.A.201D.YMORE
+                   JP.NQ$4                       NO
+                   ENT.B1.SHIELDSLOW
+                   RJP.TYPE
+                   
+       NQ$4        ENT.B1.0                      FOR I:=1 TO 3
+       NQ$5        CL.W(K+B1)                    K[I,1]:=0
+                   CL.W(K+1+B1)                  K[I,2]:=0 
+                   ENT.B1.2+B1
+                   BSK.B1.8D
+                   JP.NQ$5
+
+       NQ$1        NO-OP                         END IF Q1>=1 ...
+       
+                   CL.W(K+2D)                    For I:=1 to 3 do K[I,3]:=0
+                   CL.W(K+5D)
+                   CL.W(K+8D)
+                   ENT.A.W(SPACES)               For I:=1 to 192 do sQ[I]:=' '
+                   RPT.64D.ADV
+                   STR.A.W(Q$)
+
+                   COMMENT.POSITION ENTERPRISE IN QUADRANT, THEN PLACE "K3"
+                   COMMENT.KLINGONS, "B3" STARBASES, & "S3" STARS ELSEWHERE.                      }
+       
+                   ENT.A.W(ENTPRISE)             SA='<*>'
+                   STR.A.W(A$)
+                   ENT.Q.W(S1)                   Z1:=Round(S1)
+                   RJP.ROUND
+                   STR.Q.W(Z1)                          
+                   ENT.Q.W(S2)                   Z2:=Round(S2)
+                   RJP.ROUND
+                   STR.Q.W(Z2)
+                   RJP.INSINQUAD
+                   
+                   ENT.A.W(K3)                   K3>=1?
+                   COM.A.1.YLESS
+                   JP.NQ$6                       NO
+                   
+                   COMMENT.----DEBUG                  
+                   COM.A.4.YMORE                 K3<=3?
+                   JP.$.STOP                     NO
+                   COMMENT.----END DEBUG
+                   
+                   ENT.B1.1                      FOR I:=1 TO K3
+                   ENT.B2.0
+                   
+       NQ$7        RJP.FINDEMPTY
+                   ENT.A.W(KLINGON)              A$='+K+'
+                   STR.A.W(A$)
+                   ENT.A.W(R1)                   Z1:=R1
+                   STR.A.W(Z1)
+                   STR.A.W(K+B2)                 K[I,1]:=R1
+                   ENT.A.W(R2)                   Z2:=R2
+                   STR.A.W(Z2)
+                   STR.A.W(K+1+B2)               K[I,2]:=R2
+                   RJP.RND                       K[I,3]:=ROUND(S9*(RND+0.5))
+                   ADD.A.500D
+                   ENT.Q.A
+                   MUL.W(S9)
+                   RJP.ROUND
+                   STR.Q.W(K+2+B2)
+                   RJP.INSINQUAD
+       
+                   ENT.B2.3+B2                   END OF FOR LOOP
+                   BSK.B1.W(K3)
+                   JP.NQ$7 
+                   
+       NQ$6        ENT.A.W(BB3)                  B3>=1?
+                   COM.A.1.YLESS
+                   JP.NQ$8                       NO
+
+                   COMMENT.----DEBUG
+                   COM.A.2.YMORE                 B3<=1?
+                   JP.$.STOP                     NO
+                   COMMENT.----END DEBUG
+                   
+                   RJP.FINDEMPTY
+                   ENT.A.W(BASE)                 A$='>!<'
+                   STR.A.W(A$)
+                   ENT.A.W(R1)                   Z1:=R1
+                   STR.A.W(Z1)
+                   STR.A.W(BB4)                  B4:=R1
+                   ENT.A.W(R2)                   Z2:=R2
+                   STR.A.W(Z2)
+                   STR.A.W(BB5)                  B5:=R2
+                   RJP.INSINQUAD
+       
+       NQ$8        ENT.A.W(S3)                   S3>=1?
+                   COM.A.1.YLESS
+                   JP.NQ$10                      NO
+                   
+                   
+                   COMMENT.DEBUG
+                   COM.A.10D.YMORE               S3<=9?
+                   JP.$.STOP                     NO
+                   COMMENT.END DEBUG
+                   
+                   ENT.B1.1                      FOR I:=1 TO S3
+
+       NQ$9        RJP.FINDEMPTY
+                   ENT.A.W(STAR)                 A$=' * '
+                   STR.A.W(A$)
+                   ENT.A.W(R1)                   Z1:=R1
+                   STR.A.W(Z1)
+                   ENT.A.W(R2)                   Z2:=R2
+                   STR.A.W(Z2)
+                   RJP.INSINQUAD
+       
+                   BSK.B1.W(S3)                  END OF FOR LOOP
+                   JP.NQ$9
+                   
+       NQ$10       EXIT 
+                   
+       NQ$TEMP     RESERVE.1                                                       
+       NQ$TEMP2    RESERVE.1
+       
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. SHORT RANGE SENSOR SCAN & STARTUP SUBROUTINE
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       SHORTSCAN   ENTRY
+       
+                   ENT.Q.W(S1)                   For I:=Round(S1)-1 to Round(S1)+1
+                   RJP.ROUND
+                   SUB.Q.1
+                   STR.Q.W(SS$I)
+                   ADD.Q.3
+                   STR.Q.W(SS$LASTI)
+                   
+       SS$5        ENT.Q.W(S2)                   For J:=Round(S2)-1 to Round(S2)+1 do
+                   RJP.ROUND
+                   ADD.Q.1
+                   STR.Q.W(SS$J)
+                   ADD.Q.3
+                   STR.Q.W(SS$LASTJ)
+                   
+       SS$3        ENT.A.W(SS$I)                 I>=1?
+                   COM.A.1.YLESS
+                   JP.SS$4                       NO
+                   COM.A.9D.YMORE                I<=8
+                   JP.SS$4                       NO
+                   ENT.A.W(SS$J)                 J>=1?
+                   COM.A.1.YLESS
+                   JP.SS$4                       NO
+                   COM.A.9D.YMORE                J<=8
+                   JP.SS$4                       NO
+
+                   ENT.A.W(BASE)                 SA='>!<'
+                   STR.A.W(A$)
+                   ENT.A.W(SS$I)                 Z1:=I
+                   STR.A.W(Z1)
+                   ENT.A.W(SS$J)                 Z2:=J
+                   STR.A.W(Z2)
+                   RJP.STRCOMP                   STRINGCOMPARE
+                   ENT.A.W(D0).AZERO             DO=0?
+                   JP.SS$4                       NO
+                   ENT.A.W(Z3)                   Z3=1?
+                   SUB.A.1.AZERO
+                   JP.SS$4                       NO
+                   RPL.Y+1.W(D0)                 DO:=1
+                   ENT.A.W(DOCKED)               SC:='DOCKED'
+                   STR.A.W(C$)
+                   ENT.A.W(DOCKED+1)
+                   STR.A.W(C$+1)
+                   ENT.A.W(E0)                   E:=E0
+                   STR.A.W(E)
+                   ENT.A.W(P0)                   P:=P0
+                   STR.A.W(P)
+                   ENT.B1.SHIELDSDRP
+                   RJP.TYPE
+                   CL.W(S)
+
+       SS$4        RPL.Y+1.W(SS$J)               BUMP J
+                   COM.A.W(SS$LASTJ).YLESS       LOOP DONE?
+                   JP.SS$3                       NO
+                   
+                   RPL.Y+1.W(SS$I)               BUMP I
+                   COM.A.W(SS$LASTI).YLESS       LOOP DONE?
+                   JP.SS$5                       NO
+                   
+                   ENT.A.W(D0).AZERO             D0=0?
+                   JP.SS$6                       NO
+                   ENT.A.W(K3).ANOT              K3>0
+                   JP.SS$7                       NO
+                   ENT.A.W(RED)                  YES, SC:='RED'
+                   STR.A.W(C$)
+                   ENT.A.W(RED+1)
+                   STR.A.W(C$+1)
+                   JP.SS$6
+
+       SS$7        ENT.Q.W(EO)                   E<E0/10?                   
+                   CL.A
+                   DIV.10D
+                   STR.Q.W(SS$TEMP)
+                   ENT.A.W(E)
+                   COM.A.W(SS$TEMP).YMORE
+                   JP.SS$8                       NO
+                   ENT.A.W(YELLOW)               YES, CS:='YELLOW'
+                   STR.A.W(C$)
+                   ENT.A.W(YELLOW+1)
+                   STR.A.W(C$+1)
+                   JP.SS$8
+                   
+       SS$8        ENT.A.W(GREEN)                SC := 'GREEN'
+                   STR.A.W(C$)
+                   ENT.A.W(GREEN+1)
+                   STR.A.W(C$+1)                   
+
+       SS$6        ENT.A.W(D+2).ANEG             D2<0
+                   JP.SS$9                       NO
+                   ENT.B1.W(SHRTSENOUT)
+                   RJP.TYPE
+                   JP.SS$10
+                   
+                   COMMENT.PRINT QUADRANT MAP
+                   
+       SS$9        ENT.B1.SO1$
+                   RJP.TYPE
+                   
+                   ENT.B5.0                      COPY QUADRANT MAP TO BUFFER
+       SS$1        ENT.B6.0
+       SS$2        ENT.A.W(Q$+B5)
+                   SEL.SET.W(SS$SPACE)           PAD TO 4 CHARACTERS
+                   STR.A.W(SS$BFR+B6)
+                   ENT.B5.1+B5
+                   BSK.B6.7
+                   JP.SS$2
+                   ENT.B1.SS$BFR
+                   RJP.TYPE
+
+                   ENT.A.B5                      STAR DATE
+                   ENT.Q.777
+                   COM.MASK.8D.AZERO
+                   JP.SS$20
+                   ENT.Q.W(T)
+                   RJP.FLT2STR
+                   STR.Q.W(SS$DT)
+                   STR.A.W(SS$DT+1)
+                   ENT.B1.SS$STARDT
+                   RJP.TYPE
+                   JP.SS$30
+                   
+       SS$20       COM.MASK.16D.AZERO            CONDITION
+                   JP.SS$21
+                   ENT.A.W(C$)
+                   STR.A.W(SS$C)
+                   ENT.A.W(C$+1)
+                   STR.A.W(SS$C+1)
+                   ENT.B1.SS$COND
+                   RJP.TYPE
+                   JP.SS$30
+
+       SS$21       COM.MASK.24D.AZERO            QUADRANT
+                   JP.SS$22
+                   ENT.Q.W(Q1)
+                   RJP.INT2STR
+                   STR.Q.W(SS$Q1)
+                   ENT.Q.W(Q2)
+                   RJP.INT2STR
+                   STR.Q.W(SS$Q2)
+                   ENT.B1.SS$QUAD
+                   RJP.TYPE
+                   JP.SS$30
+                   
+       SS$22       COM.MASK.32D.AZERO            SECTOR
+                   JP.SS$23
+                   ENT.Q.W(S1)
+                   RJP.ROUND
+                   RJP.INT2STR
+                   STR.Q.W(SS$S1)                   
+                   ENT.Q.W(S2)
+                   RJP.ROUND
+                   RJP.INT2STR
+                   STR.Q.W(SS$S2)                   
+                   ENT.B1.SS$SECT
+                   RJP.TYPE
+                   JP.SS$30
+                   
+       SS$23       COM.MASK.40D.AZERO            TORPEDOS
+                   JP.SS$24
+                   ENT.Q.W(P)
+                   RJP.INT2STR
+                   STR.Q.W(SS$T)
+                   ENT.B1.SS$TORPS
+                   RJP.TYPE
+                   JP.SS$30
+                   
+       SS$24       COM.MASK.48D.AZERO            TTL ENERGY
+                   JP.SS$25
+                   ENT.Q.W(E)
+                   ADD.Q.W(S)
+                   RJP.INT2STR
+                   STR.Q.W(SS$E)
+                   ENT.B1.SS$ENERGY
+                   RJP.TYPE
+                   JP.SS$30
+                   
+       SS$25       COM.MASK.56D.AZERO            SHIELDS
+                   JP.SS$26
+                   ENT.Q.W(S)
+                   RJP.INT2STR
+                   STR.Q.W(SS$S)
+                   ENT.B1.SS$SHIELDS
+                   RJP.TYPE
+                   JP.SS$30
+                   
+       SS$26       ENT.Q.W(K9)                   KLINGONS
+                   RJP.INT2STR
+                   STR.Q.W(SS$K)
+                   ENT.B1.SS$KLINGNS
+                   RJP.TYPE
+                   
+       SS$30       ENT.B6.0
+                   ENT.A.B5
+                   COM.A.64D.YLESS
+                   JP.SS$1
+       
+                   ENT.B1.SO1$
+                   RJP.TYPE
+                   
+       SS$10       EXIT 
+       
+       SS$BFR      RESERVE.8D
+                   77
+       SS$I        RESERVE.1
+       SS$J        RESERVE.1                                                        
+       SS$LASTI    RESERVE.1
+       SS$LASTJ    RESERVE.1
+       SS$TEMP     RESERVE.1
+       SS$STARDT   FD.6.        STARDATE              *
+       SS$DT       RESERVE.2
+                   040377
+       SS$COND     FD.6.        CONDITION             *
+       SS$C        RESERVE.2
+                   040377
+       SS$QUAD     FD.6.        QUADRANT              *
+       SS$Q1       RESERVE.1
+                   5605      
+       SS$Q2       RESERVE.1
+                   040377                   
+       SS$SECT     FD.6.        SECTOR                *
+       SS$S1       RESERVE.1
+                   5605      
+       SS$S2       RESERVE.1
+                   040377                   
+       SS$TORPS    FD.6.        PHOTON TORPEDOES      *
+       SS$T        RESERVE.1
+                   040377
+       SS$ENERGY   FD.6.        TOTAL ENERGY          *
+       SS$E        RESERVE.1
+                   040377
+       SS$SHIELDS  FD.6.        SHIELDS               *
+       SS$S        RESERVE.1
+                   040377
+       SS$KLINGNS  FD.6.        KLINGONS REMAINING    *
+       SS$K        RESERVE.1
+                   040377
+       SS$SPACE    0500 
+       
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. MOVE KLINGONS
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       KLINGMOVE   ENTRY
+       
+                   EXIT
+                   
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. REPAIR DAMAGE
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       REPAIRDMG   ENTRY
+       
+                   EXIT
+                   
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. REDUCE AVAILABLE ENERGY BY AMOUNT
+                   COMMENT. USED TO MOVE THE ENTERPRISE
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       MANENERGY   ENTRY
+       
+                   ENT.Q.W(N)                    E:=E-N-10
+                   ADD.Q.10D
+                   RPL.Y-Q.W(E).ANEG             E<0?
+                   JP.ME$99                      NO
+             
+                   ENT.B1.MANSHIELD
+                   RJP.TYPE
+                   ENT.Q.W(E)                    S:=S+E
+                   RPL.Y+Q.W(S).APOS             S<0?
+                   CL.W(S)                       YES, S:=0
+                   CL.W(E)                       E:=0
+                   
+       ME$99       EXIT 
+                   
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. EXCEEDED QUADRANT LIMITS
+                   COMMENT.++++++++++++++++++++++++++++                  
+                   
+       EXCEEDQUAD  ENTRY
+       
+                   ENT.Q.W(Q1)                   Q1*8 (AND CVT TO FLOAT)
+                   MUL.8000D
+                   STR.Q.W(EQ$SAVE)
+                   ENT.Q.W(N)                    N*X1
+                   MUL.W(RX1)
+                   ADD.Q.W(RX)                   X+N*X1
+                   ADD.Q.W(EQ$SAVE)              8*Q1+X+N*X1
+                   STR.Q.W(RX)
+                   
+                   ENT.Q.W(Q2)                   Q2*8 (AND CVT TO FLOAT)
+                   MUL.8000D
+                   STR.Q.W(EQ$SAVE)
+                   ENT.Q.W(N)                    N*X2
+                   MUL.W(RX2)
+                   ADD.Q.W(Y)                    Y+N*X2
+                   ADD.Q.W(EQ$SAVE)              8*Q2+Y+N*X2
+                   STR.Q.W(Y)
+                   
+                   ENT.Q.W(RX)                   Q1:=TRUNC(X/8)
+                   CL.A
+                   DIV.8D
+                   RJP.TRUNC
+                   STR.Q.W(Q1)
+                   
+                   ENT.Q.W(Y)                    Q2:=TRUNC(Y/8)
+                   CL.A
+                   DIV.8D
+                   RJP.TRUNC
+                   STR.Q.W(Q2)
+                   
+                   ENT.Q.W(Q1)                   S1:=TRUNC(X-Q1*8)
+                   MUL.8000D
+                   CP.Q
+                   ADD.Q.W(RX)
+                   RJP.TRUNC
+                   MUL.1000D                     
+                   STR.Q.W(S1)
+                   
+                   ENT.Q.W(Q2)                   S2:=TRUNC(Y-Q2*8)
+                   MUL.8000D
+                   CP.Q
+                   ADD.Q.W(Y)
+                   RJP.TRUNC
+                   MUL.1000D
+                   STR.Q.W(S2)
+                   
+                   ENT.A.W(S1).AZERO             S1=0?
+                   JP.EQ$1                       NO
+                   RPL.Y-1.W(Q1)                 Q1:=Q1-1
+                   ENT.Q.8000D                   S1:=8
+                   STR.Q.W(S1)
+                   
+       EQ$1        ENT.A.W(S2).AZERO             S2=0?
+                   JP.EQ$2                       NO
+                   RPL.Y-1.W(Q2)                 Q2:=Q2-1
+                   ENT.Q.8000D                   S2:=8
+                   STR.Q.W(S2)
+                   
+       EQ$2        CL.W(EQ$X5)                   X5:=0 CHECK IF OUTSIDE GALAXY                                      
+                   ENT.A.W(Q1)                   Q1<1?
+                   COM.A.1.YMORE
+                   JP.EQ$3                       NO
+                   ENT.Q.1
+                   STR.Q.W(EQ$X5)                X5:=1
+                   STR.Q.W(Q1)                   Q1:=1
+                   ENT.Q.1000D
+                   STR.Q.W(S1)                   S1:=1
+                   
+       EQ$3        COM.A.9D.YLESS                Q1>8?
+                   JP.EQ$4                       NO                   
+                   ENT.Q.1
+                   STR.Q.W(EQ$X5)                X5:=1
+                   ENT.Q.8D  
+                   STR.Q.W(Q1)                   Q1:=8
+                   ENT.Q.8000D
+                   STR.Q.W(S1)                   S1:=8
+                   
+       EQ$4        ENT.A.W(Q2)                   Q2<1?                   
+                   COM.A.1.YMORE
+                   JP.EQ$5                       NO
+                   ENT.Q.1
+                   STR.Q.W(EQ$X5)                X5:=1
+                   STR.Q.W(Q2)                   Q2:=1
+                   ENT.Q.1000D
+                   STR.Q.W(S2)                   S2:=1
+                   
+       EQ$5        COM.A.9D.YLESS                Q2>8?
+                   JP.EQ$6                       NO                   
+                   ENT.Q.1
+                   STR.Q.W(EQ$X5)                X5:=1
+                   ENT.Q.8D  
+                   STR.Q.W(Q2)                   Q2:=8
+                   ENT.Q.8000D
+                   STR.Q.W(S2)                   S2:=8
+                   
+       EQ$6        ENT.A.W(EQ$X5).ANOT           X5=0?
+                   JP.EQ$7
+                   ENT.Q.W(S1)
+                   RJP.ROUND
+                   RJP.INT2STR
+                   STR.Q.W(LG$S1)
+                   ENT.Q.W(S2)
+                   RJP.ROUND
+                   RJP.INT2STR
+                   STR.Q.W(LG$S2)
+                   ENT.Q.W(Q1)
+                   RJP.INT2STR
+                   STR.Q.W(LG$Q1)
+                   ENT.Q.W(Q2)
+                   RJP.INT2STR
+                   STR.Q.W(LG$Q2)
+                   ENT.B1.LEAVEGLXY
+                   RJP.TYPE
+                   RJP.ISEOT                     T>T0+T9?
+                   STR.Q.A.AZERO
+                   RJP.ENDOFTIME                 YES
+                   
+       EQ$7        ENT.Q.W(Q1)                   8*Q1
+                   MUL.8D
+                   ADD.Q.W(Q2)                   8*Q1+Q2
+                   STR.Q.W(EQ$SAVE)
+                   ENT.Q.W(Q4)                   8*Q4
+                   MUL.8D
+                   ADD.Q.W(Q5)                   8*Q4+Q5
+                   SUB.Q.W(EQ$SAVE).AZERO        8*Q1+Q2=8*Q4+Q5?
+                   JP.EQ$8                       NO
+                   ENT.Q.1
+                   STR.Q.W(MOVED)                IMOVED:=1
+                   JP.EQ$9
+                   
+       EQ$8        ENT.Q.W(T)                    T:=T+1
+                   ADD.Q.1000D
+                   STR.Q.W(T)
+                   RJP.MANENERGY
+                   RJP.NEWQUAD
+                   ENT.Q.2
+                   STR.Q.W(MOVED)                IMOVED:=2                   
+       
+       EQ$9        EXIT 
+                   
+       EQ$SAVE     RESERVE.1 
+       EQ$X5       RESERVE.1                                    
+                   
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. NAVIGATION COMMAND
+                   COMMENT.++++++++++++++++++++++++++++                   
+       
+       COURSECTL   ENTRY
+       
+                   ENT.B1.CC$COURSE
+                   RJP.TYPE
+                   RJP.GETFLT
+                   
+                   ENT.Y+Q.X(-9000D).ANOT        C1=9?
+                   ENT.Q.1000D                   YES, C1=1
+                   COM.Q.1000D.YMORE             C1<1 OR C1>9?
+                   COM.Q.9000D.YMORE
+                   JP.CC$BAD                     YES
+                   STR.Q.W(CC$C1)
+                   
+                   ENT.Q.8000D                   X:=8
+                   ENT.A.W(D+0).APOS             D[1]<0? 
+                   ENT.Q.200D                    YES, D:=0.2
+                   RJP.FLT2STR                   REQUEST WARP FACTOR
+                   STR.Q.W(CC$W)
+                   STR.A.W(CC$W+1)
+                   ENT.B1.CC$WARP
+                   RJP.TYPE
+                   RJP.GETFLT
+                   STR.Q.W(W1)
+                   
+                   ENT.A.W(D+0).APOS             D[1]<0? AND W1>0.2
+                   COM.Q.201D.YLESS              
+                   JP.CC$1                       NO
+                   ENT.B1.CC$WARPOUT             YES
+                   RJP.TYPE                     
+                   JP.CC$99                   
+                    
+       CC$1        COM.Q.1.YMORE
+                   COM.Q.8001D.YMORE
+                   JP.CC$BADWARP
+                   
+                   MUL.8D                        N:=ROUND(W1*8)
+                   RJP.ROUND
+                   STR.Q.W(N)
+                   ENT.Y-Q.W(E).ANEG             E-N<0?
+                   JP.CC$2                       NO
+                   ENT.Q.W(W1)                   TELL NOT ENOUGH ENERGY
+                   RJP.FLT2STR
+                   STR.Q.W(CC$W3)
+                   STR.A.W(CC$W3+1)
+                   ENT.B1.CC$INSUFFE
+                   RJP.TYPE
+                   
+                   ENT.Q.W(N)                    S>=N-E?
+                   SUB.Q.W(E)
+                   ENT.Y-Q.W(S).APOS
+                   JP.CC$99                      NO
+                   ENT.Q.W(D+6).APOS             D[7]>=0?
+                   JP.CC$99                      NO
+                   ENT.Q.W(S)                    TELL ENERGY USED FOR SHIELDS
+                   RJP.INT2STR
+                   STR.Q.W(CC$S)
+                   ENT.B1.CC$SHIELDE
+                   RJP.TYPE
+                   JP.CC$99
+                   
+                   
+       CC$2        RJP.KLINGMOVE
+                   RJP.REPAIRDMG
+                   
+                   COMMENT.BEGIN MOVING STARSHIP
+                   
+                   ENT.A.W(SPACES)
+                   STR.A.W(A$)
+                   ENT.Q.W(S1)                   Z1:=ROUND(S1)
+                   RJP.ROUND
+                   STR.Q.W(Z1)                   
+                   ENT.Q.W(S2)                   Z2:=ROUND(S2)
+                   RJP.ROUND
+                   STR.Q.W(Z2)
+                   RJP.INSINQUAD                 CLEAR ENTERPRISE LOCATION
+                   
+                   ENT.Q.W(CC$C1)                IC1:=ROUND(C1)
+                   RJP.ROUND
+                   STR.Q.W(CC$IC1)
+                   ADD.Q.1                       IIC1:=IC1+1
+                   STR.Q.W(CC$IIC1)
+                   
+                   ENT.A.W(CC$IC1)               OFFSET TO C[IC1]
+                   SUB.A.1
+                   LSH.A.1
+                   ENT.B1.A
+                   ENT.A.W(CC$IIC1)              OFFSET TO C[IIC1]
+                   SUB.A.1
+                   LSH.A.1
+                   ENT.B2.A
+                   
+                   ENT.Q.W(CC$IC1)               C1-IC1
+                   MUL.1000D
+                   CP.Q
+                   ADD.Q.W(CC$C1)
+                   ENT.A.W(C+B2)                 C[iiC1,1]-C[iC1,1]
+                   SUB.A.W(C+B1)
+                   MUL.A                         (C[iiC1,1]-C[iC1,1])*(C1-iC1)
+                   ADD.Q.W(C+B1)
+                   MUL.1000D
+                   STR.Q.W(RX1)                  X1:=C[iC1,1]+(C[iiC1,1]-C[iC1,1])*(C1-iC1)
+                   ENT.Q.W(S1)                   X:=S1
+                   STR.Q.W(RX)
+                   ENT.Q.W(S2)                   Y:=S2
+                   STR.Q.W(Y)
+                   
+                   ENT.Q.W(CC$IC1)               C1-IC1
+                   MUL.1000D
+                   CP.Q
+                   ADD.Q.W(CC$C1)
+                   ENT.A.W(C+1+B2)               C[iiC1,2]-C[iC1,2]
+                   SUB.A.W(C+1+B1)
+                   MUL.A                         (C[iiC1,2]-C[iC1,2])*(C1-iC1)
+                   ADD.Q.W(C+1+B1)
+                   MUL.1000D
+                   STR.Q.W(RX2)                  X2:=C[iC1,2]+(C[iiC1,2]-C[iC1,2])*(C1-iC1)
+                   ENT.Q.W(Q1)                   Q4:=Q1
+                   STR.Q.W(Q4)
+                   ENT.Q.W(Q2)                   Q5:=Q2
+                   STR.Q.W(Q5)
+                   
+                   CL.W(MOVED)                   IMOVED:=0
+                   ENT.B5.1                      INIT LOOP COUNT 
+       CC$5        ENT.A.W(MOVED).AZERO          IMOVED=0?
+                   JP.CC$10                      NO
+                   
+                   ENT.Q.W(RX1)                  S1:=S1+X1
+                   RPL.Y+Q.W(S1)
+                   ENT.Q.A
+                   RJP.ROUND                     Z1:=ROUND(S1)
+                   STR.Q.W(Z1)
+                   ENT.Q.W(RX2)                  S2:=S2+X2
+                   RPL.Y+Q.W(S2)
+                   ENT.Q.A
+                   RJP.ROUND                     Z2:=ROUND(S2)
+                   STR.Q.W(Z2)
+                   
+                   ENT.Q.W(Z1)  
+                   COM.Q.1.YLESS                 Z1<1?
+                   JP.CC$20                      YES
+                   COM.Q.9D.YMORE                Z1>=9?
+                   JP.CC$20                      YES
+                   ENT.Q.W(Z2)  
+                   COM.Q.1.YLESS                 Z2<1?
+                   JP.CC$20                      YES
+                   COM.Q.9D.YMORE                Z2>=9?
+                   JP.CC$20                      YES
+                   
+                   RJP.STRCOMP
+                   ENT.A.W(Z3).AZERO             Z3<>1? SECTOR EMPTY
+                   JP.CC$10
+                   
+                   ENT.Q.W(S1)                   S1:=ROUND(S1-X1)
+                   SUB.Q.W(RX1)
+                   RJP.ROUND
+                   MUL.1000D
+                   STR.Q.W(S1)
+                   RJP.TRUNC
+                   RJP.INT2STR
+                   STR.Q.W(CC$S1)
+                   ENT.Q.W(S2)                   S2:=ROUND(S2-X2)
+                   SUB.Q.W(RX2)
+                   RJP.ROUND
+                   MUL.1000D
+                   STR.Q.W(S2)
+                   RJP.TRUNC
+                   RJP.INT2STR
+                   STR.Q.W(CC$S2)
+                   ENT.B1.CC$BADNAV
+                   RJP.TYPE
+                   ENT.Q.1                       IMOVED:=1
+                   STR.Q.W(MOVED)                   
+                   
+       CC$10       BSK.B5.W(N)                   END OF FOR LOOP
+                   JP.CC$5
+                   
+                   ENT.Q.W(MOVED)                IMOVED<2?
+                   COM.Q.2.YMORE
+                   JP.CC$11                      NO
+                   
+                   ENT.Q.W(S1)                   
+                   RJP.ROUND
+                   STR.Q.W(Z1)                   Z1:=ROUND(S1)
+                   MUL.1000D
+                   STR.Q.W(S1)                   S1:=ROUND(S1)
+                   ENT.Q.W(S2)                   
+                   RJP.ROUND
+                   STR.Q.W(Z2)                   Z2:=ROUND(S2)
+                   MUL.1000D
+                   STR.Q.W(S2)                   S2:=ROUND(S2)
+                   ENT.Q.W(ENTPRISE)             SA='<*>'
+                   STR.Q.W(A$)
+                   RJP.INSINQUAD
+                   RJP.MANENERGY
+                   ENT.Q.1000D                   T8:=1
+                   STR.Q.W(CC$T8)
+                   ENT.Q.W(W1)                   W1<1?
+                   COM.Q.1000D.YMORE
+                   JP.CC$12                      NO
+                   MUL.10D                       T8:=TRUNC(W1*10)/10
+                   RJP.TRUNC
+                   MUL.100D
+                   STR.Q.W(CC$T8)
+       CC$12       RPL.Y+Q.W(T)                  T:=T+T8
+                   RJP.ISEOT                     T>T0+T9?
+                   STR.Q.A.AZERO
+                   RJP.ENDOFTIME                 YES
+                   
+       CC$11       RJP.SHORTSCAN                   
+                   
+                   JP.CC$99
+                          
+       CC$20       RJP.EXCEEDQUAD                QUADRANT LIMITS EXCEEDED
+                   JP.CC$10
+                                             
+                   JP.CC$99
+                   
+       CC$BADWARP  RJP.FLT2STR
+                   STR.Q.W(CC$W2)
+                   STR.A.W(CC$W2+1)
+                   ENT.B1.CC$WARPERR
+                   RJP.TYPE
+                   JP.CC$99                                     
+                   
+       CC$BAD      ENT.B1.CC$ERROR
+                   RJP.TYPE
+                                
+       CC$99       EXIT
+       
+       CC$T8       RESERVE.1
+       CC$C1       RESERVE.1
+       CC$IC1      RESERVE.1
+       CC$IIC1     RESERVE.1
+       CC$COURSE   FD.0.COURSE (0-9)?
+                   0577                   
+       CC$ERROR    FD.0.   LT. SULU REPORTS, 'INCORRECT COURSE DATA, SIR!'
+                   040377  
+       CC$WARP     FD.0.WARP FACTOR (0-
+       CC$W        RESERVE.2
+                   FD.0.)?
+                   0577
+       CC$X        RESERVE.1
+       CC$WARPOUT  FD.0.WARP ENGINES ARE DAMAGED. MAXIMUM SPEED = WARP 0.2
+                   040377
+       CC$WARPERR  FD.0.   CHIEF ENGINERR SCOTT REPORTS 'THE ENGINES WON'T TAKE
+                   FD.0. WARP
+                   05
+       CC$W2       RESERVE.2
+                   FD.0.'!
+                   040377
+       CC$INSUFFE  FD.0.ENGINEERING REPORTS 'INSUFFICIENT ENERGY AVAILABLE
+                   0403
+                   FD.0.    FOR MANEUVERING AT WARP '
+       CC$W3       RESERVE.2
+                   FD.0.' !'
+                   040377                                      
+       CC$SHIELDE  FD.0.DEFLECTOR CONTROL ROOM ACKNOWLEGES 
+       CC$S        RESERVE.1
+                   FD.0. UNITS OF ENERGY
+                   0403
+                   FD.0.    PRESENTLY DEPLOYED TO SHIELDS.
+                   040377
+       CC$BADNAV   FD.0.WARP ENGINES SHUT DOWN AT SECTOR
+                   05
+       CC$S1       RESERVE.1
+                   FD.0. ,
+                   05
+       CC$S2       RESERVE.1
+                   FD.0. DUE TO BAD NAVIGATION
+                   040377                                      
+                                      
+                   
+                   COMMENT.++++++++++++++++++++++++++++++++
+                   COMMENT. LONG RANGE SCANNERS
+                   COMMENT.++++++++++++++++++++++++++++++++
+                   
+       LONGSCAN    ENTRY
+       
+                   ENT.A.W(D+2).ANEG             D[3]<0?
+                   JP.LS$1                       NO
+                   ENT.B1.LONGSENOUT
+                   RJP.TYPE
+                   JP.LS$99
+
+       LS$1        ENT.Q.W(Q1)
+                   RJP.INT2STR
+                   STR.Q.W(LS$Q1)
+                   ENT.Q.W(Q2)
+                   RJP.INT2STR
+                   STR.Q.W(LS$Q2)
+                   ENT.B1.LS$HDR
+                   RJP.TYPE
+                   ENT.B1.SO2$
+                   RJP.TYPE 
+                   
+                   ENT.A.W(Q1)                   FOR I:=Q1-1 TO Q1+1
+                   SUB.A.1
+                   STR.A.W(LS$I)
+                   ADD.A.3
+                   STR.A.W(LS$LASTI)                 
+                   
+       LS$2        ENT.B1.LS$COLON
+                   RJP.TYPE
+                   
+                   ENT.A.W(Q2)                   FOR J:=Q2-1 TO Q2+1
+                   SUB.A.1
+                   STR.A.W(LS$J)
+                   ADD.A.3
+                   STR.A.W(LS$LASTJ)       
+       
+       LS$3        ENT.A.W(LS$STARS)             DEFAULT TO ***
+                   SEL.SET.W(LS$SPACE)
+                   STR.A.W(LS$BFR)
+                   ENT.A.W(LS$I)                 I>0?
+                   COM.A.1.YLESS
+                   JP.LS$4                       NO
+                   COM.A.8D.YMORE                I<9?
+                   JP.LS$4                       NO
+                   ENT.A.W(LS$J)                 J>0          
+                   COM.A.1.YMORE
+                   COM.A.9D.YMORE                YES, J<9?
+                   JP.LS$4                       NO
+              
+                   ENT.Q.W(LS$I)                 OFFSET INTO G
+                   SUB.Q.1
+                   MUL.9D
+                   ADD.Q.W(LS$J)
+                   SUB.Q.1
+                   STR.Q.A
+                   ENT.B1.A
+                   ENT.Q.W(G+B1)
+                   RJP.INT2STR3
+                   STR.Q.A
+                   SEL.SET.W(LS$SPACE)
+                   STR.A.W(LS$BFR)
+              
+       LS$4        ENT.B1.LS$BFR
+                   RJP.TYPE
+                                 
+                   RPL.Y+1.W(LS$J)               END OF FOR LOOP
+                   COM.A.W(LS$LASTJ).YLESS
+                   JP.LS$3
+                   
+                   ENT.B1.LS$COLON
+                   RJP.TYPE
+                   ENT.B2.1
+                   RJP.LINES
+                   
+                   RPL.Y+1.W(LS$I)
+                   COM.A.W(LS$LASTI).YLESS
+                   JP.LS$2  
+                   
+                   ENT.B1.SO2$
+                   RJP.TYPE          
+                   
+       LS$99       EXIT
+       
+       LS$I        RESERVE.1     
+       LS$LASTI    RESERVE.1
+       LS$J        RESERVE.1
+       LS$LASTJ    RESERVE.1                   
+       LS$HDR      FD.0.LONG RANGE SCAN FOR QUADRANT
+                   05
+       LS$Q1       RESERVE.1
+                   5605
+       LS$Q2       RESERVE.1
+                   040377
+       LS$COLON    FD.0.:
+                   0577
+       LS$STARS    FD.0.***
+       LS$SPACE    0500
+       LS$BFR      RESERVE.1
+                   0577
+                   
+       KLINGSHT    ENTRY
+       
+                   EXIT                   
+                   
+                   COMMENT.+++++++++++++++++++++++++++++
+                   COMMENT. NO ENEMIES IN SECTOR
+                   COMMENT.+++++++++++++++++++++++++++++
+                   
+       NOENEMY     ENTRY
+       
+                   ENT.B1.NOENEMIES
+                   RJP.TYPE
+                   
+                   EXIT 
+                   
+                   COMMENT.+++++++++++++++++++++++++++++
+                   COMMENT. CAPTAIN KIRK IS VICTORIOUS
+                   COMMENT.+++++++++++++++++++++++++++++
+                   
+       WONGAME     ENTRY
+       
+                   ENT.Q.W(T0)                   T-T0
+                   MUL.1000D
+                   ENT.Y-Q.W(T)
+                   STR.Q.W(WG$SAVE
+                   ENT.Q.W(K7)                   K7/(T-T0)
+                   MUL.1000000D
+                   CL.A
+                   DIV.W(WG$SAVE)
+                   RJP.POW2                      POW2(K7/(T-T0))
+                   COMMENT.THIS WOULD CAUSE OVERFLOW OF OUR SCALED INTEGERS
+                   COMMENT.AND IS NOT REALLY NEEDED.
+                   COMMENT.MUL.1000D                     1000*POW2(K7/(T-T0))
+                   RJP.FLT2STR
+                   STR.Q.W(GW$EFF)
+                   STR.A.W(GW$EFF+1)
+                   ENT.B1.GAMEWON
+                   RJP.TYPE
+                   RJP.ENDOFGAME
+                   
+                   EXIT 
+                   
+       WG$SAVE     RESERVE.1                                                                                                                                                                                            
+                   
+                   COMMENT.+++++++++++++++++++++++++++++
+                   COMMENT. PHASER CONTROL
+                   COMMENT.+++++++++++++++++++++++++++++
+                   
+       PHASERCTL   ENTRY
+       
+                   ENT.A.W(D+3).ANEG             D[4]<0?
+                   JP.PC$1                       NO
+                   ENT.B1.PHASERSOUT             PHASERS DOWN
+                   RJP.TYPE
+                   JP.PC$99
+                   
+       PC$1        ENT.A.W(K3)                   K3<=0
+                   COM.A.1.YMORE                 
+                   JP.PC$2                       NO
+                   RJP.NOENEMY
+                   JP.PC$99    
+           
+       PC$2        ENT.A.W(D+7).ANEG             D[7]<0?
+                   JP.PC$3                       NO
+                   ENT.B1.COMPDMG                COMPUTER FAILURE
+                   RJP.TYPE
+                   
+       PC$3        ENT.B1.PHASERLCK              PHASERS LOCKED
+                   RJP.TYPE
+                   
+       PC$4        ENT.Q.W(E)                    REQUEST ENERGY AMOUNT
+                   RJP.INT2STR
+                   STR.Q.W(EA$E)
+                   ENT.B1.ENRGYAVAIL
+                   RJP.TYPE
+                   RJP.GETINT
+                   
+                   STR.Q.W(PC$X)
+                   COM.Q.1.YLESS                 X<=0?
+                   JP.PC$99                      YES, QUIT
+                   ENT.Y-Q.W(E).APOS             E-X>=0?
+                   JP.PC$4                       NO
+                   
+       PC$5        ENT.Q.W(PC$X)                 E:=E-X
+                   RPL.Y-Q.W(E)
+                   ENT.A.W(D+7).ANEG             D[8]<0?
+                   JP.PC$6                       NO
+                   RJP.RND                       X:=ROUND(X*RND)        
+                   ENT.Q.A
+                   MUL.W(PC$X)
+                   RJP.ROUND
+                   STR.Q.W(PC$X)
+                   
+       PC$6        ENT.Q.W(PC$X)                 H1:=X DIV K3
+                   CL.A
+                   DIV.W(K3)
+                   STR.Q.W(PC$H1)
+                   
+                   ENT.B5.0                      FOR I:=1 TO 3
+       PC$7        ENT.A.W(K+2+B5)               K[I,3]>0                   
+                   COM.A.1.YLESS
+                   JP.PC$8                       NO, CONTINUE
+                   RJP.FND                       FND(I)
+                   STR.Q.W(PC$H)
+                   RJP.RND                       RND+2
+                   ENT.Q.A
+                   ADD.Q.2000D
+                   MUL.W(PC$H1)                  H1*(RND+2)
+                   MUL.1000D                     BULK UP DECIMALS READY FOR DIV
+                   CL.A
+                   DIV.W(PC$H)                   H1*(RND+2)/FND(I)
+                   RJP.TRUNC
+                   STR.Q.W(PC$H)                 H:=Trunc(H1*(RND+2)/FND(I))
+                   
+                   ENT.Q.W(K+2+B5)               0.15*K[I,3]
+                   MUL.150D
+                   RJP.ROUND
+                   COM.Q.W(PC$H).YLESS           H<=0.15*K[I,3]?
+                   JP.PC$9                       NO
+                   ENT.Q.W(K+0+B5)               NO DAMAGE
+                   RJP.INT2STR
+                   STR.Q.W(ND$K1)
+                   ENT.Q.W(K+1+B5)
+                   RJP.INT2STR
+                   STR.Q.W(ND$K2)
+                   ENT.B1.NODAMAGE
+                   RJP.TYPE
+                   JP.PC$10
+                   
+       PC$9        ENT.Q.W(PC$H)                 K[I,3]:=K[I,3]-H
+                   RPL.Y-Q.W(K+2+B5)
+                   RJP.INT2STR
+                   STR.Q.W(KLINGHIT)
+                   ENT.Q.W(K+0+B5)
+                   RJP.INT2STR
+                   STR.Q.W(KH$K1)
+                   ENT.Q.W(K+1+B5)
+                   RJP.INT2STR
+                   STR.Q.W(KH$K2)
+                   ENT.B1.KLINGHIT
+                   RJP.TYPE
+                   
+                   ENT.Q.W(K+2+B5)               K[I,3]>0?
+                   SUB.Q.1.QPOS
+                   JP.PC$11                      NO
+                   ENT.Q.W(K+2+B5)
+                   RJP.INT2STR
+                   STR.Q.W(KE$K3
+                   ENT.B1.KLINGENRGY
+                   RJP.TYPE
+                   JP.PC$10
+                   
+       PC$11       ENT.B1.KLINGDEAD
+                   RJP.TYPE
+                   RPL.Y-1.W(K3)                 K3:=K3-1
+                   RPL.Y-1.W(K9)                 K9:=K9-1
+                   ENT.Q.W(K+0+B5)               Z1:=K[I,1]
+                   STR.Q.W(Z1)                   
+                   ENT.Q.W(K+1+B5)               Z2:=K[I,2]
+                   STR.Q.W(Z2)
+                   ENT.Q.W(SPACES)
+                   STR.Q.W(A$)
+                   RJP.INSINQUAD
+                   CL.W(K+2+B5)                  K[I,3] := 0
+                   RJP.GOFFSET
+                   ENT.B6.B7
+                   RJP.ZOFFSET
+                   ENT.Q.100D
+                   RPL.Y-Q.W(G+B6)               G[Q1,Q2]:=G[Q1,Q2]-100
+                   STR.A.W(Z+B7)                 Z[Q1,Q2]:=G[Q1,Q2]
+
+                   ENT.Q.W(K9)                   K9<=0?       
+                   SUB.Q.1.QPOS
+                   RJP.WONGAME                   YES
+                   
+       PC$10       RJP.KLINGSHT                    
+                   
+       PC$8        BSK.B5.2                      END OF FOR LOOP
+                   JP.PC$7            
+             
+       PC$99       EXIT
+       
+       PC$X        RESERVE.1
+       PC$H1       RESERVE.1
+       PC$H        RESERVE.1
+       PC$I        RESERVE.1
+       
+                   COMMENT.+++++++++++++++++++++++++++++
+                   COMMENT. FIGURE OUT WHAT THE TORPEDO HIT AND
+                   COMMENT. ACT ACCORDINGLY
+                   COMMENT.+++++++++++++++++++++++++++++
+                   
+       TORPHIT     ENTRY
+       
+                   ENT.Q.1                       flgClear:=True
+                   STR.Q.W(TH$CLEAR)
+                   ENT.Q.W(KLINGON)              SA:='+K+
+                   STR.Q.W(A$)
+                   ENT.Q.W(RX)                   Z1:=ROUND(X)
+                   RJP.ROUND
+                   STR.Q.W(Z1)
+                   ENT.Q.W(Y)                    Z2:=ROUND(Y)
+                   RJP.ROUND
+                   STR.Q.W(Z2)
+                   RJP.STRCOMP                   KLINGON AT CURRENT LOCN?
+                   ENT.A.W(Z3).AZERO
+                   JP.TH$10                      YES
+                   
+                   ENT.Q.W(STAR)                 SA:=' * '
+                   STR.Q.W(A$)
+                   RJP.STRCOMP                   STAR AT CURRENT LOCN?
+                   ENT.A.W(Z3).AZERO
+                   JP.TH$20                      YES
+                   
+                   ENT.Q.W(BASE)                 STAR BASE AT CURRENT LOCN
+                   STR.Q.W(A$)
+                   RJP.STRCOMP
+                   ENT.A.W(Z3).ANOT
+                   JP.TH$9                       NO, WTF?
+                   
+                   ENT.B1.BASEDEAD
+                   RJP.TYPE
+                   RPL.Y-1.W(BB3)                B3:=B3-1
+                   RPL.Y-1.W(BB9)                B9:=B9-1
+                   COM.A.1.YMORE                 B9<=0
+                   JP.TH$2                       NO
+                   ENT.Q.W(T)                    T-T0-T9
+                   RJP.TRUNC
+                   SUB.Q.W(T0)
+                   SUB.Q.W(T9)
+                   ENT.Y-Q.W(K9).APOS            K9>=T-T0-T9?
+                   JP.TH$2                       NO
+                   
+                   ENT.B1.RELIEVED
+                   RJP.TYPE
+                   RJP.RESIGN
+                   
+       TH$2        ENT.B1.REVIEW
+                   RJP.TYPE
+                   CL.W(D0)                      UNDOCK
+                          
+       TH$9        ENT.A.W(TH$CLEAR).ANOT        FLGCLEAR=TRUE?
+                   JP.TH$99                      NO
+                   ENT.Q.W(SPACES)               SA=' '
+                   STR.Q.W(A$)
+                   RJP.INSINQUAD
+                   
+                   RJP.GOFFSET                   OFFSET INTO G
+                   ENT.Q.W(K3)                   K3*100
+                   MUL.100D
+                   STR.Q.W(TH$TEMP)
+                   ENT.Q.W(BB3)                  B3*10
+                   MUL.10D
+                   ADD.Q.W(TH$TEMP)              K3*100+B3*10
+                   ADD.Q.W(S3)
+                   STR.Q.W(TH$TEMP)
+                   STR.Q.W(B7)                   G[Q1,Q2]:=K3*100+B3*10+S3
+                   RJP.ZOFFSET
+                   ENT.Q.W(TH$TEMP)
+                   STR.Q.W(B7)                   Z[Q1,Q2]:=G[Q1,Q2]
+                   JP.TH$99
+                   
+       TH$10       ENT.B1.KLINGDEAD
+                   RJP.TYPE
+                   RPL.Y-1.W(K9)                 K9:=K9-1
+                   RPL.Y-1.W(K3)                 K3:=K3-1
+                   ENT.Q.W(K9)                   K9<=0
+                   COM.Q.1.YLESS
+                   RJP.WONGAME                   YES, WE'RE DONE
+                   
+                   ENT.B1.0
+       TH$11       ENT.Q.W(T$X3)                 K[I,1]=X3?
+                   ENT.Y-Q.W(K+B1).AZERO
+                   JP.TH$12                      NO
+                   ENT.Q.W(T$Y3)                 K[I,2]=Y3?
+                   ENT.Y-Q.W(K+1+B1).ANOT
+                   CL.W(K+2+B1)                  YES, K[I,3]:=0                      
+       TH$12       ENT.B1.2+B1                   I:=I+1
+                   BSK.B1.9D
+                   JP.TH$11
+                   JP.TH$9
+                   
+       TH$20       ENT.Q.W(T$X3)
+                   RJP.INT2STR
+                   STR.Q.W(TH$X)
+                   ENT.Q.W(T$Y3)
+                   RJP.INT2STR
+                   STR.Q.W(TH$Y)
+                   ENT.B1.TH$STAR
+                   RJP.TYPE
+                   CL.W(TH$CLEAR)                FLGCLEAR:=FALSE
+                   JP.TH$9                                      
+       
+       TH$99       EXIT
+                   
+       TH$CLEAR    RESERVE.1
+       TH$TEMP     RESERVE.1
+       TH$STAR     FD.0.STAR AT
+                   05
+       TH$X        RESERVE.1
+                   055605
+       TH$Y        RESERVE.1
+                   FD.0. ABSORBED TORPEDO ENERGY.
+                   040377                                                         
+       
+                   COMMENT.+++++++++++++++++++++++++++++
+                   COMMENT. PHOTON TORPEDO CONTROL
+                   COMMENT.+++++++++++++++++++++++++++++
+                   
+       TORPEDOES   ENTRY
+       
+                   ENT.A.W(P)                    P<=0?
+                   COM.A.1.YLESS
+                   JP.T$10                       YES
+                   
+                   ENT.A.W(D+4).APOS             D[5]<0            
+                   JP.T$11                       YES
+                   
+                   ENT.B1.T$COURSE               REQUEST TORPEDO COURSE
+                   RJP.TYPE
+                   RJP.GETFLT
+                   ENT.Y+Q.X(-9000D).ANOT        C1=9?
+                   ENT.Q.1000D                   YES, C1=1
+                   COM.Q.1000D.YMORE             C1<1 OR C1>9?
+                   COM.Q.9000D.YMORE
+                   JP.T$BAD                      YES
+                   STR.Q.W(T$C1)
+                   
+                   RJP.ROUND                     IC1:=ROUND(C1)
+                   STR.Q.W(T$IC1)
+                   ADD.Q.1                       IIC1:=IC1+1
+                   STR.Q.W(T$IIC1)
+
+                   ENT.A.W(T$IC1)                OFFSET TO C[IC1]
+                   SUB.A.1
+                   LSH.A.1
+                   ENT.B1.A
+                   ENT.A.W(T$IIC1)               OFFSET TO C[IIC1]
+                   SUB.A.1
+                   LSH.A.1
+                   ENT.B2.A
+                   
+                   ENT.Q.W(T$IC1)                C1-IC1
+                   MUL.1000D
+                   CP.Q
+                   ADD.Q.W(T$C1)
+                   ENT.A.W(C+B2)                 C[iiC1,1]-C[iC1,1]
+                   SUB.A.W(C+B1)
+                   MUL.A                         (C[iiC1,1]-C[iC1,1])*(C1-iC1)
+                   ADD.Q.W(C+B1)
+                   MUL.1000D
+                   STR.Q.W(RX1)                  X1:=C[iC1,1]+(C[iiC1,1]-C[iC1,1])*(C1-iC1)
+                   ENT.Q.2                       E:=E-2
+                   RPL.Y-Q.W(E)
+                   RPL.Y-1.W(P)                  P:=P-1
+                   
+                   ENT.Q.W(T$IC1)                C1-IC1
+                   MUL.1000D
+                   CP.Q
+                   ADD.Q.W(T$C1)
+                   ENT.A.W(C+1+B2)               C[iiC1,2]-C[iC1,2]
+                   SUB.A.W(C+1+B1)
+                   MUL.A                         (C[iiC1,2]-C[iC1,2])*(C1-iC1)
+                   ADD.Q.W(C+1+B1)
+                   MUL.1000D
+                   STR.Q.W(RX2)                  X2:=C[iC1,2]+(C[iiC1,2]-C[iC1,2])*(C1-iC1)
+                   ENT.Q.W(S1)                   X:=S1
+                   STR.Q.W(RX)
+                   ENT.Q.W(S2)                   Y:=S2
+                   STR.Q.W(Y)
+                   
+                   ENT.B1.T$TRACK
+                   RJP.TYPE
+
+       T$1         ENT.Q.W(RX1)                  X:=X+X1
+                   RPL.Y+Q.W(RX)
+                   ENT.Q.W(RX2)                  Y:=Y+X2
+                   RPL.Y+Q.W(Y)
+                   ENT.Q.W(RX)                   X3:=ROUND(X)
+                   RJP.ROUND
+                   STR.Q.W(T$X3)
+                   COM.Q.1D.YMORE                X3<1?
+                   COM.Q.9D.YMORE                X3>8?
+                   JP.T$12                       MISSED
+                   ENT.Q.W(Y)                    Y3:=ROUND(Y)
+                   RJP.ROUND
+                   STR.Q.W(T$Y3)
+                   COM.Q.1D.YMORE                Y3<1?
+                   COM.Q.9D.YMORE                Y3>8?
+                   JP.T$12                       MISSED
+                   
+                   ENT.Q.W(T$X3)
+                   RJP.INT2STR
+                   STR.Q.W(T$TX)
+                   ENT.Q.W(T$Y3)
+                   RJP.INT2STR
+                   STR.Q.W(T$TY)
+                   ENT.B1.T$TRACK1
+                   RJP.TYPE
+                   
+                   ENT.Q.W(SPACES)               SA:=' '
+                   STR.Q.W(A$)
+                   ENT.Q.W(RX)                   Z1:=ROUND(X)
+                   RJP.ROUND
+                   STR.Q.W(Z1)
+                   ENT.Q.W(Y)                    Z2:=ROUND(Y)
+                   RJP.ROUND
+                   STR.Q.W(Z2)
+                   RJP.STRCOMP
+                   
+                   ENT.A.W(Z3).AZERO             Z3=0?
+                   JP.T$1                        NO
+                   
+                   RJP.TORPHIT
+                   
+       T$9         RJP.KLINGSHT
+
+                   JP.T$99
+                   
+       T$10        ENT.B1.TORPGONE
+                   RJP.TYPE
+                   JP.T$99
+                   
+       T$11        ENT.B1.TORPDONE                   
+                   RJP.TYPE
+                   JP.T$99
+                   
+       T$BAD       ENT.B1.T$ERROR
+                   RJP.TYPE
+                   JP.T$99
+                   
+       T$12        ENT.B1.T$TORPMISS
+                   RJP.TYPE
+                   JP.T$9
+                                                                
+       T$99        EXIT
+       
+       T$C1        RESERVE.1
+       T$IC1       RESERVE.1
+       T$IIC1      RESERVE.1
+       T$X3        RESERVE.1
+       T$X4        RESERVE.1
+       T$Y3        RESERVE.1
+       T$COURSE    FD.0.PHOTON TORPEDO COURSE (1-9)?
+                   0577
+       T$ERROR     FD.0.ENSIGN CHECKOV REPORTS, 'INCORRECT COURSE DATA, SIR!'
+                   040377 
+       T$TRACK     FD.0.TORPEDO TRACK:
+                   040377 
+       T$TRACK1    0505050505
+                   0505050505
+                   0505050505
+                   0505000000
+       T$TX        RESERVE.1
+                   055605
+       T$TY        RESERVE.1
+                   040377                                      
+                  
+       T$TORPMISS  FD.0.TORPEDO MISSED
+                   040377
+                   
+                   COMMENT.+++++++++++++++++++++++++++++
+                   COMMENT. CHANGE SHIELD ENERGY ALLOCATION
+                   COMMENT.+++++++++++++++++++++++++++++
+                   
+       SHIELDCTL   ENTRY
+       
+                   ENT.A.W(D+6).ANEG             D[7]<0?
+                   JP.SC$1                       NO
+                   ENT.B1.SHIELDSOUT
+                   RJP.TYPE
+                   JP.SC$99
+                   
+       SC$1        ENT.Q.W(E)                    DISPLAY ENERGY AVAIL
+                   ADD.Q.W(S)                   
+                   RJP.INT2STR
+                   STR.Q.W(SC$TTLE
+                   ENT.B1.SC$AVAIL
+                   RJP.TYPE
+                   
+                   ENT.B1.SC$UNITS               REQUEST NEW SETTING
+                   RJP.TYPE
+                   RJP.GETINT                    GET RESPONSE
+                   STR.Q.W(SC$SAVE)
+                   
+                   COM.Q.0.YLESS                 RESP < 0?
+                   JP.SC$2                       YES
+                   SUB.Q.W(S).ANOT               S = RESP?
+                   JP.SC$2                       YES
+                   
+                   ENT.Q.W(E)                    RESP > E+S
+                   ADD.Q.W(S)
+                   COM.Q.W(SC$SAVE).YMORE
+                   JP.SC$3                       NO
+                   
+                   ENT.B1.SC$SARCASM             SMART ASS REMARK
+                   RJP.TYPE
+                   JP.SC$99
+                  
+       SC$3        ENT.Q.W(E)                    E := E+S-X
+                   ADD.Q.W(S)
+                   SUB.Q.W(SC$SAVE)
+                   STR.Q.W(E) 
+                   ENT.Q.W(SC$SAVE)              S := RESP
+                   STR.Q.W(S)
+                   
+                   RJP.INT2STR
+                   STR.Q.W(SC$S)
+                   ENT.B1.SC$CHG
+                   RJP.TYPE
+                   JP.SC$99                  
+                                      
+       SC$2        ENT.B1.SC$NOCHG               SHIELDS NOT CHANGED
+                   RJP.TYPE
+                   
+       SC$99       EXIT
+       
+       SC$SAVE     RESERVE.1
+       SC$AVAIL    FD.0.ENERGY AVAILABLE =
+                   05
+       SC$TTLE     RESERVE.1
+                   040377
+       SC$UNITS    FD.0.NUMBER OF UNITS TO SHIELDS?
+                   0577
+       SC$SARCASM  FD.0.SHIELD CONTROL REPORTS. 'THIS IS NOT THE FEREATION TREASURY.'
+                   040377                                                        
+       SC$NOCHG    FD.0.<SHIELDS UNCHANGED>
+                   040377
+       SC$CHG      FD.0.DEFLECTOR CONTROL ROOM REPORT:
+                   0403
+                   FD.0.  'SHIELDS NOW AT
+                   05
+       SC$S        RESERVE.1
+                   FD.0. UNITS PER YOUR COMMAND.'
+                   040377 
+       
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. DAMAGE STATE
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       DMGSTATE    ENTRY
+       
+                   ENT.B1.DS$HDR
+                   RJP.TYPE
+                   
+                   ENT.B5.0                      FOR I:=1 TO 8
+                   ENT.B6.0
+       DS$1        ENT.B7.0                      MOVE DVC NAME TO BUFFER
+       DS$2        ENT.Q.W(DS$DEVICES+B5)
+                   STR.Q.W(DS$DEV+B7)
+                   ENT.B5.1+B5
+                   BSK.B7.4
+                   JP.DS$2
+                   
+                   ENT.Q.W(D+B6)                 MOVE DVC STATUS TO BUFFER
+                   RJP.FLT2STR
+                   STR.Q.W(DS$STAT)
+                   STR.A.W(DS$STAT+1)
+                   ENT.B1.DS$DEV                 PRINT IT
+                   RJP.TYPE
+                   ENT.B6.1+B6                   LOOP
+                   ENT.Q.B5
+                   COM.Q.40D.YLESS
+                   JP.DS$1
+                   
+                   ENT.B2.1
+                   RJP.LINES
+                   
+                   EXIT
+                   
+       DS$HDR      0403
+                   FD.0.DEVICE             STATE OF REPAIR
+                   040377
+                   
+       DS$DEV      RESERVE.5
+       DS$STAT     RESERVE.2
+                   040377
+                                      
+       DS$DEVICES  FD.5.WARP ENGINES             X
+                   FD.5.SHORT RANGE SENSORS      X
+                   FD.5.LONG RANGE SENSORS       X
+                   FD.5.PHASER CONTROL           X
+                   FD.5.PHOTON TUBES             X
+                   FD.5.DAMAGE CONTROL           X
+                   FD.5.SHIELD CONTROL           X
+                   FD.5.LIBRARY COMPUTER         X
+                   
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. DAMAGE CONTROL COMMAND
+                   COMMENT.++++++++++++++++++++++++++++                                      
+                   
+       DAMAGECTL   ENTRY
+       
+                   ENT.Q.W(D+5).QPOS             D[6]<0?
+                   JP.DC$10                      YES
+                   RJP.DMGSTATE                   
+
+       DC$1
+       
+                   JP.DC$99
+       
+       DC$10       ENT.B1.DC$NA
+                   RJP.TYPE
+                   JP.DC$1
+                                       
+       DC$99       EXIT
+                   
+       DC$NA       FD.0.DAMAGE CONTROL REPORT NOT AVAILABLE
+                   040377                   
+                   
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. GALACTIC RECORD 
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       GALREC      ENTRY
+       
+                   ENT.B1.GC$PRTON               TTY ON? WE DON'T REALLY CARE
+                   RJP.TYPE
+                   RJP.GETLINE
+                   
+                   ENT.B2.1
+                   RJP.LINES
+                   ENT.Q.W(Q1)
+                   RJP.INT2STR
+                   STR.Q.W(GC$Q1)
+                   ENT.Q.W(Q2)
+                   RJP.INT2STR
+                   STR.Q.W(GC$Q2)
+                   ENT.B1.GC$HDR
+                   RJP.TYPE
+                   
+                   RJP.MAP
+                   
+                   EXIT
+                   
+       GC$PRTON    FD.0.DO YOU WANT A HARD COPY? IS THE TTY ON (Y/N)?
+                   0577
+       GC$HDR      FD.0.         COMPUTER RECORD OF CALAXY FOR QUADRANT
+                   05
+       GC$Q1       RESERVE.1
+                   055605                        ' , '
+       GC$Q2       RESERVE.1
+                   0403040377
+                   
+                   COMMENT.+++++++++++++++++++++++++++++
+                   COMMENT. MAP
+                   COMMENT.+++++++++++++++++++++++++++++
+                   
+       MAP         ENTRY
+       
+                   ENT.B1.S04$
+                   RJP.TYPE
+                   ENT.B1.S03$
+                   RJP.TYPE
+                   
+                   ENT.A.W(H8).ANOT              H8=0?
+                   JP.MAP$20                     YES, DO QUADRANT MAP
+
+                   COMMENT.++++
+                   COMMENT. GALAXY RECORD
+                   COMMENT.++++
+                   
+                   ENT.B5.0                      FOR I:=1 TO 8
+       MAP$1       ENT.Q.B5                      WRITE(' ',I,' ')
+                   CL.A
+                   DIV.8D
+                   ADD.Q.1
+                   RJP.INT2STR
+                   STR.Q.W(MAP$I)
+                   ENT.B1.MAP$IDX
+                   RJP.TYPE
+                   
+       MAP$10      ENT.B6.B5                     FOR J:=1 TO 8
+                   ENT.B4.7
+       MAP$11      ENT.B1.MAP$SPC
+                   RJP.TYPE
+                   ENT.A.W(Z+B6).ANOT            Z[I,J]=0?
+                   JP.MAP$13                     YES
+                   ENT.Q.A                 
+                   RJP.INT2STR3
+                   STR.Q.W(MAP$BFR)
+                   ENT.B1.MAP$BFR
+                   RJP.TYPE
+                   
+       MAP$12      ENT.B6.1+B6
+                   BJP.B4.MAP$11
+                   ENT.B2.1
+                   RJP.LINES
+                   ENT.B1.SO3$
+                   RJP.TYPE
+                   ENT.B5.7D+B5
+                   BSK.B5.63D
+                   JP.MAP$1
+                   
+                   JP.MAP$99
+                   
+       MAP$13      ENT.B1.MAP$STAR               WRITE('***')
+                   RJP.TYPE
+                   JP.MAP$12
+                   
+                   COMMENT.++++
+                   COMMENT. QUADRANT MAP
+                   COMMENT.++++
+                   
+       MAP$20      ENT.B5.0                      FOR I:=1 TO 8
+       MAP$21      ENT.Q.B5                      WRITE(' ',I,' ')
+                   CL.A
+                   DIV.6D
+                   ADD.Q.1
+                   RJP.INT2STR
+                   STR.Q.W(MAP$I)
+                   ENT.B1.MAP$IDX
+                   RJP.TYPE
+                   
+                   ENT.B6.B5                      MOVE QUADRANT NAME1 TO BFR
+                   ENT.B4.0
+       MAP$22      ENT.Q.W(MAP$RGN1+B6)
+                   STR.Q.W(MAP$QUAD1+B4)
+                   ENT.B6.1+B6
+                   BSK.B4.4
+                   JP.MAP$22
+       
+                   ENT.B6.B5                      MOVE QUADRANT NAME2 TO BFR
+                   ENT.B4.0
+       MAP$23      ENT.Q.W(MAP$RGN2+B6)
+                   STR.Q.W(MAP$QUAD2+B4)
+                   ENT.B6.1+B6
+                   BSK.B4.4
+                   JP.MAP$23
+                   
+                   ENT.B1.MAP$BFR2
+                   RJP.TYPE
+                   ENT.B1.SO3$
+                   RJP.TYPE
+                   
+                   ENT.B5.5+B5
+                   BSK.B5.47D
+                   JP.MAP$21
+                   
+       MAP$99      ENT.B2.1
+                   RJP.LINES
+                   
+                   EXIT                   
+                   
+       MAP$IDX     05
+       MAP$I       RESERVE.1
+                   0577
+       MAP$SPC     05050577                      '   '
+       MAP$STAR    50505077                      '***'
+       MAP$BFR     RESERVE.1
+                   77
+       MAP$BFR2    0505
+       MAP$QUAD1   RESERVE.5
+       MAP$QUAD2   RESERVE.5
+                   040377
+                   
+       MAP$RGN1    FD.6.        ANTARES          X
+                   FD.6.         RIGEL           X
+                   FD.6.        PROCYON          X
+                   FD.6.         VEGA            X
+                   FD.6.        CANOPUS          X
+                   FD.6.        ALTAIR           X
+                   FD.6.      SAGITTARIUS        X
+                   FD.6.        POLLUX           X
+       MAP$RGN2    FD.6.        SIRIUS           X
+                   FD.6.         DENEB           X
+                   FD.6.        CAPELLA          X
+                   FD.6.      BETELGEUSE         X
+                   FD.6.       ALDEBARAN         X
+                   FD.6.        REGULUS          X
+                   FD.6.       ARCTURUS          X
+                   FD.6.         SPICA           X
+                   
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. STATUS REPORT
+                   COMMENT.++++++++++++++++++++++++++++
+                          
+       STATRPT     ENTRY
+       
+                   ENT.B1.SR$HDR                 
+                   RJP.TYPE
+                   
+                   CL.W(SR$KLINGS)               SX:=''
+                   ENT.A.W(SR$S)                 IF K9>1 THEN SX:='S'
+                   ENT.Q.W(K9)
+                   COM.Q.2.YMORE
+                   STR.A.W(SR$KLINGS)                   
+                   RJP.INT2STR
+                   STR.Q.W(SR$KCOUNT)
+                   ENT.B1.SR$KLING
+                   RJP.TYPE
+                   
+                   ENT.Q.W(T)                    CVT T TO INTEGER
+                   RJP.TRUNC
+                   STR.Q.A
+                   ENT.Q.W(T0)                   T0+T9-T
+                   ADD.Q.W(T9)
+                   SUB.Q.A
+                   RJP.INT2STR
+                   STR.Q.W(SR$DATES)
+                   ENT.B1.SR$CPLT
+                   RJP.TYPE
+                   
+                   CL.W(SR$BASES)                SX:=''
+                   ENT.A.W(SR$S)                 IF B9>1 THEN SX:='S'
+                   ENT.Q.W(BB9)                
+                   COM.Q.2.YMORE
+                   STR.A.W(SR$BASES)                   
+                   COM.Q.1.YLESS
+                   JP.SR$10
+                   RJP.INT2STR
+                   STR.Q.W(SR$BCOUNT)
+                   ENT.B1.SR$BASE
+                   RJP.TYPE
+                   
+       SR$1        RJP.DAMAGECTL
+                   JP.SR$99                   
+                   
+       SR$10       ENT.B1.SR$STUPID
+                   RJP.TYPE
+                   JP.SR$1            
+                   
+       SR$99       EXIT
+                   
+       SR$S        FD.0.S                   
+       SR$HDR      FD.0.   STATUS REPORT:
+                   040377
+                                      
+       SR$KLING    FD.0.KLINGON
+       SR$KLINGS   RESERVE.1
+                   FD.0. LEFT:
+                   05
+       SR$KCOUNT   RESERVE.1
+                   040377 
+                   
+       SR$CPLT     FD.0.MISSION MUST BE COMPLETED IN
+                   05
+       SR$DATES    RESERVE.1
+                   FD.0. STARDATES
+                   040377         
+                   
+       SR$BASE     FD.0.THE FEDERATION IS MAINTAINING
+                   05
+       SR$BCOUNT   RESERVE.1
+                   FD.0. STARBASE
+       SR$BASES    RESERVE.1
+                   FD.0. IN THE GALAXY
+                   040377 
+                   
+       SR$STUPID   FD.0.YOUR STUPIDITY HAS LEFT YOU ON YOUR OWN IN
+                   0403
+                   FD.0.THE GALAXY -- YOU HAVE NO STARBASES LEFT!                                                                                                                                             
+                   040377
+                   
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. TORPEDO DATA
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       TORPDATA    ENTRY
+                   EXIT
+                   
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. NAVIGATIONAL DATA
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       NAVDATA     ENTRY
+                   EXIT
+                   
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. DISTANCE CALUCLATION
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       DISTCALC    ENTRY
+                   EXIT
+                   
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. GALAXY MAP
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       GALMAP      ENTRY
+       
+                   CL.W(H8)                      H8:=0
+                   ENT.Q.1                       G5:=1
+                   STR.Q.W(G5)
+                   ENT.B1.GM$HDR
+                   RJP.TYPE
+                   RJP.MAP
+                   
+                   EXIT
+                   
+       GM$HDR      FD.0.                        THE GALAXY
+                   040377                   
+                   
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. LIBRARY COMPUTER COMMAND
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       LIBRARYCOM  ENTRY
+       
+                   ENT.A.W(D+7).APOS             D[8]<0?
+                   JP.LC$10                      YES
+                   
+       LC$1        ENT.B1.LC$PROMPT              REQUEST COMMAND
+                   RJP.TYPE
+                   RJP.GETINT
+                   
+                   COM.Q.0.YLESS                 RESPONSE < 0?
+                   JP.LC$1                       YES
+                   COM.Q.6.YMORE                 RESPONSE <= 5?
+                   JP.LC$11                      NO
+                   STR.Q.W(LC$CMD)
+                   ENT.B2.1
+                   RJP.LINES
+                   ENT.Q.1                       H8:=1
+                   STR.Q.W(H8)
+                                  
+                   ENT.Q.W(LC$CMD)
+                   STR.Q.A                       GO TO APPROPRIATE RTN
+                   ENT.B1.A
+                   RJP.U(LC$JUMP+B1)
+                   
+                   JP.LC$99
+                   
+       LC$10       ENT.B1.COMPDONE
+                   RJP.TYPE
+                   JP.LC$99
+                   
+       LC$11       ENT.B1.COMPFUNC               SHOW MENU
+                   RJP.TYPE
+                   JP.LC$1
+                                 
+       LC$99       EXIT                                                                                                                                    
+       
+       LC$CMD      RESERVE.1            
+       LC$PROMPT   FD.0.COMPUTER ACTIVE AND AWAITING COMMAND?
+                   05
+                   77
+       LC$JUMP     U-TAG.GALREC.0                GALACTIC RECORD
+                   U-TAG.STATRPT.0               STATUS REPORT
+                   U-TAG.TORPDATA.0              TORPEDO DATA
+                   U-TAG.NAVDATA.0               NAV DATA
+                   U-TAG.DISTCALC.0              DIR DIST CALC
+                   U-TAG.GALMAP.0                GALAXY MAP                                      
+                   
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. FINALIZATION CLEAN UP
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       FIN         ENTRY
+       
+                   ENT.Q.W(CONSISAV)             RESTORE OLD INT HANDLERS
+                   STR.Q.W(CONSIMON)       
+                   ENT.Q.W(CONSOSAV)
+                   STR.Q.W(CONSOMON)       
+                   ENT.Q.W(CONSESAV)
+                   STR.Q.W(CONSEXT)       
+       
+                   EXIT
+                   
+       ENDOFGAME   ENTRY
+       
+                   ENT.B2.2
+                   RJP.LINES
+                   ENT.B1.EOGAME
+                   RJP.TYPE
+                   RJP.GETLINE
+                   ENT.A.W(L$)
+                   SUB.A.W(EOG$AYE).ANOT
+                   JP.THEGAME+1
+                   JP.EOJ
+       
+                   EXIT                   
+                   
+       EOG$AYE     FD.0.AYE                   
+       
+       RESIGN      ENTRY
+       
+                   ENT.Q.W(K9)
+                   RJP.INT2STR
+                   STR.Q.W(KCOUNT)
+                   ENT.B1.EOMISSION
+                   RJP.TYPE
+                   RJP.ENDOFGAME
+       
+                   EXIT                    
+                   
+       ENDOFTIME   ENTRY
+       
+                   ENT.Q.W(T)
+                   RJP.FLT2STR
+                   STR.Q.W(ESTARDT)
+                   STR.A.W(ESTARDT+1)
+                   ENT.B1.STARDATE
+                   RJP.TYPE
+                   RJP.RESIGN
+       
+                   EXIT                   
+                   
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT.****        **** STAR TREK ****        ****
+                   COMMENT.**** SIMULATION OF A MISSION OF THE STARSHIP ENTERPRISE,
+                   COMMENT.**** AS SEEN ON THE STAR TREK TV SHOW.
+                   COMMENT.**** ORIGINAL PROGRAM BY MIKE MAYFIELD, MODIFIED VERSION        }
+                   COMMENT.**** PUBLISHED IN DEC'S "101 BASIC GAMES", BY DAVE AHL.         }
+                   COMMENT.**** MODIFICATIONS TO THE LATTER (PLUS DEBUGGING) BY BOB        }
+                   COMMENT.**** LEEDOM - APRIL & DECEMBER 1974,                            }
+                   COMMENT.*** WITH A LITTLE HELP FROM HIS FRIENDS . . .                  }
+                   COMMENT.*** COMMENTS, EPITHETS, AND SUGGESTIONS SOLICITED --           }
+                   COMMENT.*** SEND TO:  R. C. LEEDOM                                     }
+                   COMMENT.***           WESTINGHOUSE DEFENSE & ELECTRONICS SYSTEMS CNTR. }
+                   COMMENT.***           BOX 746, M.S. 338                                }
+                   COMMENT.***           BALTIMORE, MD  21203                             }
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       THEGAME     ENTRY
+       
+       
+                   ENT.B2.11D
+                   RJP.LINES
+                   ENT.B1.ENTERPRISE
+                   RJP.TYPE
+                   ENT.B2.5D
+                   RJP.LINES
+                   
+                   RJP.INITGAME
+                   RJP.NEWQUAD
+                   RJP.SHORTSCAN
+                   
+                   COMMENT.+++++
+                   COMMENT. MAIN GAME LOOP
+                   COMMENT.+++++
+                   
+       MAIN        ENT.A.W(S)                    S+E<=10?
+                   ADD.A.W(E)
+                   COM.A.11D.YLESS
+                   JP.TG$1                       YES
+                   ENT.A.W(E)                    NO, E<=10
+                   COM.A.11D.YMORE
+                   JP.TG$2                       NO                   
+                   ENT.A.W(D+6).ANOT             D[7]<> 0
+                   JP.TG$2                       NO
+                   
+       TG$1        ENT.B1.FATALERR
+                   RJP.TYPE
+                   RJP.ENDOFTIME                                              
+       
+       TG$2        ENT.B1.CMDPROMPT              ASK FOR COMMAND
+                   RJP.TYPE
+                   RJP.GETLINE                   READ KEYBOARD
+                   
+                   ENT.A.W(L$)                   GET KBD INPUT
+                   ENT.Q.X(77777)                SEARCH CMD TABLE
+                   RPT.9D.BACK
+                   COM.MASK.W(CMDS+8D).AZERO
+                   JP.TG$3                       NOT FOUND
+                   RJP.U(CJUMP+B7)               GO TO COMMAND HANDLER
+                   
+                   JP.MAIN
+                   
+       TG$3        ENT.B1.CMDHELP
+                   RJP.TYPE
+                   JP.TG$2
+                                      
+                   EXIT
+                                             
+       CONSFUNC    33
+       CONSIJMP    RJP.I$CONSIN
+       CONSOJMP    RJP.I$CONSOT
+       CONSEJMP    RJP.I$CONSEX
+       CONSISAV    RESERVE.1
+       CONSOSAV    RESERVE.1
+       CONSESAV    RESERVE.1
+       
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. CONSOLE INPUT MONITOR INTERRUPT HANDLER
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       I$CONSIN    ENTRY
+                   CL.W(I$KWAIT)                 CLEAR KEYBOARD WAITING FLAG
+                   RILJP.L(I$CONSIN)
+       I$KWAIT     0
+                            
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. CONSOLE OUTPUT MONITOR INTERRUPT HANDLER
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       I$CONSOT    ENTRY
+                   CL.W(I$PBUSY)                 CLEAR PRINTER BUSY FLAG
+                   RILJP.L(I$CONSOT)
+       I$PBUSY     0
+                            
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. CONSOLE EXTERNAL INTERRUPT HANDLER
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       I$CONSEX    ENTRY
+                   RILJP.L(I$CONSEX)
+                   EXIT                                      
+                            
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. ASK IF THE USER WANTS TO SEE THE INSTRUCTIONS
+                   COMMENT. AND PRINT THEM IF (S)HE DOES.
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       INSTRCTNS   ENTRY
+       
+                   ENT.B2.12D                    SOME BLANK LINES
+                   RJP.LINES
+                   ENT.B1.INSTBANR               SHOW BANNER
+                   RJP.TYPE
+                   ENT.B2.8D
+                   RJP.LINES
+                   ENT.B1.WANTINST               ASK IF WANTS INSTRUCTIONS
+                   RJP.TYPE
+       
+                   RJP.GETC                      GET 1 CHAR FROM KBD
+                   ENT.Q.77                      IS IT Y?
+                   COM.MASK.36.ANOT
+                   RJP.SHOWINST                  YES
+       
+                   EXIT
+                   
+       INSTBANR    0403
+                   FD.0.*************************************
+                   0403
+                   FD.0.*                                   *
+                   0403
+                   FD.0.*                                   *
+                   0403
+                   FD.0.*      * * SUPER STAR TREK * *      *
+                   0403
+                   FD.0.*                                   *
+                   0403
+                   FD.0.*                                   *
+                   0403
+                   FD.0.*************************************
+                   040377
+       WANTINST    FD.0.DO YOU NEED INSTRUCTIONS (Y/N)?
+                   77
+                      
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. PRINT THE INSTRUCTIONS
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       SHOWINST    ENTRY
+       
+                   ENT.B1.INSTNS
+                   RJP.TYPE
+                   RJP.GETC
+                   ENT.B1.INSTNS2
+                   RJP.TYPE
+                   RJP.GETC
+                   ENT.B1.INSTNS3
+                   RJP.TYPE
+                   RJP.GETC
+                   ENT.B1.INSTNS4
+                   RJP.TYPE
+                   RJP.GETC
+                   ENT.B1.INSTNS5
+                   RJP.TYPE      
+                   RJP.GETC
+                   
+                   EXIT
+
+                          
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. SEND BLANK LINES TO THE PRINTER
+                   COMMENT.
+                   COMMENT. B2 = # LINES TO SEND
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       LINES       ENTRY
+       
+                   BJP.B2.LINES1                 DEC. COUNT BY 1
+                   EXIT                          WAS ALREADY ZERO, QUIT
+       LINES1      RJP.CRLF
+                   BJP.B2.LINES1
+                   
+                   EXIT
+                   
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. SEND A CARRIAGE RETURN / LINE FEED
+                   COMMENT. TO THE PRINTER.
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       CRLF        ENTRY
+       
+                   ENT.B1.CRLF1
+                   RJP.TYPE
+                   
+                   EXIT
+       CRLF1       040377                                      
+                                                             
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. SEND SOME TEXT TO THE CONSOLE PRINTER.
+                   COMMENT. TEXT IS TERMINATED BY 77. OCTAL ZEROS
+                   COMMENT. ARE IGNORED.
+                   COMMENT.
+                   COMMENT. B1 = ADDRESS OF TEXT TO PRINT
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       TYPE        ENTRY
+       
+       T$NEXTW     ENT.B7.4                      INIT LOOP COUNT
+                   ENT.Q.W(B1)                   GET WORD TO PRINT
+       T$NEXTC     CL.A                          GET NEXT CHARACTER
+                   LSH.AQ.6.ANOT
+                   JP.T$DECB7                    CHAR = ZERO, NEXT CHAR
+                   COM.A.77.YMORE                END OF TEXT SENTINAL?
+                   JP.T$EXIT                     YES, QUIT
+                   
+                   RJP.PUTC                      NO, SEND TO PRINTER
+                   
+       T$DECB7     BJP.B7.T$NEXTC                DEC CHAR COUNT & LOOP
+                   INCREMENT.B1.1                BUMP TO NEXT WORD
+                   JP.T$NEXTW                    & LOOP                   
+       
+       T$EXIT      EXIT
+       
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. READ 1 CHARACTER FROM THE KEYBOARD.
+                   COMMENT.
+                   COMMENT. A HOLDS CHARACTER READ
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       GETC        ENTRY
+       
+                   ENT.A.W(G$INIT).AZERO         CONS INPUT INITIALIZED?
+                   RJP.G$START                   NO
+       G$WAIT      ENT.A.W(I$KWAIT).AZERO        STILL WAITING FOR INPUT
+                   JP.G$WAIT                     YES
+                   ENT.A.W(G$BFR)
+                   SEL.CL.X77700.ANOT            LOOK AT SIX BITS
+                   JP.G$NEXTC                    ZERO, KEEP WAITING
+                   STR.A.W(G$SAVE)
+                   RJP.PUTC                      ECHO CHAR TO PRINTER 
+                   RJP.G$START
+                   ENT.A.W(G$SAVE)
+                   EXIT                          DONE                  
+       
+       G$NEXTC     RJP.G$START                   RESTART INPUT
+                   JP.G$WAIT                     TRY AGAIN                 
+       
+                   EXIT
+                   
+       G$START     ENTRY
+       
+                   ENT.A.1                       SET KEYBOARD WAITING FLAG
+                   STR.A.W(I$KWAIT)
+                   IN.CONS.W(G$BCR).MONITOR      START CONS INPUT
+                   CL.W(G$INIT)                  CLEAR NOT INIT FLAG
+                   
+                   EXIT
+                   
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. READ A LINE FROM THE KEYBOARD AND 
+                   COMMENT. LEAVE THE RESULT IN L$
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       GETLINE     ENTRY
+       
+                   STR.B5.W(G$B5)
+                   STR.B6.W(G$B6)
+                   
+                   RPT.16D.ADV                   CLEAR BUFFER
+                   CL.W(L$)
+                   
+                   ENT.B5.4                      INIT BYTE COUNT
+                   ENT.B6.0                      INIT WORD INDEX
+       GL$1        RJP.GETC                      GET A CHARACTER 
+                   ENT.Q.77                      IS IT <CR>?
+                   COM.MASK.04.ANOT
+                   JP.GL$2                       YES, WE'RE DONE
+                   COM.MASK.77.ANOT              <BS>?
+                   JP.GL$10                      YES
+                   STR.A.W(G$SAVE)                 
+                   ENT.A.W(L$+B6)                ADD IT TO THE CRNT WORD
+                   LSH.A.6
+                   SEL.SET.W(G$SAVE)
+                   STR.A.W(L$+B6)
+                   BJP.B5.GL$1                   NEXT CHAR
+                   ENT.B5.4                      NEXT WORD
+                   BSK.B6.15D
+                   JP.GL$1
+                   JP.GL$4
+                   
+       GL$2        ENT.A.W(L$+B6)                LEFT JUST LAST WORD
+       GL$3        LSH.A.6
+                   BJP.B5.GL$3
+                   STR.A.W(L$+B6)
+                   
+       GL$4        ENT.B5.W(G$B5)
+                   ENT.B6.W(G$B6)
+                   JP.GL$99
+                   
+                   COMMENT.PROCESS BACKSPACE
+                   
+       GL$10       ENT.A.1+B5                    INCREMENT BYTE COUNT
+                   ENT.B5.A
+                   COM.A.5.YLESS                 PREVIOUS WORD?
+                   JP.GP$11                      NO
+                   ENT.B5.4                      YES, INIT BYTE COUNT
+                   ENT.A.B6.ANOT                 AT FIRST WORD?
+                   JP.GP$11                      YES
+                   SUB.A.1                       NO, DECREMENT WORD INDEX
+                   ENT.B6.A                   
+       GP$11       ENT.Q.W(L$+B6)                SHIFT OUT LAST CHARATER
+                   CL.A
+                   RSH.AQ.6
+                   STR.Q.W(L$+B6)
+                   JP.GL$1
+                                      
+       GL$99       EXIT
+                                               
+                             
+       G$INIT      1                   
+       G$BFR       RESERVE.1                   
+       G$BCR       U-TAG.G$BFR.G$BFR
+       G$SAVE      RESERVE.1
+       G$B5        RESERVE.1
+       G$B6        RESERVE.1
+       G$RSLT      RESERVE.1
+       G$DOTSEEN   RESERVE.1
+       G$DECIMALS  RESERVE.1
+       G$SIGN      RESERVE.1
+       
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. READ AN INTEGER VALUE FROM THE KEYBOARD
+                   COMMENT.
+                   COMMENT. RESULT RETURNED IN Q
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       GETINT      ENTRY
+       
+                   RJP.GETLINE
+            
+                   ENT.Q.1                       DEFAULT TO POSITIVE
+                   STR.Q.W(G$SIGN)
+                   CL.W(G$RSLT)                  CLEAR RESULT
+                   ENT.B5.4                      INIT MAX LOOP COUNT      
+       GI$1        ENT.Q.W(L$)                   GET INPUT VALUE
+                   CL.A                          GET NEXT CHARACTER
+                   LSH.AQ.6
+                   STR.Q.W(L$) 
+                   
+                   ENT.Q.77                      = '-'
+                   COM.MASK.41.AZERO
+                   JP.GI$3                       NO
+                   ENT.Q.X(-1)                   YES, MAKE RSLT NEGATIVE
+                   STR.Q.W(G$SIGN)                
+                   
+       GI$3        COM.A.60.YMORE                >= '0' & <= '9'?
+                   COM.A.72.YMORE                
+                   JP.GI$2                       NO, SKIP IT
+
+                   STR.A.W(G$SAVE)
+                   ENT.Q.W(G$RSLT)               RSLT = RSLT * 10 + CHAR
+                   MUL.10D
+                   ADD.Q.W(G$SAVE)
+                   SUB.Q.60
+                   STR.Q.W(G$RSLT)
+                   
+       GI$2        BJP.B5.GI$1                   LOOP
+                   ENT.Q.W(G$RSLT)               RETURN RESULT
+                   MUL.W(G$SIGN)
+                   ENT.B5.W(G$B5)                RESTORE REGISTERS
+                   
+                   EXIT                   
+       
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. READ A FLOATING POINT VALUE FROM THE KEYBOARD
+                   COMMENT.
+                   COMMENT. RESULT RETURNED IN Q
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       GETFLT      ENTRY
+       
+                   RJP.GETLINE
+                   
+                   CL.W(G$RSLT)                  CLEAR RESULT
+                   CL.W(G$DOTSEEN)
+                   CL.W(G$DECIMALS)              CLEAR # DECIMALS
+                   ENT.B6.0                      INIT L$ INDEX
+       GF$0        ENT.B5.4                      INIT MAX LOOP COUNT
+       GF$1        ENT.Q.W(L$+B6)                GET INPUT VALUE
+                   CL.A                          GET NEXT CHARACTER
+                   LSH.AQ.6
+                   STR.Q.W(L$+B6)
+                   
+                   ENT.Q.77
+                   COM.MASK.75.ANOT              DECIMAL POINT
+                   JP.GF$4                       YES
+                   COM.A.60.YMORE                >= '0' & <= '9'?
+                   COM.A.72.YMORE                
+                   JP.GF$2                       NO, SKIP IT
+                   
+                   STR.A.W(G$SAVE)
+                   ENT.Q.W(G$RSLT)               RSLT = RSLT * 10 + CHAR
+                   MUL.10D
+                   ADD.Q.W(G$SAVE)
+                   SUB.Q.60
+                   STR.Q.W(G$RSLT)
+                   ENT.A.W(G$DOTSEEN).AZERO      DECIMAL POINT SEEN?
+                   RPL.Y+1.W(G$DECIMALS)         YES, BUMP DECIMAL COUNT
+                   
+       GF$2        BJP.B5.GF$1                   INNER LOOP
+                   BSK.B6.1                      OUTER LOOP
+                   JP.GF$0
+
+                   ENT.Q.W(G$DECIMALS)           ADJUST TO 3 DECIMALS
+                   SUB.Q.3.ANOT
+                   JP.GF$98
+                   COM.Q.0.YMORE
+                   JP.GF$3
+                   
+                   CP.Q                          < 3 DECIMALS, Q = -Q
+                   RJP.POW10
+                   MUL.W(G$RSLT)
+                   STR.Q.W(G$RSLT)
+                   JP.GF$98
+
+       GF$4        RPL.Y+1.W(G$DOTSEEN)         SET DECIMAL SEEN FLAG
+                   JP.GF$2
+                   
+       GF$3        RJP.POW10                     > 3 DECIMALS
+                   STR.Q.W(G$SAVE)
+                   ENT.Q.W(G$RSLT)
+                   CL.A
+                   DIV.W(G$SAVE)
+                   STR.Q.W(G$RSLT)
+                                      
+       GF$98       ENT.Q.W(G$RSLT)               RETURN RESULT
+                   ENT.B5.W(G$B5)                RESTORE REGISTERS
+                   ENT.B6.W(G$B6)
+                   JP.GF$99
+            
+
+       GF$99       EXIT                   
+            
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. SEND A CHARACTER TO THE CONSOLE PRINTER
+                   COMMENT.
+                   COMMENT. CHARACTER TO SEND IN A
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       PUTC        ENTRY
+       
+                   STR.A.W(P$BFR)                NO, CHAR TO BUFFER
+                   RPL.Y+1.W(I$PBUSY)            SET PRN BUSY FLAG
+                   OUT.CONS.W(P$BCR).MONITOR
+       P$WAIT      ENT.A.W(I$PBUSY).AZERO        WAIT 4 PRN BUSY CLEAR
+                   JP.P$WAIT                   
+       
+                   EXIT                                                        
+       
+       P$BFR       RESERVE.1                  
+       P$BCR       U-TAG.P$BFR.P$BFR                          
+       
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. PSUEDO RANDOM NUMBER GENERATOR
+                   COMMENT.
+                   COMMENT. PARAMETERS:
+                   COMMENT.   RANGE IN A
+                   COMMENT.
+                   COMMENT. RETURNS
+                   COMMENT.   A RANDOM NUMBER IN A. 0 <= R < RANGE
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       RANDOM      ENTRY
+       
+                   STR.A.W(R$RANGE)              SAVE REQUESTED RANGE
+                   STR.Q.W(R$Q)
+                   ENT.Q.W(R$SEED).QNEG          SEED INTIALIZED?
+                   JP.RANDOM$1                   YES
+                   ENT.Q.W(RTCLOCK)              NO, LOAD WITH CURRENT TIME
+                   LSH.AQ.1                      MAKE SURE IT IS POSITIVE
+                   CL.A
+                   RSH.AQ.1
+                   STR.Q.W(R$SEED)                   
+                          
+       RANDOM$1    ENT.Q.W(R$SEED)               CALC NEW SEED
+                   MUL.W(R$M)
+                   ADD.Q.1
+                   LSH.AQ.1                      MAKE SURE IT IS POSITIVE
+                   CL.A
+                   RSH.AQ.1
+                   STR.Q.W(R$SEED)
+       
+                   MUL.W(R$RANGE)
+                   RSH.AQ.29D                    LEAVE RANDOM # IN A
+                   STR.Q.A
+                   SUB.Q.W(R$RANGE).QNEG         CHECK WITHIN RANGE
+                   JP.$.STOP
+       
+                   ENT.Q.W(R$Q)                           
+                   
+                   EXIT                                      
+       
+       R$SEED      -1
+       R$M         134775813D                    THE MAGIC MULTIPLIER
+       R$Q         RESERVE.1
+       R$RANGE     RESERVE.1
+
+       INSTNS      0403
+                   FD.0.     INSTRUCTIONS FOR 'SUPER STAR TREK'
+                   04030403
+                   FD.0.1. WHEN YOU SEE \COMMAND ?\ PRINTED, ENTER ONE OF THE LEGAL
+                   0403
+                   FD.0.     COMMANDS (NAV,SRS,LRS,PHA,TOR,SHE,DAM,COM, OR XXX).
+                   0403
+                   FD.0.2. IF YOU SHOULD TYPE IN AN ILLEGAL COMMAND, YOU'LL GET A SHORT
+                   0403
+                   FD.0.     LIST OF THE LEGAL COMMANDS PRINTED OUT.
+                   0403
+                   FD.0.3. SOME COMMANDS REQUIRE YOU TO ENTER DATA (FOR EXAMPLE, THE
+                   0403
+                   FD.0.     'NAV' COMMAND COMES BACK WITH 'COURSE (1-9) ?'.)  IF YOU
+                   0403
+                   FD.0.     TYPE IN ILLEGAL DATA (LIKE NEGATIVE NUMBERS), THAT COMMAND
+                   0403
+                   FD.0.     WILL BE ABORTED
+                   04030403
+                   FD.0.     THE GALAXY IS DIVIDED INTO AN 8 X 8 QUADRANT GRID.
+                   0403
+                   FD.0.AND EACH QUADRANT IS FURTHER DIVIDED INTO AN 8 X 8 SECTOR GRID.
+                   0403
+                   FD.0.     YOU WILL BE ASSIGNED A STARTING POINT SOMEWHERE IN THE
+                   0403
+                   FD.0.GALAXY TO BEGIN A TOUR OF DUTY AS COMMANDER OF THE STARSHIP
+                   0403
+                   FD.0.\ENTERPRISE\; YOUR MISSION: TO SEEK AND DESTROY THE FLEET OF
+                   0403
+                   FD.0.KLINGON WARWHIPS WHICH ARE MENACING THE UNITED FEDERATION OF
+                   0403
+                   FD.0.PLANETS.
+                   04030403
+                   FD.0.     YOU HAVE THE FOLLOWING COMMANDS AVAILABLE TO YOU AS CAPTAIN
+                   0403
+                   FD.0.OF THE STARSHIP ENTERPRISE:
+                   04030404
+                   FD.0.PRESS RETURN
+                   040377
+       INSTNS2     FD.0.\NAV\ COMMAND = WARP ENGINE CONTROL --
+                   0403
+                   FD.0.     COURSE IS IN A CIRCULAR NUMERICAL   4  3  2
+                   0403
+                   FD.0.     VECTOR ARRANGEMENT AS SHOWN          . . .
+                   0403
+                   FD.0.     INTEGER AND REAL VALUES MAY BE        ...
+                   0403
+                   FD.0.     USED.  (THUS COURSE 1.5 IS HALF-  5 ---*--- 1
+                   0403
+                   FD.0.     WAY BETWEEN 1 AND 2                   ...
+                   0403
+                   FD.0.                                          . . .
+                   0403
+                   FD.0.     VALUES MAY APPROACH 9.0, WHICH      6  7  8
+                   0403
+                   FD.0.     ITSELF IS EQUIVALENT TO 1.0
+                   0403
+                   FD.0.                                         COURSE
+                   0403
+                   FD.0.     ONE WARP FACTOR IS THE SIZE OF 
+                   0403
+                   FD.0.     ONE QUADRANT.  THEREFORE, TO GET
+                   0403
+                   FD.0.     FROM QUADRANT 6,5 TO 5,5, YOU WOULD
+                   0403
+                   FD.0.     USE COURSE 3, WARP FACTOR 1.
+                   04030403
+                   FD.0.PRESS RETURN
+                   040377
+       INSTNS3     FD.0.\SRS\ COMMAND = SHORT RANGE SENSOR SCAN
+                   0403
+                   FD.0.     SHOWS YOU A SCAN OF YOUR PRESENT QUADRANT.
+                   40300403
+                   FD.0.     SYMBOLOGY ON YOUR SENSOR SCREEN IS AS FOLLOWS:
+                   0403
+                   FD.0.        <*> = YOUR STARSHIP'S POSITION
+                   0403
+                   FD.0.        +K+ = KLINGON BATTLE CRUISER
+                   0403
+                   FD.0.        >!< = FEDERATION STARBASE (REFUEL/REPAIR/RE-ARM HERE!)
+                   0403
+                   FD.0.         *  = STAR
+                   04030403
+                   FD.0.     A CONDENSED 'STATUS REPORT' WILL ALSO BE PRESENTED.
+                   04030403
+                   FD.0.\LRS\ COMMAND = LONG RANGE SENSOR SCAN
+                   0403
+                   FD.0.     SHOWS CONDITIONS IN SPACE FOR ONE QUADRANT ON EACH SIDE
+                   0403
+                   FD.0.     OF THE ENTERPRISE (WHICH IS IN THE MIDDLE OF THE SCAN)
+                   0403
+                   FD.0.     THE SCAN IS CODED IN THE FORM \NNN\, WHERE THE UNITS DIGIT
+                   0403
+                   FD.0.     IS THE NUMBER OF STARS, THE TENS DIGIT IS THE NUMBER OF
+                   0403
+                   FD.0.     STARBASES, AND THE HUNDRESDS DIGIT IS THE NUMBER OF
+                   0403
+                   FD.0.     KLINGONS.
+                   04030403
+                   FD.0.     EXAMPLE - 207 = 2 KLINGONS, NO STARBASES, & 7 STARS.
+                   04030403
+                   FD.0.\PHA\ COMMAND = PHASER CONTROL.
+                   0403
+                   FD.0.     ALLOWS YOU TO DESTROY THE KLINGON BATTLE CRUISERS BY 
+                   0403
+                   FD.0.     ZAPPING THEM WITH SUITABLY LARGE UNITS OF ENERGY TO
+                   0403
+                   FD.0.     DEPLETE THEIR SHIELD POWER.  (REMBER, KLINGONS HAVE
+                   0403
+                   FD.0.     PHASERS TOO!)
+                   04030403
+                   FD.0.PRESS RETURN
+                   040377
+       INSTNS4     FD.0.\TOR\ COMMAND = PHOTON TORPEDO CONTROL
+                   0403
+                   FD.0.     TORPEDO COURSE IS THE SAME AS USED IN WARP ENGINE CONTROL
+                   0403
+                   FD.0.     IF YOU HIT THE KLINGON VESSEL, HE IS DESTROYED AND
+                   0403
+                   FD.0.     CANNOT FIRE BACK AT YOU.  IF YOU MISS, YOU ARE SUBJECT TO
+                   0403
+                   FD.0.     HIS PHASER FIRE.  IN EITHER CASE, YOU ARE ALSO SUBJECT TO
+                   0403
+                   FD.0.     THE PHASER FIRE OF ALL OTHER KLINGONS IN THE QUADRANT.
+                   04030403
+                   FD.0.     THE LIBRARY-COMPUTER (\COM\ COMMAND) HAS AN OPTION TO 
+                   0403
+                   FD.0.     COMPUTE TORPEDO TRAJECTORY FOR YOU (OPTION 2)
+                   04030403
+                   FD.0.\SHE\ COMMAND = SHIELD CONTROL
+                   0403
+                   FD.0.     DEFINES THE NUMBER OF ENERGY UNITS TO BE ASSIGNED TO THE
+                   0403
+                   FD.0.     SHIELDS.  ENERGY IS TAKEN FROM TOTAL SHIP'S ENERGY.  NOTE
+                   0403
+                   FD.0.     THAT THE STATUS DISPLAY TOTAL ENERGY INCLUDES SHIELDS ENERGY
+                   04030403
+                   FD.0.\DAM\ COMMAND = DAMMAGE CONTROL REPORT
+                   0403
+                   FD.0.     GIVES THE STATE OF REPAIR OF ALL DEVICES.  WHERE A NEGATIVE
+                   0403
+                   FD.0.     'STATE OF REPAIR' SHOWS THAT THE DEVICE IS TEMPORARILY
+                   0403
+                   FD.0.     DAMAGED.
+                   04030403
+                   FD.0.PRESS RETURN
+                   040377
+       INSTNS5     FD.0.\COM\ COMMAND = LIBRARY-COMPUTER
+                   0403
+                   FD.0.     THE LIBRARY-COMPUTER CONTAINS SIX OPTIONS:
+                   0403
+                   FD.0.     OPTION 0 = CUMULATIVE GALACTIC RECORD
+                   0403
+                   FD.0.        THIS OPTION SHOWES COMPUTER MEMORY OF THE RESULTS OF ALL
+                   0403
+                   FD.0.        PREVIOUS SHORT AND LONG RANGE SENSOR SCANS
+                   0403
+                   FD.0.     OPTION 1 = STATUS REPORT
+                   0403
+                   FD.0.        THIS OPTION SHOWS THE NUMBER OF KLINGONS, STARDATES,
+                   0403
+                   FD.0.        AND STARBASES REMAINING IN THE GAME.
+                   0403
+                   FD.0.     OPTION 2 = PHOTON TORPEDO DATA
+                   0403
+                   FD.0.        WHICH GIVES DIRECTIONS AND DISTANCE FROM THE ENTERPRISE
+                   0403
+                   FD.0.        TO ALL KLINGONS IN YOUR QUADRANT
+                   0403
+                   FD.0.     OPTION 3 = STARBASE NAV DATA
+                   0403
+                   FD.0.        THIS OPTION GIVES DIRECTION AND DISTANCE TO ANY 
+                   0403
+                   FD.0.        STARBASE WITHIN YOUR QUADRANT
+                   0403
+                   FD.0.     OPTION 4 = DIRECTION/DISTANCE CALCULATOR
+                   0403
+                   FD.0.        THIS OPTION ALLOWS YOU TO ENTER COORDINATES FOR
+                   0403
+                   FD.0.        DIRECTION/DISTANCE CALCULATIONS
+                   0403
+                   FD.0.     OPTION 5 = GALACTIC /REGION NAME/ MAP
+                   0403
+                   FD.0.        THIS OPTION PRINTS THE NAMES OF THE SIXTEEN MAJOR 
+                   0403
+                   FD.0.        GALACTIC REGIONS REFERRED TO IN THE GAME.
+                   04030403
+                   FD.0.PRESS RETURN
+                   040377
+
+       ENTERPRISE  FD.0.                                    ,------*------,
+                   0403
+                   FD.0.                    ,-------------   '---  ------'
+                   0403
+                   FD.0.                     '-------- --'      / /
+                   0403
+                   FD.0.                         ,---' '-------/ /--,
+                   0403
+                   FD.0.                          '----------------'
+                   04030403
+                   FD.0.                    THE USS ENTERPRISE --- NCC-1701
+                   040377
+                   
+       PLANS       FD.0.YOUR ORDERS ARE AS FOLLOWS:
+                   0403
+                   FD.0.   DESTROY THE
+                   05
+       P$KLINGONS  RESERVE.1
+                   FD.0. KLINGON WARSHIPS WHICH HAVE INVADED
+                   0403
+                   FD.0.   THE GALAXY BEFORE THEY CAN ATTACK FEDERATION HEADQUARTERS
+                   0403
+                   FD.0.   ON STARDATE
+                   05
+       P$ENDDT     RESERVE.1
+                   FD.0. THIS GIVES YOU
+                   05
+       P$DAYS      RESERVE.1
+                   FD.0. DAYS.  THERE
+       P$X0        RESERVE.1
+                   0403050505
+       P$BASES     RESERVE.1
+                   FD.0. STARBASE
+       P$X         RESERVE.1
+                   FD.0. IN THE GALAXY FOR RESUPPLYING YOUR SHIP
+                   04030403
+                   FD.0.HIT RETURN WHEN READY TO ACCEPT COMMAND
+                   040377
+                   
+       REGIONS1    FD.3.ANTARES
+                   FD.3.RIGEL
+                   FD.3.PROCYON
+                   FD.3.VEGA
+                   FD.3.CANOPUS
+                   FD.3.ALTAIR
+                   FD.3.SAGITTARIUS 
+                   FD.3.POLLUX
+                   
+       REGIONS2    FD.3.SIRIUS
+                   FD.3.DENEB
+                   FD.3.CAPELLA
+                   FD.3.BETELGEUSE
+                   FD.3.ALDEBARAN
+                   FD.3.REGULUS
+                   FD.3.ARCTURUS
+                   FD.3.SPICA
+                   
+       REGIONS3    FD.1. I
+                   FD.1. II
+                   FD.1. III
+                   FD.1. IV                                                        
+                   FD.1. I
+                   FD.1. II
+                   FD.1. III
+                   FD.1. IV
+                   
+       QENTER      FD.0.NOW ENTERING
+                   05
+       QE$QUAD     RESERVE.4
+                   FD.0. QUADRANT . . .
+                   0403040377
+                   
+       QBEGIN      FD.0.YOUR MISSION BEGINS WITH YOUR STARSHIP LOCATED
+                   0403
+                   FD.0.IN THE GALACTIC QUADRANT '
+       QB$QUAD     RESERVE.4
+                   FD.0.'.
+                   0403040377
+                   
+       COMBATAREA  FD.0.COMBAT AREA     CONDITION RED
+                   040377
+                   
+       SHIELDSLOW  FD.0.  SHIELDS DANGEROUSLY LOW
+                   040377
+                   
+       SHIELDSDRP  FD.0.SHIELDS DROPPED FOR DOCKING PURPOSES
+                   040377
+                   
+       SHIELDSOUT  FD.0.SHIELD CONTROL INOPERABLE
+                   040377                   
+                   
+       SHRTSENOUT  0403
+                   FD.0.*** SHORT RANGE SENSORS ARE OUT ***
+                   0403040377
+                   
+       LONGSENOUT  FD.0.LONG RANGE SENSORS ARE INOPERABLE
+                   040377
+                   
+       CMDPROMPT   FD.0.COMMAND?
+                   0577                   
+                   
+       FATALERR    0403
+                   FD.0.** FATAL ERROR **   YOU'VE JUST STRANDED YOUR SHIP IN
+                   0403
+                   FD.0.SPACE. YOU HAVE INSUFFICIENT MANEUVERING ENERGY,
+                   0403
+                   FD.0.AND SHIELD CONTROL. IS PRESENTLY INCAPABLE OF CROSS
+                   0403
+                   FD.0.-CIRCUITING TO ENGINE ROOM!!
+                   040377
+
+       STARDATE    FD.0.IT IS STAR DATE
+       ESTARDT     RESERVE.2
+                   040377
+
+       EOMISSION   FD.0.THERE WERE
+                   05
+       KCOUNT      RESERVE.1
+                   05
+                   FD.0.KLINGON BATTLE CRUISERS LEFT AT
+                   0403
+                   FD.0.THE END OF YOUR MISSION
+                   040377
+                   
+       EOGAME      FD.0.THE FEDERATION IS IN NEED OF A NEW STARSHIP COMMANDER
+                   0403
+                   FD.0.FOR A SIMILAR MISSION -- IF THERE IS A VOLUNTEER,
+                   0403
+                   FD.0.LET HIM STEP FORWARD AND ENTER 'AYE'?
+                   0577
+                   
+       CMDHELP     FD.0.ENTER ONE OF THE FOLLOWING:
+                   0403
+                   FD.0.  NAV  (TO SET COURSE)
+                   0403
+                   FD.0.  SRS  (FOR SHORT RANGE SENSOR SCAN)
+                   0403
+                   FD.0.  LRS  (FOR LONG RANGE SENSOR SCAN)
+                   0403
+                   FD.0.  PHA  (TO FIRE PHASERS)
+                   0403
+                   FD.0.  TOR  (TO FIRE PHOTON TORPEDOES)
+                   0403
+                   FD.0.  SHE  (TO RAISE OR LOWER SHIELDS)
+                   0403
+                   FD.0.  DAM  (FOR DAMAGE CONTROL REPORTS)
+                   0403
+                   FD.0.  COM  (TO CALL ON LIBRARY-COMPUTER)
+                   0403
+                   FD.0.  XXX  (TO RESIGN YOUR COMMAND)
+                   040377
+                   
+       LEAVEGLXY   FD.0.LT. UHURA REPORTS MESSAGE FROM STARFLEET COMMAND:
+                   0403
+                   FD.0.  'PERMISSION TO ATTEMPT CROSSING OF GALACTIC PERIMETER
+                   0403
+                   FD.0.  IS HEREBY *DENIED*.  SHUT DOWN YOUR ENGINES.'
+                   0403
+                   FD.0.CHIEF ENGINEER SCOTT REPORTS  'WARP ENGINES SHUT DOWN
+                   0403
+                   FD.0.  AT SECTOR
+                   05
+       LG$S1       RESERVE.1
+                   FD.0. ,
+                   05
+       LG$S2       RESERVE.1
+                   FD.0. OF QUADRANT
+                   05
+       LG$Q1       RESERVE.1
+                   FD.0. ,
+                   05
+       LG$Q2       RESERVE.1
+                   FD.0..'
+                   040377
+                   
+       MANSHIELD   FD.0.SHIELD CONTROL SUPPLIES ENERGY TO COMPLETE THE MANEUVER.
+                   040377
+                   
+       PHASERSOUT  FD.0.PHASERS INOPERATIVE
+                   040377
+                   
+       NOENEMIES   FD.0.SCIENCE OFFICER SPOCK REPORTS  'SENSORS SHOW NO ENEMY SHIPS
+                   0403
+                   FD.0. IN THIS QUADRANT'
+                   040377
+                   
+       COMPDMG     FD.0.COMPUTER FAILURE HAMPERS ACCURACY
+                   040377 
+                   
+       PHASERLCK   FD.0.PHASERS LOCKED ON TARGET;
+                   0505                                     
+                   
+       ENRGYAVAIL  FD.0.ENERGY AVAILABLE =
+                   05
+       EA$E        RESERVE.1
+                   FD.0. UNITS
+                   0403
+                   FD.0.NUMBER OF UNITS TO FIRE?
+                   040377
+                   
+       NODAMAGE    FD.0.SENSORS SHOW NO DAMAGE TO ENEMY AT
+                   05
+       ND$K1       RESERVE.1
+                   FD.0. ,
+                   05
+       ND$K2       RESERVE.1
+                   040377
+                   
+       KLINGHIT    RESERVE.1
+                   FD.0. UNIT HIT ON KLINGON AT SECTOR
+                   05
+       KH$K1       RESERVE.1
+                   FD.0. ,
+                   05
+       KH$K2       RESERVE.1
+                   040377
+                   
+       KLINGENRGY  FD.0.   (SENSORS SHOW
+                   05
+       KE$K3       RESERVE.1
+                   FD.0. UNITS REMAINING)
+                   040377
+                   
+       KLINGDEAD   FD.0.*** KLINGON DESTROYED ***
+                   040377
+                   
+       TORPGONE    FD.0.ALL PHOTON TORPEDOES EXPENDED
+                   040377
+                   
+       TORPDONE    FD.0.PHOTON TUBES ARE NOT OPERATIONAL
+                   040377 
+                   
+       COMPDONE    FD.0.COMPUTER DISABLED
+                   040377                                                         
+                   
+       GAMEWON     FD.0.CONGRULATION, CAPTAIN!  THE LAST KLINGON BATTLE CRUISER
+                   0403
+                   FD.0.MENACING THE FEDERATION HAS BEEN DESTROYED.
+                   04030403
+                   FD.0.YOUR EFFICIENCY RATING IS
+       GW$EFF      RESERVE.2
+                   040377
+                   
+       BASEDEAD    FD.0.*** STARBASE DESTROYED ***
+                   040377
+                   
+       RELIEVED    FD.0.THAT DOES IT, CAPTAIN!! YOU ARE HEREBY RELIEVED
+                   FD.0. OF COMMAND
+                   0403
+                   FD.0.AND SENTENCED TO 99 STARDATES AT HARD LABOR ON
+                   FD.0. CYGNUS 12!!
+                   040377
+                     
+       REVIEW      FD.0.STARFLEET COMMAND REVIEWING YOUR RECORD TO
+                   FD.0. CONSIDER
+                   0403
+                   FD.0.COURT MARTIAL!
+                   040377
+                   
+       COMPFUNC    FD.0.FUNCTIONS AVAILABLE FROM LIBRARY-COMPUTER:
+                   0403
+                   FD.0.   0 = CUMULATIVE GALACTIC RECORD
+                   0403
+                   FD.0.   1 = STATUS REPORT
+                   0403
+                   FD.0.   2 = PHOTON TORPEDO DATA
+                   0403
+                   FD.0.   3 = STARBASE NAV DATA
+                   0403
+                   FD.0.   4 = DIRECTION/DISTANCE CALCULATOR
+                   0403
+                   FD.0.   5 = GALAXY 'REGION NAME' MAP
+                   0403040377
+                                                        
+       DOCKED      FD.2.DOCKED
+       RED         FD.2.RED
+       YELLOW      FD.2.YELLOW
+       GREEN       FD.2.GREEN
+       SPACES      0505050000
+       ENTPRISE    FD.1.<*>
+       KLINGON     FD.1.+K+                                                       
+       BASE        FD.1.>!<
+       STAR        0550050000                    ' * '
+       
+                   COMMENT.++++++++++++++++++++++++++++++++++++
+                   COMMENT. COMMAND JUMP TABLE
+                   COMMENT.++++++++++++++++++++++++++++++++++++
+                   
+       CMDS        FD.1.NAV
+                   FD.1.SRS                   
+                   FD.1.LRS                   
+                   FD.1.PHA                   
+                   FD.1.TOR                   
+                   FD.1.SHE                   
+                   FD.1.DAM                   
+                   FD.1.COM                   
+                   FD.1.XXX
+                   
+       CJUMP       U-TAG.COURSECTL.0
+                   U-TAG.SHORTSCAN.0
+                   U-TAG.LONGSCAN.0
+                   U-TAG.PHASERCTL.0
+                   U-TAG.TORPEDOES.0
+                   U-TAG.SHIELDCTL.0
+                   U-TAG.DAMAGECTL.0
+                   U-TAG.LIBRARYCOM.0
+                   U-TAG.RESIGN.0
+                                                        
+                                 
+                   COMMENT.++++++++++++++++++++++++++++++++++++
+                   COMMENT. VARIABLES FROM ORIGINAL BASIC PROGRAM
+                   COMMENT.++++++++++++++++++++++++++++++++++++
+                   
+       T           RESERVE.1                     Real; CURRENT STAR DATE
+                   COMMENT.  { HINT: Better ruler -- AtH } (WAS SO1)
+       SO1$        FD.0.---------------------------------
+                   040377
+                   COMMENT. { By the way, they are all O1$ in the Source } (WAS SO2)       
+       SO2$        FD.0.-------------------
+                   040377
+                   COMMENT.WAS S03
+       SO3$        FD.0.     ----- ----- ----- ----- ----- ----- ----- -----
+                   040377
+       S04$        FD.0.       1     2     3     4     5     6     7     8
+                   040377
+       E0          3000D                         { Starting Energy }
+       P0          10D                           { Photon Torpedo Capacity }
+       S9          200D                          { Klingon Power }
+       G           RESERVE.72D                   Array [1..8, 1..9] of Integer; { Galaxy }
+                   COMMENT.Array [1..9, 1..2] of Integer; { Poor Man SIN/COS, used in NAV/TOR
+       C           0                             C[1,1]
+                   1                             C[1,2]
+                   -1                            C[2,1]
+                   1                             C[2,2]
+                   -1                            C[3,1]
+                   0                             C[3,2]
+                   -1                            C[4,1]
+                   -1                            C[4,2]
+                   0                             C[5,1]
+                   -1                            C[5,2]
+                   1                             C[6,1]
+                   -1                            C[6,2]
+                   1                             C[7,1]
+                   0                             C[7,2]
+                   1                             C[8,1]
+                   1                             C[8,2]
+                   0                             C[9,1]
+                   1                             C[9,2]
+       K           RESERVE.9D                    Array [1..3, 1..3] of Integer; { Klingon Data }
+       Z           RESERVE.64D                   Array [1..8, 1..8] of Integer; { Cumulative Record of Galaxy }
+       D           RESERVE.8D                    Array [1..8] of Real;          { Damage Array }
+       D0          RESERVE.1                     Integer; { Docked Flag }
+       E           RESERVE.1                     Integer; { Current Energy }
+       P           RESERVE.1                     Integer; { Photon Torpedos Left }
+       K3          RESERVE.1                     Integer; { Klingons in Quadrant }
+       K7          RESERVE.1                     Integer; { Klingons at Start }
+       K9          RESERVE.1                     Integer; { Total Klingons Left }
+       S           RESERVE.1                     Integer; { Current Shield Value }
+       S3          RESERVE.1                     Integer; { Stars in Quadrant }
+       G5          RESERVE.1                     Integer; { Quadrant Name Flag }
+                   COMMENT.WERE B3, B4, B5, B9
+       BB3         RESERVE.1                     Integer; { Starbases in Quadrant }
+       BB4         RESERVE.1
+       BB5         RESERVE.1                     Integer; { Starbase Location in Sector }
+       BB9         RESERVE.1                     Integer; { Total Starbases }
+       T0          RESERVE.1                     Integer; { Starting Stardate }
+       T9          RESERVE.1                     Integer; { Time Limit }
+       Q1          RESERVE.1
+       Q2          RESERVE.1                     Integer; { Quadrant Position of Enterprise }
+       S1          RESERVE.1
+       S2          RESERVE.1                     Real; { Current Sector Position of Enterprise }
+       S8          RESERVE.1                     { Quadrant Locating Index }
+       R1          RESERVE.1
+       R2          RESERVE.1                     Integer; { Temporary Location Coordinates }
+       Z1          RESERVE.1
+       Z2          RESERVE.1                     Integer; { Temporary Sector Coordinates }
+       Z3          RESERVE.1                     Integer; { StringCompare() return value }
+       Z4          RESERVE.1
+       Z5          RESERVE.1                     Integer; { Temporary Quadrant Coordinates }
+       D4          RESERVE.1                     Real; { Used for computing damage repair time }
+       W1          RESERVE.1                     Real; { Warp Factor }
+       N           RESERVE.1                     Integer; { Number of Sectors to Travel }
+                   COMMENT.WERE X, X1, X2
+       RX          RESERVE.1
+       RX1         RESERVE.1
+       RX2         RESERVE.1                     Real; { Navigational Coordinates }
+       Y           RESERVE.1
+       Q4          RESERVE.1
+       Q5          RESERVE.1                     Integer; { Old Quadrant for Warp Engine }
+       MOVED       RESERVE.1                     Integer; { Flag for Warp Engine }
+       G2$         RESERVE.40D                   String; { Used to pass string results }
+       Q$          RESERVE.64D                   String[192]; { Visual Display of Quadrant }
+       A$          RESERVE.1                     String[3]; { An Object in a Sector }
+       C$          RESERVE.2                     String[6]; { Condition }
+       L$          RESERVE.16D                   CONSOLE INPUT BUFFER
+       H8          RESERVE.1                     Integer; { General Flag for Library Computer }
+       A1          RESERVE.1
+                   COMMENT.WAS C1
+       RC1         RESERVE.1                     Real; { Used by Library Computer }
+                          
+                   ENDIT.STARTREK

@@ -76,8 +76,13 @@ end;
 
 procedure T494Printer.ActivateOutput(withMon: Boolean);
 begin
-    FOutputMonitor := withMon;
-    FOutputActive := True;
+    Lock;
+    try
+        FOutputMonitor := withMon;
+        FOutputActive := True;
+    finally
+        Unlock;
+    end;
 end;
 
 procedure T494Printer.Clear;

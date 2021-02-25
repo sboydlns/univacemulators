@@ -137,8 +137,13 @@ const
 
 procedure T494Reader.ActivateInput(withMon: Boolean);
 begin
-    FInputMonitor := withMon;
-    FInputActive := True;
+    Lock;
+    try
+        FInputMonitor := withMon;
+        FInputActive := True;
+    finally
+        Unlock;
+    end;
 end;
 
 procedure T494Reader.ActivateOutput(withMon: Boolean);
@@ -326,14 +331,24 @@ begin
     begin
         TCardFileStream.ReadImage(bfr, FReadStation);
         Store(bfr);
-        FInputActive := False;
-        FFuncCode := 0;
-        if (FWithExtInterrupt) then
-            QueueInterrupt(intIO, IIsiExternal(FChannel), CNORMAL_COMPLETION);
+        Lock;
+        try
+            FInputActive := False;
+            FFuncCode := 0;
+            if (FWithExtInterrupt) then
+                QueueInterrupt(intIO, IIsiExternal(FChannel), CNORMAL_COMPLETION);
+        finally
+            Unlock;
+        end;
     end else
     begin
-        FFuncCode := 0;
-        QueueInterrupt(intIO, IIsiExternal(FChannel), CINTERLOCK);
+        Lock;
+        try
+            FFuncCode := 0;
+            QueueInterrupt(intIO, IIsiExternal(FChannel), CINTERLOCK);
+        finally
+            Unlock;
+        end;
     end;
 end;
 
@@ -375,19 +390,29 @@ begin
             bcr.Count := bcr.Count - 1;
             FMemory.StoreBcr(BcrIn(FChannel), bcr, True);
         end;
-        FInputActive := False;
-        FFuncCode := 0;
-        if (FInputMonitor and (bcr.Count = 0)) then
-        begin
-            QueueInterrupt(intIO, IIsiInput(FChannel), 0);
-            TerminateInput;
+        Lock;
+        try
+            FInputActive := False;
+            FFuncCode := 0;
+            if (FInputMonitor and (bcr.Count = 0)) then
+            begin
+                QueueInterrupt(intIO, IIsiInput(FChannel), 0);
+                TerminateInput;
+            end;
+            if (FWithExtInterrupt) then
+                QueueInterrupt(intIO, IIsiExternal(FChannel), CNORMAL_COMPLETION);
+        finally
+            Unlock;
         end;
-        if (FWithExtInterrupt) then
-            QueueInterrupt(intIO, IIsiExternal(FChannel), CNORMAL_COMPLETION);
     end else
     begin
-        FFuncCode := 0;
-        QueueInterrupt(intIO, IIsiExternal(FChannel), CINTERLOCK);
+        Lock;
+        try
+            FFuncCode := 0;
+            QueueInterrupt(intIO, IIsiExternal(FChannel), CINTERLOCK);
+        finally
+            Unlock;
+        end;
     end;
 end;
 
@@ -399,14 +424,24 @@ begin
     begin
         TCardFileStream.ReadFieldata(bfr, FReadStation);
         Store(bfr);
-        FInputActive := False;
-        FFuncCode := 0;
-        if (FWithExtInterrupt) then
-            QueueInterrupt(intIO, IIsiExternal(FChannel), CNORMAL_COMPLETION);
+        Lock;
+        try
+            FInputActive := False;
+            FFuncCode := 0;
+            if (FWithExtInterrupt) then
+                QueueInterrupt(intIO, IIsiExternal(FChannel), CNORMAL_COMPLETION);
+        finally
+            Unlock;
+        end;
     end else
     begin
-        FFuncCode := 0;
-        QueueInterrupt(intIO, IIsiExternal(FChannel), CINTERLOCK);
+        Lock;
+        try
+            FFuncCode := 0;
+            QueueInterrupt(intIO, IIsiExternal(FChannel), CINTERLOCK);
+        finally
+            Unlock;
+        end;
     end;
 end;
 
@@ -437,8 +472,13 @@ begin
     end;
     if (FInputMonitor and (bcr.Count = 0)) then
     begin
-        QueueInterrupt(intIO, IIsiInput(FChannel), 0);
-        TerminateInput;
+        Lock;
+        try
+            QueueInterrupt(intIO, IIsiInput(FChannel), 0);
+            TerminateInput;
+        finally
+            Unlock;
+        end;
     end;
 end;
 

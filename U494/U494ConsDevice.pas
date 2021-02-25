@@ -209,14 +209,14 @@ var
                 if (tail = FOBfrHead) then
                     Break;
             end;
+            if (OutputActive and (bcr.Count = 0)) then
+            begin
+                if (FOutputMonitor) then
+                    QueueInterrupt(intIO, IIsiOutput(FChannel), 0);
+                TerminateOutput;
+            end;
         finally
             Unlock;
-        end;
-        if (OutputActive and (bcr.Count = 0)) then
-        begin
-            if (FOutputMonitor) then
-                QueueInterrupt(intIO, IIsiOutput(FChannel), 0);
-            TerminateOutput;
         end;
     end;
 
@@ -282,9 +282,14 @@ var
 
             if (InputActive and (bcr.Count = 0)) then
             begin
-                if (FInputMonitor) then
-                    QueueInterrupt(intIO, IIsiInput(FChannel), 0);
-                TerminateInput;
+                Lock;
+                try
+                    if (FInputMonitor) then
+                        QueueInterrupt(intIO, IIsiInput(FChannel), 0);
+                    TerminateInput;
+                finally
+                    Unlock;
+                end;
             end;
         end;
     end;

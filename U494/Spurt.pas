@@ -32,8 +32,7 @@ type
     FOutputType: TOutputType;
     FLocationCounter: TSymbol;
     FObjCodeSize: UInt64;
-    FTransferAddr: UInt64;
-    FTransferAddrEmited: Boolean;
+    FTransferAddrEmitted: Boolean;
     FErrorCount: Integer;
     FOpcodes: TOpcodeList;
     FSymbols: TSymbolList;
@@ -43,7 +42,9 @@ type
     FFormats: TWordFormatList;
     FCurInst: TInstruction;
     FProcs: TProcList;
-    FProgramName: AnsiString;
+    FPrograms: TProgramList;
+    FCrntProgram: TProgram;
+    FTransferAddr: UInt32;
     FAllocationType: TAllocationType;
     function AdjustIdent(l: AnsiString): AnsiString; overload;
     function AdjustIdent(l: String): String; overload;
@@ -218,6 +219,7 @@ begin
     FSymbols := TSymbolList.Create;
     FFormats := TWordFormatList.Create;
     FProcs := TProcList.Create;
+    FPrograms := TProgramList.Create;
     for i := Low(U494StdOpcodes) to High(U494StdOpcodes) do
     begin
         if (U494StdOpcodes[i].SpurtMnemonic <> 'UNK') then
@@ -482,6 +484,7 @@ begin
     FreeAndNil(FFormats);
     FreeAndNil(FProcs);
     FreeAndNil(FListFile);
+    FreeAndNil(FPrograms);
     inherited;
 end;
 
@@ -600,6 +603,8 @@ procedure TAssembler.DoACONTROL(lineNum: Integer; ops: AnsiString; op: TOpcode);
 // As far as I can tell this is a fairly useless header which tells us that we are
 // processing AS-1 source code.
 begin
+    if (FPass = 2) then
+        FListFile.Print;
 end;
 
 procedure TAssembler.DoALLOCATION(lineNum: Integer; ops: AnsiString; op: TOpcode);
@@ -619,6 +624,8 @@ procedure TAssembler.DoCCONTROL(lineNum: Integer; ops: AnsiString; op: TOpcode);
 // As far as I can tell this is a fairly useless header which tells us that we are
 // processing CS-1 source code.
 begin
+    if (FPass = 2) then
+        FListFile.Print;
 end;
 
 procedure TAssembler.DoCLEAR(lineNum: Integer; ops: AnsiString; op: TOpcode);
@@ -682,11 +689,11 @@ begin
             split := AnsiPos(AnsiString('B'), ops);
             if (split > 0) then
             begin
-                val := StrToFloat(Copy(ops, 1, split - 1));
-                exp := StrToInt(Copy(ops, split + 1));
+                val := StrToFloat(String(Copy(ops, 1, split - 1)));
+                exp := StrToInt(String(Copy(ops, split + 1)));
                 val := val * Power(2, exp);
             end else
-                val := StrToFloat(ops);
+                val := StrToFloat(String(ops));
             ival := Trunc(val);
             FOutFile.EmitSingleWord(FLocationCounter.Value, rtNone, UInt32(ival));
             FListFile.Value := UInt32(ival);
@@ -1010,6 +1017,7 @@ begin
         if (bytes <> 0) then
         begin
             // Emit last word
+            Dec(len);
             if (FPass = 2) then
             begin
                 word := word shl (30 - (bytes * 6));
@@ -1017,6 +1025,21 @@ begin
                 FListFile.Value := word;
                 FListFile.Print;
                 Inc(FLocationCounter.Value);
+                FListFile.InitLine(lineNum, FLocationCounter.Value, '');
+            end else
+                Inc(FLocationCounter.Value);
+        end;
+        while (len > 0) do
+        begin
+            // Pad to end of specified number of words
+            Dec(len);
+            if (FPass = 2) then
+            begin
+                FOutFile.EmitSingleWord(FLocationCounter.Value, rtNone, 0);
+                FListFile.Value := word;
+                FListFile.Print;
+                Inc(FLocationCounter.Value);
+                FListFile.InitLine(lineNum, FLocationCounter.Value, '');
             end else
                 Inc(FLocationCounter.Value);
         end;
@@ -1194,6 +1217,9 @@ begin
     end else if (op.Mnemonic = 'RILJP') then
     begin
         FCurInst.j := 1;
+    end else if (op.Mnemonic = 'SQRT') then
+    begin
+        FCurInst.k := 7;
     end;
     FOutFile.EmitSingleWord(FLocationCounter.Value, rel, FCurInst.Value);
     FListFile.Value := FCurInst.Value;
@@ -1441,6 +1467,7 @@ var
     rel: TRelocatableType;
     b: Byte;
 begin
+    { TODO : This needs work to be able to handle operands which specify an index register }
     if (FPass = 1) then
     begin
         Inc(FLocationCounter.Value, 4);
@@ -1466,7 +1493,7 @@ begin
             operand := token + operand;
         if (Assigned(ksym)) then
             FCurInst.k := ksym.Value;
-        FCurInst.y := GetY(lineNum, operand, rel, b);
+        FCurInst.y := GetY(lineNum, operand, rel, b) - 1;
         FCurInst.b := b;
         FOutFile.EmitSingleWord(FLocationCounter.Value, rel, FCurInst.Value);
         FListFile.Value := FCurInst.Value;
@@ -1479,7 +1506,7 @@ begin
         FCurInst.k := 3;
         operand := AnsiString(fields[1]);
         FCurInst.y := GetY(lineNum, operand, rel, b);
-        FCurInst.b := b;
+        FCurInst.b := 7;
         FOutFile.EmitSingleWord(FLocationCounter.Value, rel, FCurInst.Value);
         FListFile.InitLine(lineNum, FLocationCounter.Value, '');
         FListFile.Value := FCurInst.Value;
@@ -1492,7 +1519,7 @@ begin
         FCurInst.k := 3;
         operand := AnsiString(fields[2]);
         FCurInst.y := GetY(lineNum, operand, rel, b);
-        FCurInst.b := b;
+        FCurInst.b := 7;
         FOutFile.EmitSingleWord(FLocationCounter.Value, rel, FCurInst.Value);
         FListFile.InitLine(lineNum, FLocationCounter.Value, '');
         FListFile.Value := FCurInst.Value;
@@ -1522,10 +1549,10 @@ begin
     FLocationCounter.Value := addr;
     if (FPass = 2) then
     begin
-        if (not FTransferAddrEmited) then
+        if (not FTransferAddrEmitted) then
         begin
             FOutFile.EmitTransferAddr(FLocationCounter.Value, FTransferAddr, FObjCodeSize);
-            FTransferAddrEmited := True;
+            FTransferAddrEmitted := True;
         end;
         FListFile.Print;
     end;
@@ -1541,6 +1568,8 @@ begin
 end;
 
 procedure TAssembler.DoPROGRAM(lineNum: Integer; ops: AnsiString; op: TOpcode);
+var
+    p: TProgram;
 begin
     FAllocationType := atNone;
     if (FPass = 1) then
@@ -1549,19 +1578,27 @@ begin
         begin
             Dec(FStmtLabel.DefCount);
             FStmtLabel.DefLine := 0;
-            if (FProgramName = '') then
+            if (not Assigned(FPrograms.Programs[FStmtLabel.ID])) then
             begin
-                FProgramName := FStmtLabel.ID;
-                FTransferAddr := FLocationCounter.Value;
+                p := TProgram.Create;
+                p.ProgramName := FStmtLabel.ID;
+                p.StartAddr := FLocationCounter.Value;
+                FPrograms.Add(p);
+                FCrntProgram := p;
+                if (FPrograms.Count = 1) then
+                    FTransferAddr := FLocationCounter.Value;
             end;
         end;
     end else
     begin
-        { TODO : This is probably incorrect, but it will do as a starting point. }
-        if (not FTransferAddrEmited) then
+        if (Assigned(FStmtLabel)) then
         begin
-            FOutFile.EmitTransferAddr(FTransferAddr, FTransferAddr, FObjCodeSize);
-            FTransferAddrEmited := True;
+            p := FPrograms.Programs[FStmtLabel.ID];
+            if (not p.TransferAddrEmitted) then
+            begin
+                FOutFile.EmitTransferAddr(p.StartAddr, FTransferAddr, p.EndAddr - p.StartAddr);
+                p.TransferAddrEmitted := True;
+            end;
         end;
         FListFile.Print;
     end;
@@ -1621,9 +1658,19 @@ begin
     if (token = '') then
         raise Exception.Create('RESERVE requires constant operand');
     val := NumberToInt(String(token));
-    Inc(FLocationCounter.Value, val);
-    if (FPass = 2) then
+    if (FPass = 1) then
+    begin
+        Inc(FLocationCounter.Value, val);
+    end else
+    begin
+        while (val > 0) do
+        begin
+            FOutFile.EmitSingleWord(FLocationCounter.Value, rtNone, 0);
+            Inc(FLocationCounter.Value);
+            Dec(val);
+        end;
         FListFile.Print;
+    end;
 end;
 
 procedure TAssembler.DoRIL(lineNum: Integer; ops: AnsiString; op: TOpcode);
@@ -1931,6 +1978,8 @@ begin
             fields.Delete(0);
             ops := AnsiString(fields.DelimitedText);
         end;
+        if (val < 0) then
+            val := val - 1;
         FOutFile.EmitSingleWord(FLocationCounter.Value, relType, val);
         FListFile.Value := val;
         FListFile.Print;
@@ -2061,11 +2110,14 @@ begin
         begin
             operands := Trim(Copy(sline, 8));
         end;
-        i := AnsiPos(AnsiString(' '), operands);
-        if (i <> 0) then
+        if (AnsiPos(AnsiString('FD.'), operands) = 0) then
         begin
-            cmnt := Trim(Copy(operands, i + 1));
-            operands := Trim(Copy(operands, 1, i - 1));
+            i := AnsiPos(AnsiString(' '), operands);
+            if (i <> 0) then
+            begin
+                cmnt := Trim(Copy(operands, i + 1));
+                operands := Trim(Copy(operands, 1, i - 1));
+            end;
         end;
     end else
     begin
@@ -2195,7 +2247,11 @@ begin
         Exit;
 
     i := 1;
-    if ((ops[1] = '.') or (ops[i] = ')')) then
+    if (ops[1] = '.') then
+    begin
+        token := ops[1];
+        i := 2;
+    end else if ((ops[1] = '.') or (ops[i] = ')')) then
     begin
         while ((i <= Length(ops)) and ((ops[i] = '.') or (ops[i] = ')'))) do
         begin
@@ -2235,7 +2291,7 @@ begin
     GetToken(ops, token);
     while ((token <> '') and (token <> ')') and (token <> '.') and (token <> ').')) do
     begin
-        if ((token >= 'A') and (token <= 'Z')) then
+        if (((FirstChar(token) >= 'A') and (FirstChar(token) <= 'Z')) or (token = '$')) then
         begin
             // process identifiers
             if (opr = '') then
@@ -2389,6 +2445,8 @@ begin
                         raise Exception.Create('Illegal opcode');
                 end;
             end;
+            if (Assigned(FCrntProgram)) then
+                FCrntProgram.EndAddr := FLocationCounter.Value;
         except
           on E: Exception do
           begin

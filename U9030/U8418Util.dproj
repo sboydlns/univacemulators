@@ -1,14 +1,14 @@
 ﻿	<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 		<PropertyGroup>
-			<ProjectGuid>{3C34DC99-A65A-44AF-A6D6-60E9F477DD5D}</ProjectGuid>
+			<ProjectGuid>{1B3ED167-E1EB-4051-A5F8-58F1904915E2}</ProjectGuid>
 			<ProjectVersion>13.4</ProjectVersion>
-			<FrameworkType>None</FrameworkType>
-			<MainSource>U494Spurt.dpr</MainSource>
+			<FrameworkType>VCL</FrameworkType>
+			<MainSource>U8418Util.dpr</MainSource>
 			<Base>True</Base>
 			<Config Condition="'$(Config)'==''">Debug</Config>
 			<Platform Condition="'$(Platform)'==''">Win32</Platform>
 			<TargetedPlatforms>1</TargetedPlatforms>
-			<AppType>Console</AppType>
+			<AppType>Application</AppType>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Config)'=='Base' or '$(Base)'!=''">
 			<Base>true</Base>
@@ -40,7 +40,8 @@
 			<Base>true</Base>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Base)'!=''">
-			<DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;Vcl;$(DCC_Namespace)</DCC_Namespace>
+			<DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;Vcl;Vcl.Imaging;Vcl.Touch;Vcl.Samples;Vcl.Shell;$(DCC_Namespace)</DCC_Namespace>
+			<Icon_MainIcon>$(BDS)\bin\delphi_PROJECTICON.ico</Icon_MainIcon>
 			<DCC_UsePackage>fmx;IndySystem;DBXInterBaseDriver;DbxCommonDriver;dbxcds;CustomIPTransport;dsnap;fmxase;IndyCore;inetdbxpress;bindcompfmx;rtl;dbrtl;DbxClientDriver;bindcomp;inetdb;xmlrtl;IndyProtocols;DBXMySQLDriver;soaprtl;bindengine;inet;fmxobj;fmxdae;dbexpress;$(DCC_UsePackage)</DCC_UsePackage>
 			<DCC_DcuOutput>.\$(Platform)\$(Config)</DCC_DcuOutput>
 			<DCC_ExeOutput>.\$(Platform)\$(Config)</DCC_ExeOutput>
@@ -49,10 +50,12 @@
 			<DCC_UsePackage>vclimg;vcldb;vcldsnap;vcl;webdsnap;vclactnband;bindcompvcl;vclie;vcltouch;websnap;gtPDFkitDXE2ProP;VclSmp;dsnapcon;vclx;$(DCC_UsePackage)</DCC_UsePackage>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Base_Win32)'!=''">
-			<DCC_Namespace>Winapi;System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;Bde;$(DCC_Namespace)</DCC_Namespace>
+			<Manifest_File>$(BDS)\bin\default_app.manifest</Manifest_File>
 			<VerInfo_Locale>1033</VerInfo_Locale>
-			<DCC_UsePackage>ImgIntfRXE2;gtQRExpD16;TeeDB;AccountComboPackage;IBO40FTS_D2012;vclib;inetdbbde;IBO40TRT_D2012;IBO40VRT_D2012;Rave100VCL;ExcellentImagePrintRXE2;FarPointSpread;IBO40WRT_D2012;vclimg;QR5RunDXE2;fmi;gtPDF32DXE2;AuroraConfigurationRXE2;IboAdminD15;IBO40WSRT_D2012;vcldb;AurPcmilerRXE2;vcldsnap;PdfiumRXE2;Intraweb_120_160;vclribbon;frxe16;WIARXE2;vcl;AurFormsRXE2;CloudService;CodeSiteExpressPkg;FmxTeeUI;gtDocEngD16;AurMainDMRXE2;webdsnap;IBO40XRT_D2012;IBO40FRT_D2012;adortl;AurTwainRXE2;vcldbx;IgorRXE2;frx16;IBO40CRT_D2012;ilcorp2010;Tee;AurQuickRepRXE2;svnui;ibxpress;EmailIntfRXE2;intrawebdb_120_160;ApdFaxViewer;fs16;vclactnband;FMXTee;TeeUI;bindcompvcl;Jcl;vclie;vcltouch;websnap;ExceptionExpert16;IBO40RPL_D2012;gtPDFkitDXE2ProP;VclSmp;fsDB16;AurRdpPluginRXE2;dsnapcon;IBO40WXRT_D2012;QRD_DXE2;vclx;svn;IBO40ART_D2012;bdertl;AurCobolRXE2;AurUtilityRXE2;xf40_d2011;$(DCC_UsePackage)</DCC_UsePackage>
+			<VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
+			<DCC_UsePackage>ImgIntfRXE2;gtQRExpD16;TeeDB;AccountComboPackage;IBO40FTS_D2012;vclib;inetdbbde;IBO40TRT_D2012;IBO40VRT_D2012;Rave100VCL;ExcellentImagePrintRXE2;FarPointSpread;IBO40WRT_D2012;vclimg;QR5RunDXE2;fmi;gtPDF32DXE2;AuroraConfigurationRXE2;IboAdminD15;IBO40WSRT_D2012;vcldb;AurPcmilerRXE2;vcldsnap;PdfiumRXE2;Intraweb_120_160;vclribbon;frxe16;WIARXE2;vcl;AurFormsRXE2;CloudService;CodeSiteExpressPkg;FmxTeeUI;gtDocEngD16;AurMainDMRXE2;webdsnap;IBO40XRT_D2012;IBO40FRT_D2012;adortl;AurTwainRXE2;vcldbx;IgorRXE2;frx16;IBO40CRT_D2012;ilcorp2010;Tee;AurQuickRepRXE2;CPortLibDXE;svnui;ibxpress;EmailIntfRXE2;intrawebdb_120_160;ApdFaxViewer;fs16;vclactnband;FMXTee;TeeUI;bindcompvcl;Jcl;vclie;vcltouch;websnap;ExceptionExpert16;IBO40RPL_D2012;gtPDFkitDXE2ProP;VclSmp;fsDB16;AurRdpPluginRXE2;dsnapcon;IBO40WXRT_D2012;QRD_DXE2;vclx;svn;IBO40ART_D2012;bdertl;AurCobolRXE2;AurUtilityRXE2;xf40_d2011;$(DCC_UsePackage)</DCC_UsePackage>
 			<VerInfo_Keys>CompanyName=;FileDescription=;FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=;ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
+			<DCC_Namespace>Winapi;System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;Bde;$(DCC_Namespace)</DCC_Namespace>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Cfg_1)'!=''">
 			<DCC_Define>DEBUG;$(DCC_Define)</DCC_Define>
@@ -62,11 +65,6 @@
 			<DCC_RemoteDebug>true</DCC_RemoteDebug>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Cfg_1_Win32)'!=''">
-			<VerInfo_Locale>1033</VerInfo_Locale>
-			<DCC_UnitSearchPath>..\Common;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
-			<Manifest_File>None</Manifest_File>
-			<DCC_MapFile>3</DCC_MapFile>
-			<Debugger_RunParams>..\..\Source\startrek.spurt -tab &quot; &quot; -abs -O ..\..\bin -xref</Debugger_RunParams>
 			<DCC_RemoteDebug>false</DCC_RemoteDebug>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Cfg_2)'!=''">
@@ -79,12 +77,13 @@
 			<DelphiCompile Include="$(MainSource)">
 				<MainSource>MainSource</MainSource>
 			</DelphiCompile>
-			<DCCReference Include="AsmTypes.pas"/>
-			<DCCReference Include="Spurt.pas"/>
-			<DCCReference Include="U494Opcodes.pas"/>
-			<DCCReference Include="U494Util.pas"/>
-			<DCCReference Include="..\Common\Bcd.pas"/>
-			<DCCReference Include="ObjFile.pas"/>
+			<DCCReference Include="U8418UtilFrm.pas">
+				<Form>U8418UtilForm</Form>
+				<FormType>dfm</FormType>
+			</DCCReference>
+			<DCCReference Include="..\Common\EmulatorTypes.pas"/>
+			<DCCReference Include="U8418.pas"/>
+			<DCCReference Include="VTOC.pas"/>
 			<BuildConfiguration Include="Release">
 				<Key>Cfg_2</Key>
 				<CfgParent>Base</CfgParent>
@@ -135,13 +134,12 @@
 						<Excluded_Packages Name="$(BDSBIN)\dclofficexp160.bpl">Microsoft Office XP Sample Automation Server Wrapper Components</Excluded_Packages>
 					</Excluded_Packages>
 					<Source>
-						<Source Name="MainSource">U494Spurt.dpr</Source>
+						<Source Name="MainSource">U8418Util.dpr</Source>
 					</Source>
 				</Delphi.Personality>
 				<Deployment/>
 				<Platforms>
 					<Platform value="Win64">False</Platform>
-					<Platform value="OSX32">False</Platform>
 					<Platform value="Win32">True</Platform>
 				</Platforms>
 			</BorlandProject>

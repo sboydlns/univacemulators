@@ -44,6 +44,7 @@ type
   TMemImageStream = class(TObjFileStream)
   protected
     FTransAddr: UInt32;
+    FEndAddr: UInt32;
   public
     procedure EmitDoubleWord(addr: UInt32; dword: UInt64); override;
     procedure EmitEntryPoint(ID: AnsiString; value: UInt32); override;
@@ -207,6 +208,7 @@ begin
     inherited;
     Write(trans, SizeOf(trans));
     Write(start, SizeOf(start));
+    Write(objSize, SizeOf(objSize));
     FLocationCounter := start;
 end;
 
@@ -215,20 +217,27 @@ var
     temp: UInt32;
 begin
     Result := True;
-    if (Position = 0) then
+    if ((Position = 0) or (FLocationCounter > FEndAddr)) then
     begin
         if (Read(temp, SizeOf(temp)) <> SizeOf(temp)) then
         begin
             Result := False;
             Exit;
         end;
-        FTransAddr := temp;
+        if (FTransAddr = 0) then
+            FTransAddr := temp;
         if (Read(temp, SizeOf(temp)) <> SizeOf(temp)) then
         begin
             Result := False;
             Exit;
         end;
         FLocationCounter := temp;
+        if (Read(temp, SizeOf(temp)) <> SizeOf(temp)) then
+        begin
+            Result := False;
+            Exit;
+        end;
+        FEndAddr := FLocationCounter + temp - 1;
     end;
     if (Read(temp, SizeOf(temp)) <> SizeOf(temp)) then
     begin
@@ -251,8 +260,8 @@ end;
 
 procedure TObjFileStream.EmitTransferAddr(start, trans, objSize: UInt32);
 begin
-    if (FLocationCounter <> 0) then
-        raise Exception.Create('EmitTransferAddr must be first method called');
+//    if (FLocationCounter <> 0) then
+//        raise Exception.Create('EmitTransferAddr must be first method called');
     FTransferAddrEmitted := True;
 end;
 
@@ -607,8 +616,8 @@ procedure TAbsoluteStream.EmitTransferAddr(start, trans, objSize: UInt32);
 var
     word: UInt32;
 begin
-    if (FLocationCounter <> 0) then
-        raise Exception.Create('EmitTransferAddr must be first method called');
+//    if (FLocationCounter <> 0) then
+//        raise Exception.Create('EmitTransferAddr must be first method called');
     FTransferAddrEmitted := True;
     word := 62;                         // absolute image flag
     Write(word, SizeOf(word));

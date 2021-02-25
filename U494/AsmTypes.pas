@@ -162,6 +162,27 @@ type
     property y77: UInt32 read GetY77 write SetY77;
   end;
 
+  TProgram = class(TObject)
+  private
+    FProgramName: AnsiString;
+    FStartAddr: UInt32;
+    FEndAddr: UInt32;
+    FTransferAddrEmitted: Boolean;
+  public
+    property ProgramName: AnsiString read FProgramName write FProgramName;
+    property StartAddr: UInt32 read FStartAddr write FStartAddr;
+    property EndAddr: UInt32 read FEndAddr write FEndAddr;
+    property TransferAddrEmitted: Boolean read FTransferAddrEmitted write FTransferAddrEmitted;
+  end;
+
+  TProgramList = class(TList<TProgram>)
+  private
+    function GetPrograms(pgm: AnsiString): TProgram;
+  public
+    destructor Destroy; override;
+    property Programs[pgm: AnsiString]: TProgram read GetPrograms;
+  end;
+
 implementation
 
 { TProc }
@@ -550,6 +571,27 @@ begin
     else
         itemp := Value and $ff;
     FValue := (FValue and (not $ff)) or itemp;
+end;
+
+{ TProgramList }
+
+destructor TProgramList.Destroy;
+var
+    p: TProgram;
+begin
+    for p in Self do
+        p.Free;
+    inherited;
+end;
+
+function TProgramList.GetPrograms(pgm: AnsiString): TProgram;
+begin
+    for Result in Self do
+    begin
+        if (Result.ProgramName = pgm) then
+            Exit;
+    end;
+    Result := nil;
 end;
 
 end.

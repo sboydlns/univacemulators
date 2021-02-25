@@ -10,6 +10,11 @@ uses
 type
   TU494DebuggerState = ( udsStep, udsContinue );
 
+  TDebugWatch = packed record
+    Address: UInt32;
+    Value: UInt32;
+  end;
+
   TU494PanelFrm = class(TForm)
     MaintenancePanel: TPanel;
     Label26: TLabel;
@@ -132,6 +137,7 @@ type
     FDebuggerState: TU494DebuggerState;
     FDebugWaiting: Boolean;
     FBreakpoints: TList<UInt32>;
+    FWatches: TList<TDebugWatch>;
     FSkipInterrupts: Boolean;
     FDebugOS: Boolean;
     FTrace: Boolean;
@@ -148,6 +154,7 @@ type
     procedure DoDebug(Sender: TObject; E: Exception);
     procedure DoLog(Sender: TObject; addr: UInt32);
     procedure ExecuteCmd;
+    function FindWatch(addr: UInt32): Integer;
     procedure Go2;
     procedure IgnoreInterrupt;
     procedure LoadMemory; overload;
@@ -157,6 +164,7 @@ type
     procedure ParseCmdLine;
     procedure SetDebug;
     procedure ShowHelp;
+    procedure Watch;
     procedure WriteAudit(msg: String);
   public
     constructor Create(AOwner: TComponent); override;
@@ -240,6 +248,7 @@ begin
             gConfig.Load(Self, FConfigFile);
         FSystem := T494System.Create;
         FBreakpoints := TList<UInt32>.Create;
+        FWatches := TList<TDebugWatch>.Create;
         PeripheralPages.ActivePageIndex := 0;
         if (gConfig.RdrPunChan <> -1) then
         begin
@@ -318,6 +327,7 @@ var
 begin
     FreeAndNil(FSystem);
     FreeAndNil(FBreakpoints);
+    FreeAndNil(FWatches);
     // Reset timer interval to system default
     timeGetDevCaps(@tc, SizeOf(tc));
     timeEndPeriod(tc.wPeriodMin);
@@ -386,6 +396,8 @@ var
     op: T494Opcode;
     j, k, b: String;
     mnemonic: String;
+    val: UInt32;
+    w: TDebugWatch;
 
     procedure DisAssemble;
     begin
@@ -494,6 +506,16 @@ begin
         WriteAudit(Format('Breakpoint @ %s', [Copy(FormatOctal(p - FSystem.Memory.RIR.Value), 6)]));
     end;
 
+    for w in FWatches do
+    begin
+        val := FSystem.Memory.Fetch(w.Address, True).value;
+        if (w.Value <> val) then
+        begin
+            FDebuggerState := udsStep;
+            WriteAudit(Format('Watch @ %s has changed value', [Copy(FormatOctal(w.Address), 6)]));
+        end;
+    end;
+
     if (FDebuggerState = udsStep) then
     begin
         DisAssemble;
@@ -551,8 +573,19 @@ begin
       'M':  ModifyMemory;
       'N':  DebugNext;
       'R':  Breakpoint;
+      'W':  Watch;
       else  WriteAudit('Unrecognized command');
     end;
+end;
+
+function TU494PanelFrm.FindWatch(addr: UInt32): Integer;
+begin
+    for Result := 0 to FWatches.Count - 1 do
+    begin
+        if (FWatches[Result].Address = addr) then
+            Exit;
+    end;
+    Result := -1;
 end;
 
 procedure TU494PanelFrm.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
@@ -662,7 +695,7 @@ end;
 
 procedure TU494PanelFrm.ShowHelp;
 const
-    help: array [1..19] of String = (
+    help: array [1..20] of String = (
         'Commands: ',
         '',
         '(g)oto address',
@@ -676,6 +709,7 @@ const
         '(n)ext',
         '(c)ontinue',
         'b(r)eakpoint [address]',
+        '(w)atch address',
         '',
         'Addresses and values can be given as ether decimal or octal values.',
         'Decimal values must end with a D i.e. 123D.',
@@ -1108,6 +1142,56 @@ begin
         end;
     finally
         FInTimer := False;
+    end;
+end;
+
+procedure TU494PanelFrm.Watch;
+var
+    words: TStringList;
+    addr, i: Integer;
+    w: TDebugWatch;
+begin
+    if (not Assigned(FSystem.Cpu.OnDebug)) then
+        Exit;
+
+    words := TStringList.Create;
+    try
+        words.Delimiter := ' ';
+        words.StrictDelimiter := False;
+        words.DelimitedText := InputEdt.Text;
+        if (words.Count < 2) then
+        begin
+            WriteAudit('Not enough parameters');
+            Exit;
+        end;
+        try
+            if (words[1][Length(words[1])] = 'D') then
+                addr := StrToInt(Copy(words[1], 1, Length(words[1]) - 1))
+            else
+                addr := Octal(words[1]);
+            if (addr > MemSize) then
+                raise Exception.Create('Address out of range');
+            w.Address := addr;
+            i := FindWatch(addr);
+            if (i = -1) then
+            begin
+                w.Value := FSystem.Memory.Fetch(addr, True).Value;
+                FWatches.Add(w);
+                WriteAudit(Format('Watch added at %s', [Copy(FormatOctal(addr), 5)]));
+            end else
+            begin
+                FWatches.Delete(i);
+                WriteAudit(Format('Watch at %s cleared', [Copy(FormatOctal(addr), 5)]));
+            end;
+        except
+          on E: Exception do
+          begin
+              WriteAudit(E.Message);
+              Exit;
+          end;
+        end;
+    finally
+        words.Free;
     end;
 end;
 
