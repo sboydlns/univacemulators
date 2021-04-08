@@ -1,9 +1,9 @@
 ﻿	<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 		<PropertyGroup>
-			<ProjectGuid>{1B3ED167-E1EB-4051-A5F8-58F1904915E2}</ProjectGuid>
+			<ProjectGuid>{E418D716-64FB-4637-9F6D-40E8E2C3A446}</ProjectGuid>
 			<ProjectVersion>13.4</ProjectVersion>
 			<FrameworkType>VCL</FrameworkType>
-			<MainSource>U8418Util.dpr</MainSource>
+			<MainSource>U9030Console.dpr</MainSource>
 			<Base>True</Base>
 			<Config Condition="'$(Config)'==''">Debug</Config>
 			<Platform Condition="'$(Platform)'==''">Win32</Platform>
@@ -65,6 +65,9 @@
 			<DCC_RemoteDebug>true</DCC_RemoteDebug>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Cfg_1_Win32)'!=''">
+			<VerInfo_Locale>1033</VerInfo_Locale>
+			<VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
+			<DCC_DebugDCUs>true</DCC_DebugDCUs>
 			<DCC_RemoteDebug>false</DCC_RemoteDebug>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Cfg_2)'!=''">
@@ -77,14 +80,11 @@
 			<DelphiCompile Include="$(MainSource)">
 				<MainSource>MainSource</MainSource>
 			</DelphiCompile>
-			<DCCReference Include="U8418UtilFrm.pas">
-				<Form>U8418UtilForm</Form>
+			<DCCReference Include="U9030ConsoleFrm.pas">
+				<Form>U9030ConsoleForm</Form>
 				<FormType>dfm</FormType>
 			</DCCReference>
-			<DCCReference Include="..\Common\EmulatorTypes.pas"/>
-			<DCCReference Include="U8418.pas"/>
-			<DCCReference Include="VTOC.pas"/>
-			<DCCReference Include="OS3Files.pas"/>
+			<DCCReference Include="..\Uniscope\Uniscope.pas"/>
 			<BuildConfiguration Include="Release">
 				<Key>Cfg_2</Key>
 				<CfgParent>Base</CfgParent>
@@ -135,7 +135,7 @@
 						<Excluded_Packages Name="$(BDSBIN)\dclofficexp160.bpl">Microsoft Office XP Sample Automation Server Wrapper Components</Excluded_Packages>
 					</Excluded_Packages>
 					<Source>
-						<Source Name="MainSource">U8418Util.dpr</Source>
+						<Source Name="MainSource">U9030Console.dpr</Source>
 					</Source>
 				</Delphi.Personality>
 				<Deployment/>

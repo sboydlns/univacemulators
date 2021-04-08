@@ -2271,9 +2271,48 @@
        
                    ENT.Q.W(D+5).QPOS             D[6]<0?
                    JP.DC$10                      YES
-                   RJP.DMGSTATE                   
+                   RJP.DMGSTATE  
 
-       DC$1
+       DC$1        ENT.A.W(D0).ANOT              D0<>0?
+                   JP.DC$99                      NO
+                   
+                   CL.W(DC$D3)                   D3:=0
+                   ENT.Q.100D                    0.1
+                   ENT.B5.0                      FOR I:=1 TO 8
+       DC$2        ENT.A.W(D+B5).APOS            D[I]<0?
+                   RPL.Y+Q.W(DC$D3)              YES, D3:=D3+0.1
+                   BSK.B5.7                      LOOP
+                   JP.DC$2
+                   
+                   ENT.A.W(DC$D3).ANOT           D3<>0?
+                   JP.DC$99                      NO
+                   
+                   ENT.B2.1
+                   RJP.LINES
+
+                   ADD.A.W(D4)                   D3:=D3+D4
+                   COM.A.1.YMORE                 D3>=1?
+                   ENT.A.900D                    YES, D3:=0.9
+                   STR.A.W(DC$D3)
+                   ENT.Q.A                       ASK IF REPAIR AUTHORIZED
+                   RJP.FLT2STR
+                   STR.Q.W(DC$RTIME)
+                   STR.A.W(DC$RTIME+1)
+                   ENT.B1.DC$REPAIR
+                   RJP.TYPE
+                   RJP.GETLINE
+                   
+                   ENT.A.W(DC$Y)                 RESPONSE = 'Y'?
+                   ENT.Q.W(DC$HIGHBYTE)
+                   COM.MASK.W(L$).AZERO        
+                   JP.DC$99                      NO
+                   
+                   RPT.7.ADV                     FOR I:=1 TO 8 D[I]:=0
+                   CL.W(D)
+                   ENT.Q.W(DC$D3)                T:=T+D3+0.1
+                   ADD.Q.100D
+                   RPL.Y+Q.W(T)
+                   RJP.DMGSTATE
        
                    JP.DC$99
        
@@ -2283,8 +2322,23 @@
                                        
        DC$99       EXIT
                    
+       DC$D3       RESERVE.1
+       DC$HIGHBYTE 7700000000
+       DC$Y        FD.0.Y
+                          
        DC$NA       FD.0.DAMAGE CONTROL REPORT NOT AVAILABLE
-                   040377                   
+                   040377
+                   
+       DC$REPAIR   FD.0.TECHNICIANS STANDING BY TO EFFECT REPAIRS TO YOUR SHIP;
+                   0403
+                   FD.0.ESTIMATED TIME TO REPAIR
+                   05
+       DC$RTIME    RESERVE.2
+                   FD.0. STARDATES
+                   0403
+                   FD.0.WILL YOU AUTHORIZE THE REPAIR ORDER (Y/N)? 
+                   0577
+                                    
                    
                    COMMENT.++++++++++++++++++++++++++++
                    COMMENT. GALACTIC RECORD 
@@ -2531,11 +2585,62 @@
                    040377
                    
                    COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. COMPUTE VECTOR
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       COMPUTEVECT ENTRY
+       
+                   EXIT                   
+                   
+                   COMMENT.++++++++++++++++++++++++++++
                    COMMENT. TORPEDO DATA
                    COMMENT.++++++++++++++++++++++++++++
                    
        TORPDATA    ENTRY
-                   EXIT
+       
+                   CL.W(TD$X)                    X$:=''
+                   ENT.A.W(K3).ANOT              K3=0?
+                   JP.TD$10                      YES
+                   ENT.Q.W(TD$S)
+                   COM.A.2.YMORE                 K3>1?
+                   STR.Q.W(TD$X)                 YES, X$:='S'
+                   ENT.B1.TD$HDR
+                   RJP.TYPE
+                   
+                   CL.W(H8)                      H8:=0
+                   ENT.B5.0                      FOR I:=1 TO 3
+       TD$1        ENT.Q.W(K+2+B5)               K[I,3]>0?
+                   COM.Q.1.YLESS
+                   JP.TD$2                       NO
+                   ENT.Q.W(K+B5)                 W1:=K[I,1]
+                   MUL.1000D
+                   STR.Q.W(W1)
+                   ENT.Q.W(K+1+B5)               X:=K[I,2]
+                   MUL.1000D
+                   STR.Q.W(RX)
+                   ENT.Q.W(S1)                   C1:=S1
+                   STR.Q.W(RC1)
+                   ENT.Q.W(S2)                   A:=C2
+                   STR.Q.W(RA)
+                   RJP.COMPUTEVECT
+                   
+       TD$2        ENT.B5.2+B5
+                   BSK.B5.8D
+                   JP.TD$1                   
+                   
+                   
+                   JP.TD$99
+                   
+       TD$10       RJP.NOENEMY
+                   JP.TD$99
+                                      
+       TD$99       EXIT
+       
+       TD$S        FD.0.S
+       
+       TD$HDR      FD.0.FROM ENTERPRISE TO KLINGON BATTLE CRUSER
+       TD$X        RESERVE.1
+                   040377
                    
                    COMMENT.++++++++++++++++++++++++++++
                    COMMENT. NAVIGATIONAL DATA
@@ -3765,7 +3870,8 @@
        C$          RESERVE.2                     String[6]; { Condition }
        L$          RESERVE.16D                   CONSOLE INPUT BUFFER
        H8          RESERVE.1                     Integer; { General Flag for Library Computer }
-       A1          RESERVE.1
+                   COMMENT.WAS A
+       RA          RESERVE.1
                    COMMENT.WAS C1
        RC1         RESERVE.1                     Real; { Used by Library Computer }
                           

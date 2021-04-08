@@ -1,0 +1,187 @@
+                   A-CONTROL
+                   
+       IOLIB       ALLOCATION
+       IOLIB       77000
+       
+       IOLIB       SYS-PROC
+       
+       CONS        MEANS.C4
+       CONSACTIVE  MEANS.C4ACTIVEOUT
+
+
+       TYPE$SAVEA  RESERVE.1                     SAVE AREA FOR MAIN PGM A.
+       
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. SEND SOME TEXT TO THE CONSOLE PRINTER.
+                   COMMENT. TEXT IS TERMINATED BY 77. OCTAL ZEROS
+                   COMMENT. ARE IGNORED.
+                   COMMENT.
+                   COMMENT. W(RTN ADDR) = ADDRESS OF TEXT TO PRINT
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       TYPE        ENTRY
+       
+                   STR.A.W(T$A)                  SAVE REGISTERS
+                   STR.B1.W(T$B1)
+                   STR.B7.W(T$B7)
+                   
+                   ENT.B1.W(TYPE)                GET PTR TO TEXT TO PRINT
+                   ENT.B1.W(B1)
+                   RPL.Y+1.W(TYPE)               BUMP RTN ADDRESS
+                   
+       T$NEXTW     ENT.B7.4                      INIT LOOP COUNT
+                   ENT.Q.W(B1)                   GET WORD TO PRINT
+       T$NEXTC     CL.A                          GET NEXT CHARACTER
+                   LSH.AQ.6.ANOT
+                   JP.T$DECB7                    CHAR = ZERO, NEXT CHAR
+                   COM.A.77.YMORE                END OF TEXT SENTINAL?
+                   JP.T$EXIT                     YES, QUIT
+                   
+                   RJP.PUTC                      NO, SEND TO PRINTER
+                   
+       T$DECB7     BJP.B7.T$NEXTC                DEC CHAR COUNT & LOOP
+                   INCREMENT.B1.1                BUMP TO NEXT WORD
+                   JP.T$NEXTW                    & LOOP                   
+       
+       T$EXIT      ENT.A.W(T$A)                  RESTORE REGISTERS
+                   ENT.B1.W(T$B1)
+                   ENT.B7.W(T$B7)
+                   EXIT                          RETURN
+                   
+       T$A         RESERVE.1
+       T$B1        RESERVE.1
+       T$B7        RESERVE.1
+
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. SEND CARRIAGE RETURN / LINE FEED TO CONSOLE
+                   COMMENT. PRINTER.
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       TYPE$CR     ENTRY
+       
+                   RJP.TYPE
+                   U-TAG.0.CRLF
+                   
+                   EXIT
+                   
+       CRLF        040377
+       
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. SEND SPACE TO CONSOLE PRINTER.
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       TYPE$SP     ENTRY
+       
+                   RJP.TYPE
+                   U-TAG.0.SPACE
+                   
+                   EXIT
+                   
+       SPACE       0577
+                                      
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. SEND TAB TO CONSOLE PRINTER. FOR OUR PURPOSES
+                   COMMENT. A TAB IS THE SAME AS A SPACE.
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       TYPE$TAB    ENTRY
+       
+                   RJP.TYPE$SP
+                   
+                   EXIT
+                   
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. SEND A DECIMAL VALUE TO THE CONSOLE PRINTER.
+                   COMMENT. 
+                   COMMENT. VALUE TO BE PRINTED IS PASSED IN A.
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       TYPE$DEC    ENTRY
+       
+                   STR.A.W(TD$A)                 SAVE REGISTERS
+                   STR.Q.W(TD$Q)
+                   STR.B1.W(TD$B1)
+                   
+                   RJP.INT2STR                   CVT VALUE TO TEXT
+                   RJP.TYPE                      SEND IT TO PRINTER
+                   U-TAG.0.CVT$RSLT
+                   
+                   ENT.A.W(TD$A)                 RESTORE REGISTERS
+                   ENT.Q.W(TD$Q)
+                   ENT.B1.W(TD$B1)
+                   EXIT                   
+       
+       TD$A        RESERVE.1
+       TD$Q        RESERVE.1
+       TD$B1       RESERVE.1
+       
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. SEND A CHARACTER TO THE CONSOLE PRINTER
+                   COMMENT.
+                   COMMENT. CHARACTER TO SEND IN A
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       PUTC        ENTRY
+       
+       P$WAIT      JP.P$WAIT.CONSACTIVE          WAIT 4 PRN IDLE
+                   EX-COM.CONS.W(CONSFUNC)       ENABLE CONS KBD AND PRINTER
+                   STR.A.W(P$BFR)                CHAR TO BUFFER
+                   OUT.CONS.W(P$BCR)             SEND TO PRN
+       
+                   EXIT                                                        
+       
+       P$BFR       RESERVE.1                  
+       P$BCR       U-TAG.P$BFR.P$BFR                          
+       
+                   COMMENT.++++++++++++++++++++++++++++
+                   COMMENT. CONVERT AN INTEGER TO FIELDATA (MAX 10 CHARS)
+                   COMMENT. WITH LEADING ZERO SUPPRESSION
+                   COMMENT.
+                   COMMENT. NUMBER TO CONVERT IN A
+                   COMMENT. 
+                   COMMENT. RESULT RETURNED IN CVT$RSLT WITH 077
+                   COMMENT. TERMINATOR APPENDED.
+                   COMMENT.++++++++++++++++++++++++++++
+                   
+       INT2STR     ENTRY
+
+                   COM.A.1.YLESS                 NUM = 0?
+                   JP.I2S$ZERO                   YES
+
+                   STR.A.W(CVT$VALUE)            SAVE VALUE TO PRINT                   
+                   CL.W(CVT$RSLT)                CLEAR RESULT
+                   CL.W(CVT$RSLT+1)
+                   ENT.B1.9D                     INIT LOOP COUNT
+       I2S$1       ENT.A.W(CVT$RSLT)             SHIFT RESULT TO HOLD NEXT DIGIT
+                   ENT.Q.W(CVT$RSLT+1)
+                   RSH.AQ.6D
+                   SEL.CL.W(CVT$HI6)             CLEAR HIGH 6 BITS
+                   STR.A.W(CVT$RSLT)
+                   STR.Q.W(CVT$RSLT+1)
+                   CL.A                          NEXT DIGIT
+                   ENT.Q.W(CVT$VALUE)
+                   DIV.10D                       
+                   ADD.A.60                      CVT REM TO FIELDATA
+                   LSH.A.24D                     ADD TO RESULT
+                   RSE.SET.W(CVT$RSLT)
+                   COM.Q.1.YLESS                 NUM = 0?
+                   JP.I2S$DONE                   YES
+                   STR.Q.W(CVT$VALUE)            SAVE NEW VALUE
+                   BJP.B1.I2S$1
+                   
+       I2S$DONE    JP.I2S$RTRN                   
+       
+       I2S$ZERO    CL.A
+                   ENT.Q.W(CVT$ZERO)             RESULT = '0'
+
+       I2S$RTRN    EXIT
+       
+       CVT$VALUE   RESERVE.1
+       CVT$RSLT    RESERVE.2
+                   77                            TEXT TERMINATOR
+       CVT$ZERO    FD.0.0
+       CVT$HI6     7700000000
+                
+       CONSFUNC    33
+                   
+                   ENDIT                   

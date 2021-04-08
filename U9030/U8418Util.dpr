@@ -5,7 +5,8 @@ uses
   U8418UtilFrm in 'U8418UtilFrm.pas' {U8418UtilForm},
   EmulatorTypes in '..\Common\EmulatorTypes.pas',
   U8418 in 'U8418.pas',
-  VTOC in 'VTOC.pas';
+  VTOC in 'VTOC.pas',
+  OS3Files in 'OS3Files.pas';
 
 {$R *.res}
 

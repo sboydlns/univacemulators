@@ -236,7 +236,11 @@ const
     CHANNEL2 = $04;
     CHANNEL1 = $02;
 
-
+  function ByteToUInt16(bfr: array of Byte; start: Integer): UInt16;
+  function ByteToUInt32(bfr: array of Byte; start, fin: Integer): UInt32; overload;
+  function ByteToUInt32(bfr: array of Byte; start: Integer): UInt32; overload;
+  function ByteToString(bfr: array of Byte; start, fin: Integer): AnsiString; overload;
+  function ByteToString(bfr: PByte; len: Integer): AnsiString; overload;
   function CardFileDir: String;
   function ExeDir: String;
   function UserDataDir: String;
@@ -609,6 +613,49 @@ const
     '''', '*', '$', '!', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', '(', '@', '^',
     '~', '%', ',', '+', '/', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '{', '>', ')'
    );
+
+function ByteToUInt16(bfr: array of Byte; start: Integer): UInt16;
+begin
+    Result := UInt16(ByteToUInt32(bfr, start, start + 1));
+end;
+
+function ByteToUInt32(bfr: array of Byte; start, fin: Integer): UInt32;
+begin
+    Result := 0;
+    while (start <= fin) do
+    begin
+        Result := (Result shl 8) or bfr[start];
+        Inc(start);
+    end;
+end;
+
+function ByteToUInt32(bfr: array of Byte; start: Integer): UInt32; overload;
+begin
+    Result := ByteToUInt32(bfr, start, start + 3);
+end;
+
+function ByteToString(bfr: array of Byte; start, fin: Integer): AnsiString;
+begin
+    Result := '';
+    while (start <= fin) do
+    begin
+        Result := Result + AnsiChar(bfr[start]);
+        Inc(start);
+    end;
+end;
+
+function ByteToString(bfr: PByte; len: Integer): AnsiString; overload;
+var
+    count: Integer;
+begin
+    Result := '';
+    count := 0;
+    while (count < len) do
+    begin
+        Result := Result + AnsiChar((bfr + count)^);
+        Inc(count);
+    end;
+end;
 
 function ExeDir: String;
 begin

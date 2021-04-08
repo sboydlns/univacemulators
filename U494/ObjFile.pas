@@ -30,6 +30,7 @@ type
     procedure CheckTransferAddrEmitted;
     procedure PadTo(addr: UInt32); virtual;
   public
+    procedure Append(fname: String); virtual;
     procedure EmitDoubleWord(addr: UInt32; word: UInt64); virtual; abstract;
     procedure EmitEntryPoint(ID: AnsiString; value: UInt32); virtual; abstract;
     procedure EmitExternalID(ID: AnsiString); virtual; abstract;
@@ -251,6 +252,18 @@ begin
 end;
 
 { TListFileStream }
+
+procedure TObjFileStream.Append(fname: String);
+var
+    fin: TFileStream;
+begin
+    fin := TFileStream.Create(fname, fmOpenRead or fmShareDenyWrite);
+    try
+        CopyFrom(fin, fin.Size);
+    finally
+        fin.Free;
+    end;
+end;
 
 procedure TObjFileStream.CheckTransferAddrEmitted;
 begin

@@ -9,6 +9,18 @@
 			<Projects Include="U8418Util.dproj">
 				<Dependencies/>
 			</Projects>
+			<Projects Include="U9030DisAsm.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="U9030Console.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="U9030ConsoleTest.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="U9030.dproj">
+				<Dependencies/>
+			</Projects>
 		</ItemGroup>
 		<ProjectExtensions>
 			<Borland.Personality>Default.Personality.12</Borland.Personality>
@@ -35,14 +47,50 @@
 		<Target Name="U8418Util:Make">
 			<MSBuild Targets="Make" Projects="U8418Util.dproj"/>
 		</Target>
+		<Target Name="U9030DisAsm">
+			<MSBuild Projects="U9030DisAsm.dproj"/>
+		</Target>
+		<Target Name="U9030DisAsm:Clean">
+			<MSBuild Targets="Clean" Projects="U9030DisAsm.dproj"/>
+		</Target>
+		<Target Name="U9030DisAsm:Make">
+			<MSBuild Targets="Make" Projects="U9030DisAsm.dproj"/>
+		</Target>
+		<Target Name="U9030Console">
+			<MSBuild Projects="U9030Console.dproj"/>
+		</Target>
+		<Target Name="U9030Console:Clean">
+			<MSBuild Targets="Clean" Projects="U9030Console.dproj"/>
+		</Target>
+		<Target Name="U9030Console:Make">
+			<MSBuild Targets="Make" Projects="U9030Console.dproj"/>
+		</Target>
+		<Target Name="U9030ConsoleTest">
+			<MSBuild Projects="U9030ConsoleTest.dproj"/>
+		</Target>
+		<Target Name="U9030ConsoleTest:Clean">
+			<MSBuild Targets="Clean" Projects="U9030ConsoleTest.dproj"/>
+		</Target>
+		<Target Name="U9030ConsoleTest:Make">
+			<MSBuild Targets="Make" Projects="U9030ConsoleTest.dproj"/>
+		</Target>
+		<Target Name="U9030">
+			<MSBuild Projects="U9030.dproj"/>
+		</Target>
+		<Target Name="U9030:Clean">
+			<MSBuild Targets="Clean" Projects="U9030.dproj"/>
+		</Target>
+		<Target Name="U9030:Make">
+			<MSBuild Targets="Make" Projects="U9030.dproj"/>
+		</Target>
 		<Target Name="Build">
-			<CallTarget Targets="DmpRst;U8418Util"/>
+			<CallTarget Targets="DmpRst;U8418Util;U9030DisAsm;U9030Console;U9030ConsoleTest;U9030"/>
 		</Target>
 		<Target Name="Clean">
-			<CallTarget Targets="DmpRst:Clean;U8418Util:Clean"/>
+			<CallTarget Targets="DmpRst:Clean;U8418Util:Clean;U9030DisAsm:Clean;U9030Console:Clean;U9030ConsoleTest:Clean;U9030:Clean"/>
 		</Target>
 		<Target Name="Make">
-			<CallTarget Targets="DmpRst:Make;U8418Util:Make"/>
+			<CallTarget Targets="DmpRst:Make;U8418Util:Make;U9030DisAsm:Make;U9030Console:Make;U9030ConsoleTest:Make;U9030:Make"/>
 		</Target>
 		<Import Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')" Project="$(BDS)\Bin\CodeGear.Group.Targets"/>
 	</Project>

@@ -77,7 +77,7 @@ type
     destructor Destroy; override;
   end;
 
-  TSymbolType = ( stSystem, stIdentifier, stBDesignator, stJDesignator, stKDesignator, stForm );
+  TSymbolType = ( stSystem, stIdentifier, stProcedure, stBDesignator, stJDesignator, stKDesignator, stForm );
 
   TSymbol = class(TObject)
   public
@@ -96,6 +96,7 @@ type
     EquUndefPass1: Boolean;
     AllocationType: TAllocationType;
     SubstituteValue: AnsiString;
+    Scale: Integer;
     constructor Create;
     destructor Destroy; override;
   end;

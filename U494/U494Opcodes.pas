@@ -276,7 +276,7 @@ const
         (AsmMnemonic: 'EXIT'; OperandType: otDirective)
     );
 
-    SpurtDirectives: array [0..27] of T494Opcode = (
+    SpurtDirectives: array [0..39] of T494Opcode = (
         (SpurtMnemonic: 'A-CONTROL'; OperandType: otDirective),
         (SpurtMnemonic: 'C-CONTROL'; OperandType: otDirective),
         (SpurtMnemonic: 'OUTPUTS'; OperandType: otDirective),
@@ -284,6 +284,9 @@ const
         (SpurtMnemonic: 'REL-ALLOC'; OperandType: otDirective),
         (SpurtMnemonic: 'INDR-ALLOC'; OperandType: otDirective),
         (SpurtMnemonic: 'PROGRAM'; OperandType: otDirective),
+        (SpurtMnemonic: 'SYSTEM'; OperandType: otDirective),
+        (SpurtMnemonic: 'SYS-PROC'; OperandType: otDirective),
+        (SpurtMnemonic: 'SYS-DD'; OperandType: otDirective),
         (SpurtMnemonic: 'MEANS'; OperandType: otDirective),
         (SpurtMnemonic: 'EQUALS'; OperandType: otDirective),
         (SpurtMnemonic: 'ENTRY'; OperandType: otDirective),
@@ -304,6 +307,15 @@ const
         (SpurtMnemonic: 'ORG'; OperandType: otDirective),
         (SpurtMnemonic: 'ENDIT'; OperandType: otDirective),
         (SpurtMnemonic: 'DEC'; OperandType: otDirective),
+        (SpurtMnemonic: 'END-DATA'; OperandType: otDirective),
+        (SpurtMnemonic: 'TYPET'; OperandType: otDirective),
+        (SpurtMnemonic: 'TYPE-DEC'; OperandType: otDirective),
+        (SpurtMnemonic: 'LOC-DD'; OperandType: otDirective),
+        (SpurtMnemonic: 'END-LOC-DD'; OperandType: otDirective),
+        (SpurtMnemonic: 'VRBL'; OperandType: otDirective),
+        (SpurtMnemonic: 'PROCEDURE'; OperandType: otDirective),
+        (SpurtMnemonic: 'END-PROC'; OperandType: otDirective),
+        (SpurtMnemonic: 'RETURN'; OperandType: otDirective),
         (SpurtMnemonic: '..'; OperandType: otDirective)
     );
 

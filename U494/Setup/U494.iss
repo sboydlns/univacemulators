@@ -91,6 +91,11 @@ Source: ..\Bin\monitor6.mem; DestDir: {commonappdata}\Univac 494 Emulator\Data
 Source: ..\Docs\Monitor6.pdf; DestDir: {app}\Docs
 Source: ..\Source\SpurtTest.spurt; DestDir: {app}\Source
 Source: ..\Bin\SpurtTest.pt; DestDir: {app}\Bin
+Source: ..\Source\iolib.spurt; DestDir: {app}\Source
+Source: ..\Source\RTExec.spurt; DestDir: {app}\Source
+Source: ..\Bin\iolib.mem; DestDir: {app}\Bin
+Source: ..\Bin\RTExec.mem; DestDir: {app}\Bin
+Source: ..\JoeCousins\a060228.pdf; DestDir: {app}\Manuals; DestName: RTExec.pdf
 
 [Icons]
 Name: {group}\{#MyAppName}; Filename: {app}\{#MyAppExeName}; WorkingDir: {app}

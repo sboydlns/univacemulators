@@ -1,0 +1,95 @@
+                   C-CONTROL
+                   ALLOCATION
+       PROCS       1000
+
+       PROCS       SYS-PROC*POTTER*FEB70
+       PROCS
+                   LOC-DD
+                     VRBL*TIME*FXW*10D
+                   END-LOC-DD
+                   
+                   PROCEDURE*R1
+                     PUT*W(160)*W(TIME)
+                     TYPET*$CR$ROUTINE
+                     ENT*A*1+B1
+                     TYPE-DEC*A*$SP$*$SP$
+                     TYPE-DEC*W(TIME)
+                   END-PROC*R1
+                   
+                   PROCEDURE*R2
+                     R1
+                     RETURN
+                   END-PROC*R2
+                   
+                   PROCEDURE*R3
+                     R1
+                     RETURN
+                   END-PROC*R3
+                   
+                   PROCEDURE*R4
+                     R1
+                     TYPET*$CR$END OF CYCLE$CR$
+                     RETURN
+                   END-PROC*R4
+                   
+       GPEXEC1     PROGRAM*USN/USL
+       
+                   COMMENT*GENERAL PURPOSE REAL-TIME EXECUTIVE
+                   COMMENT*ROUTINE FOR UNIVAC 1230 COMPUTER
+                   
+       CLOCK       EQUALS*160
+       N           EQUALS*4                      CHANGE FOR NUMBER OF ROUTINES
+       
+                   COMMENT*N IS THE NUMBER OF ROUTINES TO BE
+                   COMMENT*CONTROLLED BY THE EXECUTIVE
+                   
+       GPEXEC1     STR*B0*W(STARTEND)            INITIALIZE CONTROL FLAG
+                   ENT*B7*N-1                    INITIALIZE
+       EXEC1       ENT*A*W(INITLTIME+B7)         TIMETABLE
+                   STR*A*W(TIMETABLE+B7)
+                   BJP*B7*EXEC1
+                   COMMENT*INSERT ADDITIONAL INITIALIZING
+                   COMMENT*ROUTINES HERE
+       EXEC2       ENT*A*U(STARTEND)*ANOT        TIME TO START
+                   JP*EXEC2*KEY1                 NO WAIT
+                   STR*B0*W(CLOCK)               YES  CLEAR CLOCK
+                   CL*B1                         SUBROUTINE INDEX
+       EXEC3       ENT*Q*W(TIMETABLE+B1)         EXECUTION TIME
+       EXEC4       ENT*Y-Q*W(CLOCK)APOS          TIME TO EXECUTE
+                   JP*EXEC4                      NO WAIT
+                   ENT*Q*W(REPTIME)              YES
+                   RPL*Y+Q*W(TIMETABLE+B1)       UPDATE TABLE
+                   STR*B0*W(CLOCKFLAG)           CLEAR RESET FLAG
+                   LSH*A*1*APOS                  TEST FOR CLOCK RESET
+                   STR*B0*CPW(CLOCKFLAG)         RESET NEEDED
+                   STR*B1*L(EXEC6)               SAVE INDEX
+                   ENT*A*W(JUMPTABLE+B1)
+                   STR*A*W(EXEC5)*AZERO          ROUTINE DELETED
+       EXEC5       0                             NO  EXECUTE IT
+       EXEC6       ENT*B1*0                      RESTORE CLOCK
+                   ENT*A*W(CLOCKFLAG)            RESET CLOCK
+                   JP*EXEC7*AZERO                NO
+                   ENT*Q*W(CLOCK)                YES
+                   RPT*N*ADV                     ADJUST
+                   RPL*Y-Q*W(TIMETABLE)          TABLE
+                   STR*B0*W(CLOCK)               CLEAR CLOCK
+       EXEC7       BSK*B0*L(STARTEND)            TERMINATE PROGRAM
+                   JP*EXEC7+2*STOP               YES, HALT
+                   JP*EXEC7+3*KEY2               HALT IF KEY2 SET
+                   BSK*B1*N-1                    NO INCREMENT INDEX
+                   NO-OP
+                   JP*EXEC3
+       INITLTIME   2048D                         T1 - 2 SECONDS
+                   12800D                        T2 - 12.5 SECONDS
+                   25856D                        T3 - 25.25 SECONDS
+                   40832D                        T4 - 39.675 SECONDS
+       TIMETABLE   RESERVE*N                     NUMBER OF ROUTINES
+       JUMPTABLE   RJP*R1
+                   RJP*R2*KEY3
+                   RJP*R3
+                   RJP*R4
+       REPTIME     102400D                       TIME BETWEEN RECYCLES -- 100 SECONDS HERE
+       CLOCKFLAG   0                             CLOCK RESET FLAG
+       STARTEND    0                             UPPER START, LOWER END
+       
+                   ENDIT*GPEXEC1

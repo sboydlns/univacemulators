@@ -22,7 +22,7 @@ var
     tokenTrace: Boolean;
     noproc: Boolean;
     otype: TOutputType;
-    tabc, sepc: String;
+    tabc, sepc, iosepc: String;
     errs: Integer;
     Assembler: TAssembler;
 
@@ -40,6 +40,7 @@ begin
     otype := otImage;
     tabc := '';
     sepc := '';
+    iosepc := '';
     i := 1;
     while i <= ParamCount do
     begin
@@ -77,6 +78,10 @@ begin
         begin
             Inc(i);
             sepc := Copy(ParamStr(i), 1, 1);
+        end else if (ParamStr(i) = '-iosep') then
+        begin
+            Inc(i);
+            iosepc := Copy(ParamStr(i), 1, 1);
         end;
         Inc(i);
     end;
@@ -84,6 +89,8 @@ begin
         tabc := #9;
     if (sepc = '') then
         sepc := '.';
+    if (iosepc = '') then
+        iosepc := '|';
 end;
 
 procedure Usage;
@@ -104,6 +111,7 @@ begin
     WriteLn('-O = folder to contain output (memory image or relocatable) file');
     WriteLn('-tab = character used as TAB');
     WriteLn('-sep = character used as dot separator');
+    WriteLn('-iosep = character used as separator in I/O directives like TYPET');
 end;
 
 begin
@@ -117,7 +125,7 @@ begin
     end;
     if (inFile = '') then
         raise Exception.Create('No input file given');
-    errs := Assembler.Assemble(InFile, tokenTrace, xref, ProcDir, noproc, otype, outDir, tabc, sepc);
+    errs := Assembler.Assemble(InFile, tokenTrace, xref, ProcDir, noproc, otype, outDir, tabc, sepc, iosepc);
     Halt(errs);
   except
     on E: Exception do

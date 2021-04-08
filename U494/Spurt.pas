@@ -2,110 +2,139 @@ unit Spurt;
 
 interface
 
-uses SysUtils, Classes, IOUtils, AsmTypes, SrcFile, ObjFile, ListFile, U494Opcodes;
+uses SysUtils, Classes, IOUtils, AsmTypes, SrcFile, ObjFile, ListFile,
+    U494Opcodes;
 
 type
-  TSpurtStringList = class(TStringList)
-  private
-    function GetDelimitedText: String;
-    procedure SetDelimitedText(const Value: String);
-  public
-    constructor Create;
-    property DelimitedText: String read GetDelimitedText write SetDelimitedText;
-  end;
+    TSpurtStringList = class(TStringList)
+    private
+        function GetDelimitedText: String;
+        procedure SetDelimitedText(const Value: String);
+    public
+        constructor Create;
+        property DelimitedText: String read GetDelimitedText
+          write SetDelimitedText;
+    end;
 
-  TAssembler = class(TObject)
-  private
-    FInFile: String;
-    FPrintFile: String;
-    FObjectFile: String;
-    FListFile: TListFileStream;
-    FOutFile: TObjFileStream;
-    FProcDir: String;
-    FOutDir: String;
-    FTokenTrace: Boolean;
-    FPrintXref: Boolean;
-    FPrintProcs: Boolean;
-    FTab: AnsiChar;
-    FSeparator: AnsiChar;
-    FPass: Integer;
-    FOutputType: TOutputType;
-    FLocationCounter: TSymbol;
-    FObjCodeSize: UInt64;
-    FTransferAddrEmitted: Boolean;
-    FErrorCount: Integer;
-    FOpcodes: TOpcodeList;
-    FSymbols: TSymbolList;
-    FStmtLabel: TSymbol;
-    FEntryLabel: TSymbol;
-    FEntryJ: Integer;
-    FFormats: TWordFormatList;
-    FCurInst: TInstruction;
-    FProcs: TProcList;
-    FPrograms: TProgramList;
-    FCrntProgram: TProgram;
-    FTransferAddr: UInt32;
-    FAllocationType: TAllocationType;
-    function AdjustIdent(l: AnsiString): AnsiString; overload;
-    function AdjustIdent(l: String): String; overload;
-    procedure AllocValue(var ops: AnsiString);
-    procedure Do77(lineNum: Integer; ops: AnsiString; op: TOpcode);
-    procedure DoACONTROL(lineNum: Integer; ops: AnsiString; op: TOpcode);
-    procedure DoALLOCATION(lineNum: Integer; ops: AnsiString; op: TOpcode);
-    procedure DoCLEAR(lineNum: Integer; ops: AnsiString; op: TOpcode);
-    procedure DoCCONTROL(lineNum: Integer; ops: AnsiString; op: TOpcode);
-    procedure DoCOMMENT(lineNum: Integer; ops: AnsiString; op: TOpcode);
-    procedure DoDEC(lineNum: Integer; ops: AnsiString; op: TOpcode);
-    procedure DoDOTDOT(lineNum: Integer; ops: AnsiString; op: TOpcode);
-    procedure DoENDIT(lineNum: Integer; ops: AnsiString; op: TOpcode);
-    procedure DoENTRY(lineNum: Integer; ops: AnsiString; op: TOpcode);
-    procedure DoEQUALS(lineNum: Integer; ops: AnsiString; op: TOpcode);
-    procedure DoEXIT(lineNum: Integer; ops: AnsiString; op: TOpcode);
-    procedure DoFD(lineNum: Integer; ops: AnsiString; op: TOpcode);
-    procedure DoGeneral(lineNum: Integer; ops: AnsiString; op: TOpcode);
-    procedure DoINCREMENT(lineNum: Integer; ops: AnsiString; op: TOpcode);
-    procedure DoINDRALLOC(lineNum: Integer; ops: AnsiString; op: TOpcode);
-    procedure DoIO(lineNum: Integer; ops: AnsiString; op: TOpcode);
-    procedure DoMEANS(lineNum: Integer; ops: AnsiString; op: TOpcode);
-    procedure DoMOVE(lineNum: Integer; ops: AnsiString; op: TOpcode);
-    procedure DoORG(lineNum: Integer; ops: AnsiString; op: TOpcode);
-    procedure DoOUTPUTS(lineNum: Integer; ops: AnsiString; op: TOpcode);
-    procedure DoPROGRAM(lineNum: Integer; ops: AnsiString; op: TOpcode);
-    procedure DoPUT(lineNum: Integer; ops: AnsiString; op: TOpcode);
-    procedure DoRELALLOC(lineNum: Integer; ops: AnsiString; op: TOpcode);
-    procedure DoRESERVE(lineNum: Integer; ops: AnsiString; op: TOpcode);
-    procedure DoRIL(lineNum: Integer; ops: AnsiString; op: TOpcode);
-    procedure DoRILEX(lineNum: Integer; ops: AnsiString; op: TOpcode);
-    procedure DoSIL(lineNum: Integer; ops: AnsiString; op: TOpcode);
-    procedure DoSILEX(lineNum: Integer; ops: AnsiString; op: TOpcode);
-    procedure DoTERM(lineNum: Integer; ops: AnsiString; op: TOpcode);
-    procedure DoUTAG(lineNum: Integer; ops: AnsiString; op: TOpcode);
-    procedure DoWord(lineNum: Integer; var ops: AnsiString);
-    procedure GetChannel(var ops: AnsiString; var channel: AnsiString);
-    procedure GetFields(sline: AnsiString; var lbl, operands, cmnt: AnsiString);
-    procedure GetToken(var ops: AnsiString; var token: AnsiString);
-    function GetNumber(var ops: AnsiString; var num: Integer): Boolean;
-    function GetOpcode(var ops: AnsiString; var rslt: TOpcode; var b: Integer): Boolean;
-    function GetY(lineNum: Integer; var ops: AnsiString; var rel: TRelocatableType; var b: Byte): Integer;
-    function NumberToInt(num: String): Integer;
-    function Pass0: Boolean;
-    procedure Pass1(srcFile: TSrcFileStream);
-    procedure Pass2(srcFile: TSrcFileStream);
-    procedure PrintXref;
-    procedure ReadStatement(srcFile: TSrcFileStream; var lbl, operands, cmnt: AnsiString);
-  public
-    constructor Create;
-    destructor Destroy; override;
-    function Assemble(inFile: String; ttrace: Boolean; xref: Boolean; procDir: String;
-                      noproc: Boolean; otype: TOutputType; outDir: String;
-                      tabc, sepc: String): Integer;
-end;
+    TAssembler = class(TObject)
+    private
+        FInFile: String;
+        FPrintFile: String;
+        FObjectFile: String;
+        FListFile: TListFileStream;
+        FOutFile: TObjFileStream;
+        FProcDir: String;
+        FOutDir: String;
+        FTokenTrace: Boolean;
+        FPrintXref: Boolean;
+        FPrintProcs: Boolean;
+        FTab: AnsiChar;
+        FSeparator: AnsiChar;
+        FIOSeparator: AnsiChar;
+        FPass: Integer;
+        FOutputType: TOutputType;
+        FLocationCounter: TSymbol;
+        FObjCodeSize: UInt64;
+        FTransferAddrEmitted: Boolean;
+        FErrorCount: Integer;
+        FOpcodes: TOpcodeList;
+        FSymbols: TSymbolList;
+        FStmtLabel: TSymbol;
+        FEntryLabel: TSymbol;
+        FEntryJ: Integer;
+        FFormats: TWordFormatList;
+        FCurInst: TInstruction;
+        FProcs: TProcList;
+        FPrograms: TProgramList;
+        FCrntProgram: TProgram;
+        FTransferAddr: UInt32;
+        FAllocationType: TAllocationType;
+        FIOLibRequired: Boolean;
+        function AdjustIdent(l: AnsiString): AnsiString; overload;
+        function AdjustIdent(l: String): String; overload;
+        procedure CallTypeCR(lineNum: Integer);
+        procedure CallTypeDec(lineNum: Integer);
+        procedure CallTypeSP(lineNum: Integer);
+        procedure CallTypeTAB(lineNum: Integer);
+        procedure AllocValue(var ops: AnsiString);
+        procedure Do77(lineNum: Integer; ops: AnsiString; op: TOpcode);
+        procedure DoACONTROL(lineNum: Integer; ops: AnsiString; op: TOpcode);
+        procedure DoALLOCATION(lineNum: Integer; ops: AnsiString; op: TOpcode);
+        procedure DoCLEAR(lineNum: Integer; ops: AnsiString; op: TOpcode);
+        procedure DoCCONTROL(lineNum: Integer; ops: AnsiString; op: TOpcode);
+        procedure DoCOMMENT(lineNum: Integer; ops: AnsiString; op: TOpcode);
+        procedure DoDEC(lineNum: Integer; ops: AnsiString; op: TOpcode);
+        procedure DoDOTDOT(lineNum: Integer; ops: AnsiString; op: TOpcode);
+        procedure DoENDIT(lineNum: Integer; ops: AnsiString; op: TOpcode);
+        procedure DoENDLOCDD(lineNum: Integer; ops: AnsiString; op: TOpcode);
+        procedure DoENDPROC(lineNum: Integer; ops: AnsiString; op: TOpcode);
+        procedure DoENTRY(lineNum: Integer; ops: AnsiString; op: TOpcode);
+        procedure DoEQUALS(lineNum: Integer; ops: AnsiString; op: TOpcode);
+        procedure DoEXIT(lineNum: Integer; ops: AnsiString; op: TOpcode);
+        procedure DoFD(lineNum: Integer; ops: AnsiString; op: TOpcode);
+        procedure DoGeneral(lineNum: Integer; ops: AnsiString; op: TOpcode);
+        procedure DoINCREMENT(lineNum: Integer; ops: AnsiString; op: TOpcode);
+        procedure DoINDRALLOC(lineNum: Integer; ops: AnsiString; op: TOpcode);
+        procedure DoIO(lineNum: Integer; ops: AnsiString; op: TOpcode);
+        procedure DoLOCDD(lineNum: Integer; ops: AnsiString; op: TOpcode);
+        procedure DoMEANS(lineNum: Integer; ops: AnsiString; op: TOpcode);
+        procedure DoMOVE(lineNum: Integer; ops: AnsiString; op: TOpcode);
+        procedure DoORG(lineNum: Integer; ops: AnsiString; op: TOpcode);
+        procedure DoOUTPUTS(lineNum: Integer; ops: AnsiString; op: TOpcode);
+        procedure DoPROCEDURE(lineNum: Integer; ops: AnsiString; op: TOpcode);
+        procedure DoPROGRAM(lineNum: Integer; ops: AnsiString; op: TOpcode);
+        procedure DoPUT(lineNum: Integer; ops: AnsiString; op: TOpcode);
+        procedure DoRELALLOC(lineNum: Integer; ops: AnsiString; op: TOpcode);
+        procedure DoRESERVE(lineNum: Integer; ops: AnsiString; op: TOpcode);
+        procedure DoRIL(lineNum: Integer; ops: AnsiString; op: TOpcode);
+        procedure DoRILEX(lineNum: Integer; ops: AnsiString; op: TOpcode);
+        procedure DoSIL(lineNum: Integer; ops: AnsiString; op: TOpcode);
+        procedure DoSILEX(lineNum: Integer; ops: AnsiString; op: TOpcode);
+        procedure DoTERM(lineNum: Integer; ops: AnsiString; op: TOpcode);
+        procedure DoTYPEDEC(lineNum: Integer; ops: AnsiString; op: TOpcode);
+        procedure DoTYPET(lineNum: Integer; ops: AnsiString; op: TOpcode);
+        procedure DoUTAG(lineNum: Integer; ops: AnsiString; op: TOpcode);
+        procedure DoVRBL(lineNum: Integer; ops: AnsiString; op: TOpcode);
+        procedure DoWord(lineNum: Integer; var ops: AnsiString);
+        procedure GetChannel(var ops: AnsiString; var channel: AnsiString);
+        procedure GetFields(sline: AnsiString;
+          var lbl, operands, cmnt: AnsiString);
+        procedure GetToken(var ops: AnsiString; var token: AnsiString);
+        function GetNumber(var ops: AnsiString; var num: Integer): Boolean;
+        function GetOpcode(var ops: AnsiString; var rslt: TOpcode;
+          var b: Integer): Boolean;
+        function GetY(lineNum: Integer; var ops: AnsiString;
+          var rel: TRelocatableType; var b: Byte): Integer;
+        function NumberToInt(num: String): Integer;
+        function Pass0: Boolean;
+        procedure Pass1(SrcFile: TSrcFileStream);
+        procedure Pass2(SrcFile: TSrcFileStream);
+        procedure PrintXref;
+        procedure ReadStatement(SrcFile: TSrcFileStream;
+          var lbl, operands, cmnt: AnsiString);
+    public
+        constructor Create;
+        destructor Destroy; override;
+        function Assemble(inFile: String; ttrace: Boolean; xref: Boolean;
+          procDir: String; noproc: Boolean; otype: TOutputType; outDir: String;
+          tabc, sepc, iosepc: String): Integer;
+    end;
 
 implementation
 
 uses Math, U494Util, AnsiStrings, EmulatorTypes;
 
-function Opcode(mnem: String; op: Byte; inst: T494InstructionType; opt: T494OperandType): TOpcode;
+const
+    // I/O library entry points
+    TYPEA_ENTRY = $7E00; // Octal 77000
+    TYPET_ENTRY = $7E01; // Octal 77001
+    TYPESP_ENTRY = $7E1F; // Octal 77037
+    TYPECR_ENTRY = $7E1A; // Octal 77032
+    TYPETAB_ENTRY = $7E24; // Octal 77044
+    TYPEDEC_ENTRY = $7E27; // Octal 77047
+
+function Opcode(mnem: String; op: Byte; inst: T494InstructionType;
+  opt: T494OperandType): TOpcode;
 begin
     Result := TOpcode.Create;
     Result.InstType := inst;
@@ -115,11 +144,12 @@ begin
     Result.Proc := nil;
 end;
 
-function Symbol(id: AnsiString; value: UInt64; rel: Boolean; st: TSymbolType): TSymbol;
+function Symbol(id: AnsiString; Value: UInt64; rel: Boolean;
+  st: TSymbolType): TSymbol;
 begin
     Result := TSymbol.Create;
-    Result.ID := id;
-    Result.Value := value;
+    Result.id := id;
+    Result.Value := Value;
     Result.Relocatable := rel;
     Result.SymbolType := st;
     Result.DefCount := 1;
@@ -130,7 +160,8 @@ end;
 function TAssembler.AdjustIdent(l: AnsiString): AnsiString;
 // Replace all alphbetic 'O' with zero as per SPURT reference page 5-C-1.
 begin
-    Result := StringReplace(l, AnsiString('0'), AnsiString('O'), [rfReplaceAll]);
+    Result := StringReplace(l, AnsiString('0'), AnsiString('O'),
+      [rfReplaceAll]);
 end;
 
 function TAssembler.AdjustIdent(l: String): String;
@@ -145,9 +176,11 @@ var
     val: Integer;
 begin
     if (not Assigned(FStmtLabel)) then
-        raise Exception.Create('Statements following allocation directive must have a label');
+        raise Exception.Create
+          ('Statements following allocation directive must have a label');
     if (not GetNumber(ops, val)) then
-        raise Exception.Create('Statements following allocation directive must have a numeric operand');
+        raise Exception.Create
+          ('Statements following allocation directive must have a numeric operand');
     FStmtLabel.Value := val;
     FStmtLabel.AllocationType := FAllocationType;
     if (FPass = 2) then
@@ -159,15 +192,16 @@ begin
     end;
 end;
 
-function TAssembler.Assemble(inFile: String; ttrace, xref: Boolean; procDir: String; noproc: Boolean;
-  otype: TOutputType; outDir, tabc, sepc: String): Integer;
+function TAssembler.Assemble(inFile: String; ttrace, xref: Boolean;
+  procDir: String; noproc: Boolean; otype: TOutputType;
+  outDir, tabc, sepc, iosepc: String): Integer;
 var
-    srcFile: TSrcFileStream;
+    SrcFile: TSrcFileStream;
     extn: String;
 begin
-    FInFile := infile;
+    FInFile := inFile;
     FPrintFile := TPath.GetDirectoryName(FInFile) + '\' +
-                  TPath.GetFileNameWithoutExtension(FInFile) + '.lst';
+      TPath.GetFileNameWithoutExtension(FInFile) + '.lst';
     FListFile := TListFileStream.Create(FPrintFile, fmCreate);
     FListFile.Enabled := True;
     FTokenTrace := ttrace;
@@ -181,32 +215,111 @@ begin
     else if (FOutDir[Length(FOutDir)] <> '\') then
         FOutDir := FOutDir + '\';
     case FOutputType of
-      otImage,
-      otExecutable: extn := '.mem';
-      otObject:     extn := '.obj';
-      otAbsolute:   extn := '.pt';
+      otImage, otExecutable:
+        extn := '.mem';
+      otObject:
+        extn := '.obj';
+      otAbsolute:
+        extn := '.pt';
     end;
-    FObjectFile := FOutDir +
-                   TPath.GetFileNameWithoutExtension(FInFile) + extn;
+    FObjectFile := FOutDir + TPath.GetFileNameWithoutExtension(FInFile) + extn;
     if (FOutputType = otExecutable) then
         FLocationCounter.Value := 96
     else
         FLocationCounter.Value := 0;
     FTab := FirstChar(AnsiString(tabc));
     FSeparator := FirstChar(AnsiString(sepc));
+    FIOSeparator := FirstChar(AnsiString(iosepc));
     if (Pass0) then
     begin
-        srcFile := TSrcFileStream.Create(FInFile);
-        srcFile.Column := 81;
-        Pass1(srcFile);
-        Pass2(srcFile);
+        SrcFile := TSrcFileStream.Create(FInFile);
+        SrcFile.Column := 81;
+        Pass1(SrcFile);
+        Pass2(SrcFile);
         PrintXref;
-        srcFile.Free;
+        SrcFile.Free;
     end;
-    WriteLn(Format('%-20.20s: %d error(s) encountered', [TPath.GetFileName(FInFIle), FErrorCount]));
+    WriteLn(Format('%-20.20s: %d error(s) encountered',
+      [TPath.GetFileName(FInFile), FErrorCount]));
     Result := FErrorCount;
     FOutFile.Free;
     FListFile.Free;
+end;
+
+procedure TAssembler.CallTypeCR(lineNum: Integer);
+var
+    opcode: TOpcode;
+begin
+    if (FPass = 2) then
+    begin
+        Opcode := FOpcodes['RJP.MAN'];
+        FCurInst.Value := 0;
+        FCurInst.f := Opcode.Opcode;
+        FCurInst.y := TYPECR_ENTRY;
+        FOutFile.EmitSingleWord(FLocationCounter.Value, rtNone,
+          FCurInst.Value);
+        FListFile.Value := FCurInst.Value;
+        FListFile.Print;
+        FListFile.InitLine(lineNum, FLocationCounter.Value + 1, '');
+    end;
+    Inc(FLocationCounter.Value);
+end;
+
+procedure TAssembler.CallTypeDec(lineNum: Integer);
+var
+    opcode: TOpcode;
+begin
+    if (FPass = 2) then
+    begin
+        Opcode := FOpcodes['RJP.MAN'];
+        FCurInst.Value := 0;
+        FCurInst.f := Opcode.Opcode;
+        FCurInst.y := TYPEDEC_ENTRY;
+        FOutFile.EmitSingleWord(FLocationCounter.Value, rtNone,
+          FCurInst.Value);
+        FListFile.Value := FCurInst.Value;
+        FListFile.Print;
+        FListFile.InitLine(lineNum, FLocationCounter.Value + 1, '');
+    end;
+    Inc(FLocationCounter.Value);
+end;
+
+procedure TAssembler.CallTypeSP(lineNum: Integer);
+var
+    opcode: TOpcode;
+begin
+    if (FPass = 2) then
+    begin
+        Opcode := FOpcodes['RJP.MAN'];
+        FCurInst.Value := 0;
+        FCurInst.f := Opcode.Opcode;
+        FCurInst.y := TYPESP_ENTRY;
+        FOutFile.EmitSingleWord(FLocationCounter.Value, rtNone,
+          FCurInst.Value);
+        FListFile.Value := FCurInst.Value;
+        FListFile.Print;
+        FListFile.InitLine(lineNum, FLocationCounter.Value + 1, '');
+    end;
+    Inc(FLocationCounter.Value);
+end;
+
+procedure TAssembler.CallTypeTAB(lineNum: Integer);
+var
+    opcode: TOpcode;
+begin
+    if (FPass = 2) then
+    begin
+        Opcode := FOpcodes['RJP.MAN'];
+        FCurInst.Value := 0;
+        FCurInst.f := Opcode.Opcode;
+        FCurInst.y := TYPETAB_ENTRY;
+        FOutFile.EmitSingleWord(FLocationCounter.Value, rtNone,
+          FCurInst.Value);
+        FListFile.Value := FCurInst.Value;
+        FListFile.Print;
+        FListFile.InitLine(lineNum, FLocationCounter.Value + 1, '');
+    end;
+    Inc(FLocationCounter.Value);
 end;
 
 constructor TAssembler.Create;
@@ -224,14 +337,19 @@ begin
     begin
         if (U494StdOpcodes[i].SpurtMnemonic <> 'UNK') then
         begin
-            op := Opcode(U494StdOpcodes[i].SpurtMnemonic, U494StdOpcodes[i].Opcode,
-                         U494StdOpcodes[i].InstType, U494StdOpcodes[i].OperandType);
+            op := Opcode(U494StdOpcodes[i].SpurtMnemonic,
+              U494StdOpcodes[i].Opcode, U494StdOpcodes[i].InstType,
+              U494StdOpcodes[i].OperandType);
             FOpcodes.Add(U494StdOpcodes[i].SpurtMnemonic, op);
             case op.OperandType of
-              otGeneral:    op.SpurtProc := DoGeneral;
-              otBRegister:  op.SpurtProc := DoGeneral;
-              ot77:         op.SpurtProc := Do77;
-              otIO:         op.SpurtProc := DoIO;
+              otGeneral:
+                op.SpurtProc := DoGeneral;
+              otBRegister:
+                op.SpurtProc := DoGeneral;
+              ot77:
+                op.SpurtProc := Do77;
+              otIO:
+                op.SpurtProc := DoIO;
             end;
         end;
     end;
@@ -239,8 +357,9 @@ begin
     begin
         if (U1230ExtOpcodes[i].SpurtMnemonic <> 'UNK') then
         begin
-            op := Opcode(U1230ExtOpcodes[i].SpurtMnemonic, U1230ExtOpcodes[i].Opcode,
-                         U1230ExtOpcodes[i].InstType, U1230ExtOpcodes[i].OperandType);
+            op := Opcode(U1230ExtOpcodes[i].SpurtMnemonic,
+              U1230ExtOpcodes[i].Opcode, U1230ExtOpcodes[i].InstType,
+              U1230ExtOpcodes[i].OperandType);
             FOpcodes.Add(U1230ExtOpcodes[i].SpurtMnemonic, op);
             op.SpurtProc := Do77;
         end;
@@ -249,22 +368,28 @@ begin
     begin
         if (U494PsuedoOps[i].SpurtMnemonic <> 'UNK') then
         begin
-            op := Opcode(U494PsuedoOps[i].SpurtMnemonic, U494PsuedoOps[i].Opcode,
-                         U494PsuedoOps[i].InstType, U494PsuedoOps[i].OperandType);
+            op := Opcode(U494PsuedoOps[i].SpurtMnemonic,
+              U494PsuedoOps[i].Opcode, U494PsuedoOps[i].InstType,
+              U494PsuedoOps[i].OperandType);
             FOpcodes.Add(U494PsuedoOps[i].SpurtMnemonic, op);
             case op.OperandType of
-              otGeneral:    op.SpurtProc := DoGeneral;
-              otBRegister:  op.SpurtProc := DoGeneral;
-              ot77:         op.SpurtProc := Do77;
-              otIO:         op.SpurtProc := DoIO;
+              otGeneral:
+                op.SpurtProc := DoGeneral;
+              otBRegister:
+                op.SpurtProc := DoGeneral;
+              ot77:
+                op.SpurtProc := Do77;
+              otIO:
+                op.SpurtProc := DoIO;
             end;
         end;
     end;
     for i := Low(SpurtDirectives) to High(SpurtDirectives) do
         if (SpurtDirectives[i].SpurtMnemonic <> 'UNK') then
             FOpcodes.Add(SpurtDirectives[i].SpurtMnemonic,
-                         Opcode(SpurtDirectives[i].SpurtMnemonic, SpurtDirectives[i].Opcode,
-                         SpurtDirectives[i].InstType, SpurtDirectives[i].OperandType));
+              Opcode(SpurtDirectives[i].SpurtMnemonic,
+              SpurtDirectives[i].Opcode, SpurtDirectives[i].InstType,
+              SpurtDirectives[i].OperandType));
     //
     FOpcodes.Items['A-CONTROL'].SpurtProc := DoACONTROL;
     FOpcodes.Items['C-CONTROL'].SpurtProc := DoCCONTROL;
@@ -273,6 +398,9 @@ begin
     FOpcodes.Items['REL-ALLOC'].SpurtProc := DoRELALLOC;
     FOpcodes.Items['INDR-ALLOC'].SpurtProc := DoINDRALLOC;
     FOpcodes.Items['PROGRAM'].SpurtProc := DoPROGRAM;
+    FOpcodes.Items['SYSTEM'].SpurtProc := DoPROGRAM;
+    FOpcodes.Items['SYS-PROC'].SpurtProc := DoPROGRAM;
+    FOpcodes.Items['SYS-DD'].SpurtProc := DoPROGRAM;
     FOpcodes.Items['MEANS'].SpurtProc := DoMEANS;
     FOpcodes.Items['EQUALS'].SpurtProc := DoEQUALS;
     FOpcodes.Items['ENTRY'].SpurtProc := DoENTRY;
@@ -293,6 +421,15 @@ begin
     FOpcodes.Items['ORG'].SpurtProc := DoORG;
     FOpcodes.Items['ENDIT'].SpurtProc := DoENDIT;
     FOpcodes.Items['DEC'].SpurtProc := DoDEC;
+    FOpcodes.Items['TYPET'].SpurtProc := DoTYPET;
+    FOpcodes.Items['TYPE-DEC'].SpurtProc := DoTYPEDEC;
+    FOpcodes.Items['END-DATA'].SpurtProc := DoDOTDOT;
+    FOpcodes.Items['LOC-DD'].SpurtProc := DoLOCDD;
+    FOpcodes.Items['END-LOC-DD'].SpurtProc := DoENDLOCDD;
+    FOpcodes.Items['VRBL'].SpurtProc := DoVRBL;
+    FOpcodes.Items['PROCEDURE'].SpurtProc := DoPROCEDURE;
+    FOpcodes.Items['END-PROC'].SpurtProc := DoENDPROC;
+    FOpcodes.Items['RETURN'].SpurtProc := DoEXIT;
     FOpcodes.Items['..'].SpurtProc := DoDOTDOT;
     // Create system defined identifiers
     FLocationCounter := Symbol('$', 0, True, stSystem);
@@ -385,13 +522,18 @@ begin
     FSymbols.Add('JP$KEY2', Symbol('JP$KEY2', 2 + (1 shl 15), False, stSystem));
     FSymbols.Add('JP$KEY3', Symbol('JP$KEY3', 3 + (1 shl 15), False, stSystem));
     FSymbols.Add('JP$STOP', Symbol('JP$STOP', 4 + (1 shl 15), False, stSystem));
-    FSymbols.Add('JP$STOP5', Symbol('JP$STOP5', 5 + (1 shl 15), False, stSystem));
-    FSymbols.Add('JP$STOP6', Symbol('JP$STOP6', 6 + (1 shl 15), False, stSystem));
-    FSymbols.Add('JP$STOP7', Symbol('JP$STOP7', 7 + (1 shl 15), False, stSystem));
+    FSymbols.Add('JP$STOP5', Symbol('JP$STOP5', 5 + (1 shl 15), False,
+      stSystem));
+    FSymbols.Add('JP$STOP6', Symbol('JP$STOP6', 6 + (1 shl 15), False,
+      stSystem));
+    FSymbols.Add('JP$STOP7', Symbol('JP$STOP7', 7 + (1 shl 15), False,
+      stSystem));
     // j designator for JP.ACTI. Opcode for JP.ACTI = opcode for JP + 2.
-    FSymbols.Add('JP$ACTIVEIN', Symbol('JP$ACTIVEIN', 0 + (2 shl 15), False, stSystem));
+    FSymbols.Add('JP$ACTIVEIN', Symbol('JP$ACTIVEIN', 0 + (2 shl 15), False,
+      stSystem));
     // j designator for JP.ACTO. Opcode for JP.ACTO = opcode for JP + 3.
-    FSymbols.Add('JP$ACTIVEOUT', Symbol('JP$ACTIVEOUT', 0 + (3 shl 15), False, stSystem));
+    FSymbols.Add('JP$ACTIVEOUT', Symbol('JP$ACTIVEOUT', 0 + (3 shl 15), False,
+      stSystem));
     //
     FSymbols.Add('RJP$SIL', Symbol('RJP$SIL', 0, False, stSystem));
     FSymbols.Add('RJP$SILJP', Symbol('RJP$SILJP', 1, False, stSystem));
@@ -404,13 +546,20 @@ begin
     // j designators for RJP.MAN. Opcode for RJP.MAN = opcode for RJP + 1 which is stored
     // in the upper half word of Value.
     FSymbols.Add('RJP$', Symbol('RJP$', 0 + (1 shl 15), False, stSystem));
-    FSymbols.Add('RJP$KEY1', Symbol('RJP$KEY1', 1 + (1 shl 15), False, stSystem));
-    FSymbols.Add('RJP$KEY2', Symbol('RJP$KEY2', 2 + (1 shl 15), False, stSystem));
-    FSymbols.Add('RJP$KEY3', Symbol('RJP$KEY3', 3 + (1 shl 15), False, stSystem));
-    FSymbols.Add('RJP$STOP', Symbol('RJP$STOP', 4 + (1 shl 15), False, stSystem));
-    FSymbols.Add('RJP$KEY5', Symbol('RJP$KEY5', 5 + (1 shl 15), False, stSystem));
-    FSymbols.Add('RJP$KEY6', Symbol('RJP$KEY6', 6 + (1 shl 15), False, stSystem));
-    FSymbols.Add('RJP$KEY7', Symbol('RJP$KEY7', 7 + (1 shl 15), False, stSystem));
+    FSymbols.Add('RJP$KEY1', Symbol('RJP$KEY1', 1 + (1 shl 15), False,
+      stSystem));
+    FSymbols.Add('RJP$KEY2', Symbol('RJP$KEY2', 2 + (1 shl 15), False,
+      stSystem));
+    FSymbols.Add('RJP$KEY3', Symbol('RJP$KEY3', 3 + (1 shl 15), False,
+      stSystem));
+    FSymbols.Add('RJP$STOP', Symbol('RJP$STOP', 4 + (1 shl 15), False,
+      stSystem));
+    FSymbols.Add('RJP$KEY5', Symbol('RJP$KEY5', 5 + (1 shl 15), False,
+      stSystem));
+    FSymbols.Add('RJP$KEY6', Symbol('RJP$KEY6', 6 + (1 shl 15), False,
+      stSystem));
+    FSymbols.Add('RJP$KEY7', Symbol('RJP$KEY7', 7 + (1 shl 15), False,
+      stSystem));
     //
     FSymbols.Add('RPT$ADV', Symbol('RPT$ADV', 1, False, stSystem));
     FSymbols.Add('RPT$BACK', Symbol('RPT$BACK', 2, False, stSystem));
@@ -466,12 +615,16 @@ begin
     // Special khat designators for EX-COM / EX-FCT
     FSymbols.Add('EX-COM$', Symbol('EX-COM$', 2, False, stSystem));
     FSymbols.Add('EX-COM$FORCE', Symbol('EX-COM$FORCE', 3, False, stSystem));
-    FSymbols.Add('EX-COM$MONITOR', Symbol('EX-COM$MONITOR', 0, False, stSystem));
-    FSymbols.Add('EX-COM$MONFORCE', Symbol('EX-COM$MONFORCE', 1, False, stSystem));
+    FSymbols.Add('EX-COM$MONITOR', Symbol('EX-COM$MONITOR', 0, False,
+      stSystem));
+    FSymbols.Add('EX-COM$MONFORCE', Symbol('EX-COM$MONFORCE', 1, False,
+      stSystem));
     FSymbols.Add('EX-FCT$', Symbol('EX-FCT$', 2, False, stSystem));
     FSymbols.Add('EX-FCT$FORCE', Symbol('EX-FCT$FORCE', 3, False, stSystem));
-    FSymbols.Add('EX-FCT$MONITOR', Symbol('EX-FCT$MONITOR', 0, False, stSystem));
-    FSymbols.Add('EX-FCT$MONFORCE', Symbol('EX-FCT$MONFORCE', 1, False, stSystem));
+    FSymbols.Add('EX-FCT$MONITOR', Symbol('EX-FCT$MONITOR', 0, False,
+      stSystem));
+    FSymbols.Add('EX-FCT$MONFORCE', Symbol('EX-FCT$MONFORCE', 1, False,
+      stSystem));
     // Special khat designators for EX-COM-MW
     FSymbols.Add('EX-COM-MW$W(', Symbol('EX-COM-MW$W(', 2, False, stSystem));
     //
@@ -509,7 +662,8 @@ begin
             GetToken(ops, token);
         if (FirstChar(token) = 'C') then
         begin
-            if ((not FSymbols.TryGetValue(token, sym)) or (sym.DefCount = 0)) then
+            if ((not FSymbols.TryGetValue(token, sym)) or (sym.DefCount = 0))
+            then
                 raise Exception.CreateFmt('%s is undefined', [token]);
             FCurInst.j77 := sym.Value;
             GetToken(ops, token);
@@ -579,7 +733,8 @@ begin
             GetToken(ops, token);
         if (FirstChar(token) = 'C') then
         begin
-            if ((not FSymbols.TryGetValue(token, sym)) or (sym.DefCount = 0)) then
+            if ((not FSymbols.TryGetValue(token, sym)) or (sym.DefCount = 0))
+            then
                 raise Exception.CreateFmt('%s is undefined', [token]);
             FCurInst.j77 := sym.Value;
             GetToken(ops, token);
@@ -591,7 +746,8 @@ begin
                 raise Exception.Create('INPUT or OUTPUT EXPECTED');
         end else
         begin
-            raise Exception.CreateFmt('%s is not a valid channel identifier', [token]);
+            raise Exception.CreateFmt
+              ('%s is not a valid channel identifier', [token]);
         end;
     end;
     FOutFile.EmitSingleWord(FLocationCounter.Value, rel, FCurInst.Value);
@@ -607,11 +763,13 @@ begin
         FListFile.Print;
 end;
 
-procedure TAssembler.DoALLOCATION(lineNum: Integer; ops: AnsiString; op: TOpcode);
+procedure TAssembler.DoALLOCATION(lineNum: Integer; ops: AnsiString;
+  op: TOpcode);
 begin
     FAllocationType := atDirect;
     if (FOutputType = otObject) then
-        raise Exception.Create('Direct allocation not valid when compiling relocatable objec files');
+        raise Exception.Create
+          ('Direct allocation not valid when compiling relocatable objec files');
     if (FPass = 1) then
     begin
         if (Assigned(FStmtLabel)) then
@@ -630,7 +788,7 @@ end;
 
 procedure TAssembler.DoCLEAR(lineNum: Integer; ops: AnsiString; op: TOpcode);
 var
-    op1: TOpCode;
+    op1: TOpcode;
     fields: TSpurtStringList;
 begin
     if (FPass = 1) then
@@ -645,7 +803,7 @@ begin
             if (fields.Count <> 2) then
                 raise Exception.Create('CLEAR directive requires 2 operands');
             fields[0] := fields[0] + '.ADV';
-            op1 := FOpCodes.Items['RPT'];
+            op1 := FOpcodes.Items['RPT'];
             FCurInst.Value := 0;
             FCurInst.f := op1.Opcode;
             DoGeneral(lineNum, AnsiString(fields[0]), op1);
@@ -654,7 +812,7 @@ begin
             if (Pos(AnsiString('('), fields[1]) <> 0) then
                 raise Exception.Create('k designator not allowed in operand 2');
             fields[1] := 'W(' + fields[1] + ')';
-            op1 := FOpCodes.Items['CL'];
+            op1 := FOpcodes.Items['CL'];
             FCurInst.Value := 0;
             FCurInst.f := op1.Opcode;
             DoGeneral(lineNum, AnsiString(fields[1]), op1);
@@ -695,7 +853,8 @@ begin
             end else
                 val := StrToFloat(String(ops));
             ival := Trunc(val);
-            FOutFile.EmitSingleWord(FLocationCounter.Value, rtNone, UInt32(ival));
+            FOutFile.EmitSingleWord(FLocationCounter.Value, rtNone,
+              UInt32(ival));
             FListFile.Value := UInt32(ival);
             FListFile.Print;
             Inc(FLocationCounter.Value);
@@ -718,11 +877,70 @@ begin
     GetToken(ops, token);
     if (token = '') then
         Exit;
-    if ((not FSymbols.TryGetValue(AdjustIdent(token), sym)) or (sym.DefCount = 0)) then
+    if ((not FSymbols.TryGetValue(AdjustIdent(token), sym)) or
+      (sym.DefCount = 0)) then
         raise Exception.CreateFmt('%s is undefined', [token]);
     FTransferAddr := sym.Value;
     if (FPass = 2) then
         FListFile.Print;
+end;
+
+procedure TAssembler.DoENDLOCDD(lineNum: Integer; ops: AnsiString; op: TOpcode);
+begin
+    if (FPass = 2) then
+        FListFile.Print;
+end;
+
+procedure TAssembler.DoENDPROC(lineNum: Integer; ops: AnsiString; op: TOpcode);
+var
+    token, s: AnsiString;
+    proc, sym: TSymbol;
+    op1: TOpcode;
+    opAdjust: Integer;
+begin
+    GetToken(ops, token);
+    if (token = '') then
+        raise Exception.Create('Procedure name expected');
+    if (FPass = 2) then
+    begin
+        if ((not FSymbols.TryGetValue(AdjustIdent(token), proc)) or (proc.DefCount = 0)) then
+            raise Exception.CreateFmt('%s is undefined', [token]);
+        op1 := FOpcodes.Items['JP'];
+        FCurInst.Value := 0;
+        FCurInst.f := op1.Opcode; // Emit a JP L() instruction
+        if (FEntryJ = 0) then
+            FCurInst.k := 1;
+        FCurInst.y := proc.Value;
+        // Check for j designator
+        GetToken(ops, token);
+        if (token = '.') then
+            GetToken(ops, token);
+        s := AnsiString(Format('%s$%s', [op1.Mnemonic, token]));
+        if (FSymbols.TryGetValue(s, sym)) then
+        begin
+            if (sym.DefCount < 1) then
+                raise Exception.CreateFmt('%s is undefined', [token]);
+            // See if opcode needs to be adjusted for this designator
+            opAdjust := sym.Value shr 15;
+            FCurInst.f := FCurInst.f + opAdjust;
+            FCurInst.j := sym.Value and $7;
+        end else
+        begin
+            if (FSymbols.TryGetValue(token, sym)) then
+            begin
+                if (sym.DefCount < 1) then
+                    raise Exception.CreateFmt('%s is undefined', [token]);
+                FCurInst.j := sym.Value;
+            end else if (token <> '') then
+                raise Exception.CreateFmt
+                  ('%s is not a valid j designator', [token]);
+        end;
+        //
+        FOutFile.EmitSingleWord(FLocationCounter.Value, rtNone, FCurInst.Value);
+        FListFile.Value := FCurInst.Value;
+        FListFile.Print;
+    end;
+    Inc(FLocationCounter.Value);
 end;
 
 procedure TAssembler.DoENTRY(lineNum: Integer; ops: AnsiString; op: TOpcode);
@@ -743,7 +961,8 @@ begin
             if (Copy(token, 1, 4) = 'STOP') then
             begin
                 if (not FSymbols.TryGetValue('JP$' + token, sym)) then
-                    raise Exception.CreateFmt('%s not valid for ENTRY', [token]);
+                    raise Exception.CreateFmt('%s not valid for ENTRY',
+                      [token]);
             end else
                 raise Exception.CreateFmt('%s not valid for ENTRY', [token]);
         end;
@@ -752,8 +971,8 @@ begin
         FCurInst.Value := 0;
         if (Assigned(sym)) then
         begin
-            FCurInst.f := 49;               // JP instruction
-            FCurInst.j := sym.Value;        // with approp. j designator
+            FCurInst.f := 49; // JP instruction
+            FCurInst.j := sym.Value; // with approp. j designator
             FEntryJ := sym.Value;
         end;
         FOutFile.EmitSingleWord(FLocationCounter.Value, rtNone, FCurInst.Value);
@@ -773,139 +992,140 @@ var
     rslt: Integer;
     rel: Boolean;
 
-function IsOperator(c: AnsiChar): Boolean;
-begin
-    Result := (c = '+') or (c = '-') or (c = '/') or
-              (c = '(') or (c = ')');
-end;
-
-function GetToken: AnsiString;
-var
-    i: Integer;
-begin
-    Result := '';
-    if (ops = '') then
-        Exit;
-
-    if (ops[1] = '(') then                  // beginning of multiplicand / multiplier
+    function IsOperator(c: AnsiChar): Boolean;
     begin
-        Result := '(';
-        ops := Copy(ops, 2);
+        Result := (c = '+') or (c = '-') or (c = '/') or (c = '(') or (c = ')');
     end;
 
-    i := 1;
-    while ((i <= Length(ops)) and (not IsOperator(ops[i]))) do
+    function GetToken: AnsiString;
+    var
+        i: Integer;
     begin
-        Result := Result + ops[i];
-        Inc(i);
+        Result := '';
+        if (ops = '') then
+            Exit;
+
+        if (ops[1] = '(') then // beginning of multiplicand / multiplier
+        begin
+            Result := '(';
+            ops := Copy(ops, 2);
+        end;
+
+        i := 1;
+        while ((i <= Length(ops)) and (not IsOperator(ops[i]))) do
+        begin
+            Result := Result + ops[i];
+            Inc(i);
+        end;
+
+        ops := Copy(ops, i);
     end;
 
-    ops := Copy(ops, i);
-end;
-
-procedure Expression(var rslt: Integer; var relocatable: Boolean);
-var
-    token: AnsiString;
-    op1, op2: Integer;
-    op1Seen, op2Seen, hasMulDiv: Boolean;
-    op: AnsiChar;
-    rel: Boolean;
-    sym: TSymbol;
-begin
-    token := GetToken;
-    hasMulDiv := False;
-    rel := False;
-    op := ' ';
-    op1 := 0;
-    op2 := 0;
-    op1Seen := False;
-    op2Seen := False;
-    while (token <> '') do
+    procedure Expression(var rslt: Integer; var Relocatable: Boolean);
+    var
+        token: AnsiString;
+        op1, op2: Integer;
+        op1Seen, op2Seen, hasMulDiv: Boolean;
+        op: AnsiChar;
+        rel: Boolean;
+        sym: TSymbol;
     begin
-        if (token = '(') then
+        token := GetToken;
+        hasMulDiv := False;
+        rel := False;
+        op := ' ';
+        op1 := 0;
+        op2 := 0;
+        op1Seen := False;
+        op2Seen := False;
+        while (token <> '') do
         begin
-            // Start of multiplication. (expr)(expr)
-            Expression(op1, rel);
-            if (GetToken <> ')') then
-                raise Exception.Create('Unbalanced parentheses');
-            if (GetToken <> '(') then
-                raise Exception.Create('Missing multiplier');
-            Expression(op2, rel);
-            if (GetToken <> ')') then
-                raise Exception.Create('Unbalanced parentheses');
-            op1 := op1 * op2;
-            rel := False;
-            hasMulDiv := True;
-        end else if (IsOperator(token[1])) then
-        begin
-            if (op <> ' ') then
-                raise Exception.Create('Expression syntax error');
-            op := token[1];
-            if (op = '/') then
+            if (token = '(') then
             begin
+                // Start of multiplication. (expr)(expr)
+                Expression(op1, rel);
+                if (GetToken <> ')') then
+                    raise Exception.Create('Unbalanced parentheses');
+                if (GetToken <> '(') then
+                    raise Exception.Create('Missing multiplier');
                 Expression(op2, rel);
-                if (op2 = 0) then
-                    raise Exception.Create('Attempt to divide by zero');
-                op1 := op1 div op2;
+                if (GetToken <> ')') then
+                    raise Exception.Create('Unbalanced parentheses');
+                op1 := op1 * op2;
                 rel := False;
                 hasMulDiv := True;
-            end;
-        end else if ((token[1] < '0') or (token[1] > '9')) then
-        begin
-            if (not FSymbols.TryGetValue(AdjustIdent(token), sym)) then
-                raise Exception.CreateFmt('%s is undefined', [token]);
-            if (sym.DefCount < 1) then
-                raise Exception.CreateFmt('%s is undefined', [token]);
-            sym.Xref.Add(lineNum);
-            rel := sym.Relocatable;
-            if (op = ' ') then
+            end else if (IsOperator(token[1])) then
             begin
-                if (op1Seen) then
+                if (op <> ' ') then
                     raise Exception.Create('Expression syntax error');
-                op1 := sym.Value;
-                op1Seen := True;
+                op := token[1];
+                if (op = '/') then
+                begin
+                    Expression(op2, rel);
+                    if (op2 = 0) then
+                        raise Exception.Create('Attempt to divide by zero');
+                    op1 := op1 div op2;
+                    rel := False;
+                    hasMulDiv := True;
+                end;
+            end else if ((token[1] < '0') or (token[1] > '9')) then
+            begin
+                if (not FSymbols.TryGetValue(AdjustIdent(token), sym)) then
+                    raise Exception.CreateFmt('%s is undefined', [token]);
+                if (sym.DefCount < 1) then
+                    raise Exception.CreateFmt('%s is undefined', [token]);
+                sym.xref.Add(lineNum);
+                rel := sym.Relocatable;
+                if (op = ' ') then
+                begin
+                    if (op1Seen) then
+                        raise Exception.Create('Expression syntax error');
+                    op1 := sym.Value;
+                    op1Seen := True;
+                end else
+                begin
+                    if (op2Seen) then
+                        raise Exception.Create('Expression syntax error');
+                    op2 := sym.Value;
+                    op2Seen := True;
+                end;
             end else
             begin
-                if (op2Seen) then
-                    raise Exception.Create('Expression syntax error');
-                op2 := sym.Value;
-                op2Seen := True;
+                if (op = ' ') then
+                begin
+                    if (op1Seen) then
+                        raise Exception.Create('Expression syntax error');
+                    op1 := NumberToInt(String(token));
+                    op1Seen := True;
+                end else
+                begin
+                    if (op2Seen) then
+                        raise Exception.Create('Expression syntax error');
+                    op2 := NumberToInt(String(token));
+                    op2Seen := True;
+                end;
             end;
-        end else
-        begin
-            if (op = ' ') then
+            if (op1Seen and op2Seen) then
             begin
-                if (op1Seen) then
-                    raise Exception.Create('Expression syntax error');
-                op1 := NumberToInt(String(token));
-                op1Seen := True;
-            end else
-            begin
-                if (op2Seen) then
-                    raise Exception.Create('Expression syntax error');
-                op2 := NumberToInt(String(token));
-                op2Seen := True;
+                case op of
+                  '+':
+                    op1 := op1 + op2;
+                  '-':
+                    op2 := op1 - op2;
+                end;
+                op2Seen := False;
+                op := ' ';
             end;
+            token := GetToken;
         end;
-        if (op1Seen and op2Seen) then
-        begin
-            case op of
-              '+':  op1 := op1 + op2;
-              '-':  op2 := op1 - op2;
-            end;
-            op2Seen := False;
-            op := ' ';
-        end;
-        token := GetToken;
+        if ((op <> ' ') and (not op2Seen)) then
+            raise Exception.Create('Expression syntax error');
+        rslt := op1;
+        if (hasMulDiv) then
+            Relocatable := False
+        else
+            Relocatable := rel;
     end;
-    if ((op <> ' ') and (not op2Seen)) then
-        raise Exception.Create('Expression syntax error');
-    rslt := op1;
-    if (hasMulDiv) then
-        relocatable := False
-    else
-        relocatable := rel;
-end;
 
 begin
     if (not Assigned(FStmtLabel)) then
@@ -930,7 +1150,7 @@ end;
 
 procedure TAssembler.DoEXIT(lineNum: Integer; ops: AnsiString; op: TOpcode);
 var
-    op1: TOpCode;
+    op1: TOpcode;
     sym: TSymbol;
     token, s: AnsiString;
     opAdjust: Integer;
@@ -942,8 +1162,8 @@ begin
 
         op1 := FOpcodes.Items['JP'];
         FCurInst.Value := 0;
-        FCurInst.f := op1.Opcode;                   // Emit a JP L() instruction
-        if (FEntryj = 0) then
+        FCurInst.f := op1.Opcode; // Emit a JP L() instruction
+        if (FEntryJ = 0) then
             FCurInst.k := 1;
         FCurInst.y := FEntryLabel.Value;
         // Check for j designator
@@ -965,7 +1185,8 @@ begin
                     raise Exception.CreateFmt('%s is undefined', [token]);
                 FCurInst.j := sym.Value;
             end else if (token <> '') then
-                raise Exception.Createfmt('%s is not a valid j designator', [token]);
+                raise Exception.CreateFmt
+                  ('%s is not a valid j designator', [token]);
         end;
         //
         FOutFile.EmitSingleWord(FLocationCounter.Value, rtNone, FCurInst.Value);
@@ -978,7 +1199,7 @@ end;
 
 procedure TAssembler.DoFD(lineNum: Integer; ops: AnsiString; op: TOpcode);
 var
-    token : AnsiString;
+    token: AnsiString;
     len, i, bytes: Integer;
     word: UInt32;
 begin
@@ -996,13 +1217,15 @@ begin
         i := 0;
         while ((len > 0) and (i < Length(ops))) do
         begin
-            word := (word shl 6) or Byte(TCodeTranslator.AsciiToFieldata(ops[i + 1]));
+            word := (word shl 6) or
+              Byte(TCodeTranslator.AsciiToFieldata(ops[i + 1]));
             Inc(i);
             if ((i mod 5) = 0) then
             begin
                 if (FPass = 2) then
                 begin
-                    FOutFile.EmitSingleWord(FLocationCounter.Value, rtNone, word);
+                    FOutFile.EmitSingleWord(FLocationCounter.Value,
+                      rtNone, word);
                     FListFile.Value := word;
                     FListFile.Print;
                     Inc(FLocationCounter.Value);
@@ -1073,11 +1296,16 @@ begin
     GetToken(ops, token);
     // Check for k specifier
     case op.InstType of
-      itRead:       pfx := 'R$';
-      itStore:      pfx := 'S$';
-      itReplace:    pfx := 'RP$';
-      itIO:         pfx := 'I$';
-      else          pfx := '';
+      itRead:
+        pfx := 'R$';
+      itStore:
+        pfx := 'S$';
+      itReplace:
+        pfx := 'RP$';
+      itIO:
+        pfx := 'I$';
+    else
+        pfx := '';
     end;
     if ((pfx <> '') and (FSymbols.TryGetValue(pfx + token, sym))) then
     begin
@@ -1111,7 +1339,7 @@ begin
             if (sym.SubstituteValue <> '') then
             begin
                 token := AdjustIdent(sym.SubstituteValue);
-                sym.Xref.Add(lineNum);
+                sym.xref.Add(lineNum);
             end;
         end;
         // Is token possibly a channel identifier of some kind?
@@ -1135,7 +1363,8 @@ begin
                         if (token1 = '.') then
                             GetToken(ops, token1);
                         token1 := AdjustIdent(token1);
-                        if ((token1 = 'ACTIVEIN') or (token1 = 'ACTIVEOUT')) then
+                        if ((token1 = 'ACTIVEIN') or (token1 = 'ACTIVEOUT'))
+                        then
                         begin
                             token := token1;
                         end else if (token1 = 'COMACTIVE') then
@@ -1176,7 +1405,8 @@ begin
                 raise Exception.CreateFmt('%s is undefined', [token]);
             FCurInst.j := sym.Value
         end else if (token <> '') then
-            raise Exception.Createfmt('%s is not a valid j designator', [token]);
+            raise Exception.CreateFmt('%s is not a valid j designator',
+              [token]);
     end;
     // process psuedo ops
     if (op.Mnemonic = 'CP.Q') then
@@ -1226,14 +1456,15 @@ begin
     FListFile.Print;
 end;
 
-procedure TAssembler.DoINCREMENT(lineNum: Integer; ops: AnsiString; op: TOpcode);
+procedure TAssembler.DoINCREMENT(lineNum: Integer; ops: AnsiString;
+  op: TOpcode);
 var
     token: AnsiString;
     ksym, bsym: TSymbol;
     y: Integer;
     b: Byte;
     rel: TRelocatableType;
-    op1: TOpCode;
+    op1: TOpcode;
 begin
     bsym := nil;
     ksym := nil;
@@ -1249,7 +1480,8 @@ begin
         raise Exception.Create('INCREMENT directive requires 2 operands');
     // get possible k designator
     GetToken(ops, token);
-    if (Pos('(', String(token)) = 0) or (not FSymbols.TryGetValue(AdjustIdent('R$' + token), ksym)) then
+    if (Pos('(', String(token)) = 0) or
+      (not FSymbols.TryGetValue(AdjustIdent('R$' + token), ksym)) then
         ops := token + ops;
     y := GetY(lineNum, ops, rel, b);
     if ((b = 0) and (not Assigned(ksym))) then
@@ -1258,12 +1490,13 @@ begin
         begin
             if (FPass = 2) then
             begin
-                op1 := FOpCodes.Items['BJP.B'];
+                op1 := FOpcodes.Items['BJP.B'];
                 FCurInst.Value := 0;
                 FCurInst.f := op1.Opcode;
                 FCurInst.j := bsym.Value;
                 FCurInst.y := FLocationCounter.Value + 1;
-                FOutFile.EmitSingleWord(FLocationCounter.Value, rel, FCurInst.Value);
+                FOutFile.EmitSingleWord(FLocationCounter.Value, rel,
+                  FCurInst.Value);
                 FListFile.Value := FCurInst.Value;
                 FListFile.Print;
             end;
@@ -1272,31 +1505,34 @@ begin
         begin
             if (FPass = 2) then
             begin
-                op1 := FOpCodes.Items['ENT.A'];
+                op1 := FOpcodes.Items['ENT.A'];
                 FCurInst.Value := 0;
                 FCurInst.f := op1.Opcode;
                 FCurInst.b := bsym.Value;
-                FOutFile.EmitSingleWord(FLocationCounter.Value, rel, FCurInst.Value);
+                FOutFile.EmitSingleWord(FLocationCounter.Value, rel,
+                  FCurInst.Value);
                 FListFile.Value := FCurInst.Value;
                 FListFile.Print;
                 Inc(FLocationCounter.Value);
                 FListFile.InitLine(lineNum, FLocationCounter.Value, '');
-                op1 := FOpCodes.Items['ADD.A'];
+                op1 := FOpcodes.Items['ADD.A'];
                 FCurInst.Value := 0;
                 FCurInst.f := op1.Opcode;
                 FCurInst.k := 4;
                 FCurInst.y := y;
-                FOutFile.EmitSingleWord(FLocationCounter.Value, rel, FCurInst.Value);
+                FOutFile.EmitSingleWord(FLocationCounter.Value, rel,
+                  FCurInst.Value);
                 FListFile.Value := FCurInst.Value;
                 FListFile.Print;
                 Inc(FLocationCounter.Value);
                 FListFile.InitLine(lineNum, FLocationCounter.Value, '');
-                op1 := FOpCodes.Items['ENT.B'];
+                op1 := FOpcodes.Items['ENT.B'];
                 FCurInst.Value := 0;
                 FCurInst.f := op1.Opcode;
                 FCurInst.j := bsym.Value;
                 FCurInst.k := 7;
-                FOutFile.EmitSingleWord(FLocationCounter.Value, rel, FCurInst.Value);
+                FOutFile.EmitSingleWord(FLocationCounter.Value, rel,
+                  FCurInst.Value);
                 FListFile.Value := FCurInst.Value;
                 FListFile.Print;
                 Inc(FLocationCounter.Value);
@@ -1312,7 +1548,8 @@ begin
                 FCurInst.b := bsym.Value;
                 FCurInst.j := bsym.Value;
                 FCurInst.y := y;
-                FOutFile.EmitSingleWord(FLocationCounter.Value, rel, FCurInst.Value);
+                FOutFile.EmitSingleWord(FLocationCounter.Value, rel,
+                  FCurInst.Value);
                 FListFile.Value := FCurInst.Value;
                 FListFile.Print;
             end;
@@ -1322,16 +1559,17 @@ begin
     begin
         if (FPass = 2) then
         begin
-            op1 := FOpCodes.Items['ENT.A'];
+            op1 := FOpcodes.Items['ENT.A'];
             FCurInst.Value := 0;
             FCurInst.f := op1.Opcode;
             FCurInst.b := bsym.Value;
-            FOutFile.EmitSingleWord(FLocationCounter.Value, rel, FCurInst.Value);
+            FOutFile.EmitSingleWord(FLocationCounter.Value, rel,
+              FCurInst.Value);
             FListFile.Value := FCurInst.Value;
             FListFile.Print;
             Inc(FLocationCounter.Value);
             FListFile.InitLine(lineNum, FLocationCounter.Value, '');
-            op1 := FOpCodes.Items['ADD.A'];
+            op1 := FOpcodes.Items['ADD.A'];
             FCurInst.Value := 0;
             FCurInst.f := op1.Opcode;
             FCurInst.k := ksym.Value;
@@ -1339,17 +1577,19 @@ begin
             if ((FCurInst.k = 1) or (FCurInst.k = 2)) then
                 FCurInst.k := FCurInst.k + 4;
             FCurInst.y := y;
-            FOutFile.EmitSingleWord(FLocationCounter.Value, rel, FCurInst.Value);
+            FOutFile.EmitSingleWord(FLocationCounter.Value, rel,
+              FCurInst.Value);
             FListFile.Value := FCurInst.Value;
             FListFile.Print;
             Inc(FLocationCounter.Value);
             FListFile.InitLine(lineNum, FLocationCounter.Value, '');
-            op1 := FOpCodes.Items['ENT.B'];
+            op1 := FOpcodes.Items['ENT.B'];
             FCurInst.Value := 0;
             FCurInst.f := op1.Opcode;
             FCurInst.j := bsym.Value;
             FCurInst.k := 7;
-            FOutFile.EmitSingleWord(FLocationCounter.Value, rel, FCurInst.Value);
+            FOutFile.EmitSingleWord(FLocationCounter.Value, rel,
+              FCurInst.Value);
             FListFile.Value := FCurInst.Value;
             FListFile.Print;
             Inc(FLocationCounter.Value);
@@ -1358,7 +1598,8 @@ begin
     end;
 end;
 
-procedure TAssembler.DoINDRALLOC(lineNum: Integer; ops: AnsiString; op: TOpcode);
+procedure TAssembler.DoINDRALLOC(lineNum: Integer; ops: AnsiString;
+  op: TOpcode);
 begin
     FAllocationType := atIndirect;
     if (FPass = 1) then
@@ -1387,19 +1628,21 @@ begin
         if ((sym.SymbolType <> stSystem) and (sym.SubstituteValue <> '')) then
         begin
             token := sym.SubstituteValue;
-            sym.Xref.Add(lineNum);
+            sym.xref.Add(lineNum);
         end;
     end;
-    if ((not FSymbols.TryGetValue(token, sym)) or
-        (sym.Value < 0) or (sym.Value > 15)) then
-        raise Exception.CreateFmt('%s is not a valid channel identifier', [token]);
+    if ((not FSymbols.TryGetValue(token, sym)) or (sym.Value < 0) or
+      (sym.Value > 15)) then
+        raise Exception.CreateFmt
+          ('%s is not a valid channel identifier', [token]);
     FCurInst.jhat := sym.Value;
     GetToken(ops, token);
     if (token <> '.') then
         raise Exception.Create('Syntax error');
     // Check for k specifier
     GetToken(ops, token);
-    if (FSymbols.TryGetValue(AnsiString(op.Mnemonic + '$' + String(token)), sym)) then
+    if (FSymbols.TryGetValue(AnsiString(op.Mnemonic + '$' + String(token)), sym))
+    then
     begin
         if (sym.DefCount < 1) then
             raise Exception.CreateFmt('%s is undefined', [token]);
@@ -1421,7 +1664,8 @@ begin
     // Special code for some instructions
     if ((op.Mnemonic = 'EX-COM') or (op.Mnemonic = 'EX-FCT')) then
     begin
-        if ((not FSymbols.TryGetValue(AnsiString(op.Mnemonic + '$' + String(token)), sym)) or (sym.DefCount = 0)) then
+        if ((not FSymbols.TryGetValue(AnsiString(op.Mnemonic + '$' +
+          String(token)), sym)) or (sym.DefCount = 0)) then
             raise Exception.CreateFmt('%s is undefined', [token]);
         FCurInst.khat := sym.Value;
     end else if ((op.Mnemonic = 'EX-COM-MW') and (token = 'MONITOR')) then
@@ -1441,7 +1685,13 @@ begin
     FOutFile.EmitSingleWord(FLocationCounter.Value, rel, FCurInst.Value);
     FListFile.Value := FCurInst.Value;
     FListFile.Print;
-    end;
+end;
+
+procedure TAssembler.DoLOCDD(lineNum: Integer; ops: AnsiString; op: TOpcode);
+begin
+    if (FPass = 2) then
+        FListFile.Print;
+end;
 
 procedure TAssembler.DoMEANS(lineNum: Integer; ops: AnsiString; op: TOpcode);
 begin
@@ -1450,7 +1700,7 @@ begin
 
     if (FPass = 1) then
     begin
-        GetChannel(ops, FStmtLabel.SubstituteValue );
+        GetChannel(ops, FStmtLabel.SubstituteValue);
         // A label can be defined by either MEANS or another method. This results
         // in "multiple definition" errors unless we reduce the DecCount here.
         Dec(FStmtLabel.DefCount);
@@ -1489,7 +1739,8 @@ begin
         ksym := nil;
         operand := AnsiString(fields[0]);
         GetToken(operand, token);
-        if (Pos('(', String(token)) = 0) or (not FSymbols.TryGetValue(AdjustIdent('R$' + token), ksym)) then
+        if (Pos('(', String(token)) = 0) or
+          (not FSymbols.TryGetValue(AdjustIdent('R$' + token), ksym)) then
             operand := token + operand;
         if (Assigned(ksym)) then
             FCurInst.k := ksym.Value;
@@ -1551,7 +1802,8 @@ begin
     begin
         if (not FTransferAddrEmitted) then
         begin
-            FOutFile.EmitTransferAddr(FLocationCounter.Value, FTransferAddr, FObjCodeSize);
+            FOutFile.EmitTransferAddr(FLocationCounter.Value, FTransferAddr,
+              FObjCodeSize);
             FTransferAddrEmitted := True;
         end;
         FListFile.Print;
@@ -1567,6 +1819,44 @@ begin
     end;
 end;
 
+procedure TAssembler.DoPROCEDURE(lineNum: Integer; ops: AnsiString;
+  op: TOpcode);
+// Due to a lack of documentation this is only partially implemented
+var
+    token: AnsiString;
+    sym: TSymbol;
+begin
+    GetToken(ops, token);
+    if (token = '') then
+        raise Exception.Create('PROCEDURE directive requires an identifier');
+    if (FSymbols.TryGetValue(AdjustIdent(token), sym)) then
+    begin
+        if (FPass = 1) then
+            raise Exception.CreateFmt('%s is defined multiple times', [token]);
+    end else
+    begin
+        sym := TSymbol.Create;
+        sym.id := AdjustIdent(token);
+        sym.SourceID := token;
+        sym.SymbolType := stProcedure;
+        sym.DefLine := lineNum;
+        sym.Value := FLocationCounter.Value;
+        sym.Relocatable := True;
+        sym.DefCount := 1;
+        FSymbols.Add(AdjustIdent(token), sym);
+    end;
+    FEntryLabel := sym;
+
+    if (FPass = 2) then
+    begin
+        FOutFile.EmitSingleWord(FLocationCounter.Value, rtNone, 0);
+        FListFile.Value := 0;
+        FListFile.Print;
+    end;
+
+    Inc(FLocationCounter.Value);
+end;
+
 procedure TAssembler.DoPROGRAM(lineNum: Integer; ops: AnsiString; op: TOpcode);
 var
     p: TProgram;
@@ -1578,10 +1868,10 @@ begin
         begin
             Dec(FStmtLabel.DefCount);
             FStmtLabel.DefLine := 0;
-            if (not Assigned(FPrograms.Programs[FStmtLabel.ID])) then
+            if (not Assigned(FPrograms.Programs[FStmtLabel.id])) then
             begin
                 p := TProgram.Create;
-                p.ProgramName := FStmtLabel.ID;
+                p.ProgramName := FStmtLabel.id;
                 p.StartAddr := FLocationCounter.Value;
                 FPrograms.Add(p);
                 FCrntProgram := p;
@@ -1593,10 +1883,11 @@ begin
     begin
         if (Assigned(FStmtLabel)) then
         begin
-            p := FPrograms.Programs[FStmtLabel.ID];
+            p := FPrograms.Programs[FStmtLabel.id];
             if (not p.TransferAddrEmitted) then
             begin
-                FOutFile.EmitTransferAddr(p.StartAddr, FTransferAddr, p.EndAddr - p.StartAddr);
+                FOutFile.EmitTransferAddr(p.StartAddr, FTransferAddr,
+                  p.EndAddr - p.StartAddr);
                 p.TransferAddrEmitted := True;
             end;
         end;
@@ -1606,7 +1897,7 @@ end;
 
 procedure TAssembler.DoPUT(lineNum: Integer; ops: AnsiString; op: TOpcode);
 var
-    op1: TOpCode;
+    op1: TOpcode;
     fields: TSpurtStringList;
 begin
     if (FPass = 1) then
@@ -1620,13 +1911,13 @@ begin
             fields.DelimitedText := String(ops);
             if (fields.Count <> 2) then
                 raise Exception.Create('PUT directive requires 2 operands');
-            op1 := FOpCodes.Items['ENT.Q'];
+            op1 := FOpcodes.Items['ENT.Q'];
             FCurInst.Value := 0;
             FCurInst.f := op1.Opcode;
             DoGeneral(lineNum, AnsiString(fields[0]), op1);
             Inc(FLocationCounter.Value);
             FListFile.InitLine(lineNum, FLocationCounter.Value, '');
-            op1 := FOpCodes.Items['STR.Q'];
+            op1 := FOpcodes.Items['STR.Q'];
             FCurInst.Value := 0;
             FCurInst.f := op1.Opcode;
             DoGeneral(lineNum, AnsiString(fields[1]), op1);
@@ -1653,11 +1944,35 @@ procedure TAssembler.DoRESERVE(lineNum: Integer; ops: AnsiString; op: TOpcode);
 var
     token: AnsiString;
     val: Integer;
+    rel: Boolean;
+
+    procedure GetValue(op: String; var rel: Boolean; var val: Integer);
+    var
+        c: Char;
+        sym: TSymbol;
+    begin
+        c := FirstChar(op);
+        if ((c = '+') or (c = '-') or ((c >= '0') and (c <= '9'))) then
+        begin
+            val := NumberToInt(op);
+            rel := False;
+        end else
+        begin
+            if (not FSymbols.TryGetValue(AdjustIdent(AnsiString(op)), sym)) then
+                raise Exception.CreateFmt('%s is undefined', [op]);
+            if (sym.DefCount < 1) then
+                raise Exception.CreateFmt('%s is undefined', [op]);
+            sym.xref.Add(lineNum);
+            val := sym.Value;
+            rel := sym.Relocatable;
+        end;
+    end;
+
 begin
     GetToken(ops, token);
     if (token = '') then
-        raise Exception.Create('RESERVE requires constant operand');
-    val := NumberToInt(String(token));
+        raise Exception.Create('RESERVE requires an operand');
+    GetValue(String(token), rel, val);
     if (FPass = 1) then
     begin
         Inc(FLocationCounter.Value, val);
@@ -1728,15 +2043,17 @@ begin
     begin
         if (FSymbols.TryGetValue(AdjustIdent(token), sym)) then
         begin
-            if ((sym.SymbolType <> stSystem) and (sym.SubstituteValue <> '')) then
+            if ((sym.SymbolType <> stSystem) and (sym.SubstituteValue <> ''))
+            then
             begin
                 token := sym.SubstituteValue;
-                sym.Xref.Add(lineNum);
+                sym.xref.Add(lineNum);
             end;
         end;
-        if ((not FSymbols.TryGetValue(token, sym)) or
-            (sym.Value < 0) or (sym.Value > 15)) then
-            raise Exception.CreateFmt('%s is not a valid channel identifier', [token]);
+        if ((not FSymbols.TryGetValue(token, sym)) or (sym.Value < 0) or
+          (sym.Value > 15)) then
+            raise Exception.CreateFmt
+              ('%s is not a valid channel identifier', [token]);
         FCurInst.jhat := sym.Value;
         FCurInst.khat := 3;
         FCurInst.b := 0;
@@ -1791,15 +2108,17 @@ begin
     begin
         if (FSymbols.TryGetValue(AdjustIdent(token), sym)) then
         begin
-            if ((sym.SymbolType <> stSystem) and (sym.SubstituteValue <> '')) then
+            if ((sym.SymbolType <> stSystem) and (sym.SubstituteValue <> ''))
+            then
             begin
                 token := sym.SubstituteValue;
-                sym.Xref.Add(lineNum);
+                sym.xref.Add(lineNum);
             end;
         end;
-        if ((not FSymbols.TryGetValue(token, sym)) or
-            (sym.Value < 0) or (sym.Value > 15)) then
-            raise Exception.CreateFmt('%s is not a valid channel identifier', [token]);
+        if ((not FSymbols.TryGetValue(token, sym)) or (sym.Value < 0) or
+          (sym.Value > 15)) then
+            raise Exception.CreateFmt
+              ('%s is not a valid channel identifier', [token]);
         FCurInst.jhat := sym.Value;
         FCurInst.khat := 3;
         FCurInst.b := 1;
@@ -1835,15 +2154,17 @@ begin
     begin
         if (FSymbols.TryGetValue(AdjustIdent(token), sym)) then
         begin
-            if ((sym.SymbolType <> stSystem) and (sym.SubstituteValue <> '')) then
+            if ((sym.SymbolType <> stSystem) and (sym.SubstituteValue <> ''))
+            then
             begin
                 token := sym.SubstituteValue;
-                sym.Xref.Add(lineNum);
+                sym.xref.Add(lineNum);
             end;
         end;
-        if ((not FSymbols.TryGetValue(token, sym)) or
-            (sym.Value < 0) or (sym.Value > 15)) then
-            raise Exception.CreateFmt('%s is not a valid channel identifier', [token]);
+        if ((not FSymbols.TryGetValue(token, sym)) or (sym.Value < 0) or
+          (sym.Value > 15)) then
+            raise Exception.CreateFmt
+              ('%s is not a valid channel identifier', [token]);
         FCurInst.jhat := sym.Value;
         // get the buffer mode
         GetToken(ops, token);
@@ -1871,6 +2192,237 @@ begin
     Inc(FLocationCounter.Value, 1);
 end;
 
+procedure TAssembler.DoTYPEDEC(lineNum: Integer; ops: AnsiString; op: TOpcode);
+var
+    token, stemp: AnsiString;
+    opcode: TOpcode;
+    b: Integer;
+    fields: TSpurtStringList;
+begin
+    FIOLibRequired := True;
+    fields := TSpurtStringList.Create;
+    try
+        fields.DelimitedText := String(ops);
+        // Save A in case we need it later
+        opcode := FOpcodes['STR.A'];
+        FCurInst.Value := 0;
+        FCurInst.f := opcode.Opcode;
+        FCurInst.k := 3;
+        FCurInst.y := TYPEA_ENTRY;
+        if (FPass = 2) then
+        begin
+            FOutFile.EmitSingleWord(FLocationCounter.Value, rtNone, FCurInst.Value);
+            FListFile.Value := FCurInst.Value;
+            FListFile.Print;
+            FListFile.InitLine(lineNum, FLocationCounter.Value + 1, '');
+        end;
+        Inc(FLocationCounter.Value);
+
+        while (fields.Count > 0) do
+        begin
+            stemp := AnsiString(fields[0]);
+            GetToken(AnsiString(stemp), token);
+            if (token = 'A') then
+            begin
+                Opcode := FOpcodes['ENT.A'];
+                FCurInst.Value := 0;
+                FCurInst.f := Opcode.Opcode;
+                FCurInst.k := 3;
+                FCurInst.y := TYPEA_ENTRY;
+                if (FPass = 2) then
+                begin
+                    FOutFile.EmitSingleWord(FLocationCounter.Value, rtNone, FCurInst.Value);
+                    FListFile.Value := FCurInst.Value;
+                    FListFile.Print;
+                    FListFile.InitLine(lineNum, FLocationCounter.Value + 1, '');
+                end;
+                Inc(FLocationCounter.Value);
+                CallTypeDec(lineNum);
+            end else if (token = 'Q') then
+            begin
+                Opcode := FOpcodes['STR.Q'];
+                FCurInst.Value := 0;
+                FCurInst.f := Opcode.Opcode;
+                FCurInst.k := 4;
+                if (FPass = 2) then
+                begin
+                    FOutFile.EmitSingleWord(FLocationCounter.Value, rtNone, FCurInst.Value);
+                    FListFile.Value := FCurInst.Value;
+                    FListFile.Print;
+                    FListFile.InitLine(lineNum, FLocationCounter.Value + 1, '');
+                end;
+                Inc(FLocationCounter.Value);
+                CallTypeDec(lineNum);
+            end else if ((token[1] = 'B') and TryStrToInt(Copy(String(token), 2), b) and
+              (b >= 1) and (b <= 7)) then
+            begin
+                Opcode := FOpcodes['STR.B'];
+                FCurInst.Value := 0;
+                FCurInst.f := Opcode.Opcode;
+                FCurInst.j := b;
+                FCurInst.k := 7;
+                if (FPass = 2) then
+                begin
+                    FOutFile.EmitSingleWord(FLocationCounter.Value, rtNone, FCurInst.Value);
+                    FListFile.Value := FCurInst.Value;
+                    FListFile.Print;
+                    FListFile.InitLine(lineNum, FLocationCounter.Value + 1, '');
+                end;
+                Inc(FLocationCounter.Value);
+                CallTypeDec(lineNum);
+            end else if (token = FIOSeparator + AnsiString('CR') + FIOSeparator) then
+            begin
+                CallTypeCR(lineNum);
+            end else if (token = FIOSeparator + AnsiString('SP') + FIOSeparator) then
+            begin
+                CallTypeSP(lineNum);
+            end else if (token = FIOSeparator + AnsiString('TAB') + FIOSeparator) then
+            begin
+                CallTypeTAB(lineNum);
+            end else
+            begin
+                stemp := token + stemp;
+                opcode := FOpcodes.Items['ENT.A'];
+                FCurInst.Value := 0;
+                FCurInst.f := opcode.Opcode;
+                if (FPass = 2) then
+                begin
+                    DoGeneral(lineNum, stemp, opcode);
+                    FListFile.InitLine(lineNum, FLocationCounter.Value, '');
+                end;
+                CallTypeDec(lineNum);
+                Inc(FLocationCounter.Value);
+            end;
+            fields.Delete(0);
+        end;
+        // Restore A
+        Opcode := FOpcodes['ENT.A'];
+        FCurInst.Value := 0;
+        FCurInst.f := Opcode.Opcode;
+        FCurInst.k := 3;
+        FCurInst.y := TYPEA_ENTRY;
+        if (FPass = 2) then
+        begin
+            FOutFile.EmitSingleWord(FLocationCounter.Value, rtNone, FCurInst.Value);
+            FListFile.Value := FCurInst.Value;
+            FListFile.Print;
+            FListFile.InitLine(lineNum, FLocationCounter.Value + 1, '');
+        end;
+        Inc(FLocationCounter.Value);
+    finally
+        fields.Free;
+    end;
+end;
+
+procedure TAssembler.DoTYPET(lineNum: Integer; ops: AnsiString; op: TOpcode);
+var
+    text, control: AnsiString;
+    c: AnsiChar;
+    sepSeen: Boolean;
+    op1: TOpcode;
+    word: UInt32;
+    i, len, bytes: Integer;
+begin
+    FIOLibRequired := True;
+    // Assemble the text to be printed.
+    ops := TrimRight(ops);
+    text := '';
+    sepSeen := False;
+    for c in ops do
+    begin
+        if (c = FIOSeparator) then
+        begin
+            if (sepSeen) then
+            begin
+                if (control = 'CR') then
+                    text := text + #04#03
+                else if (control = 'SP') then
+                    text := text + #05
+                else if (control = 'TAB') then
+                    text := text + #05;
+                sepSeen := False;
+            end else
+            begin
+                sepSeen := True;
+                control := '';
+            end;
+
+        end else
+        begin
+            if (sepSeen) then
+                control := control + c
+            else
+                text := text + TCodeTranslator.AsciiToFieldata(c);
+        end;
+    end;
+    text := text + #63;
+    len := (Length(text) + 4) div 5;
+    // Generate the code to print the text
+    if (FPass = 2) then
+    begin
+        op1 := FOpcodes['RJP.MAN'];
+        FCurInst.Value := 0;
+        FCurInst.f := op1.Opcode;
+        FCurInst.y := TYPET_ENTRY;
+        FOutFile.EmitSingleWord(FLocationCounter.Value, rtNone, FCurInst.Value);
+        FListFile.Value := FCurInst.Value;
+        FListFile.Print;
+        FListFile.InitLine(lineNum, FLocationCounter.Value + 1, '');
+
+        FOutFile.EmitSingleWord(FLocationCounter.Value + 1, rtWord,
+          FLocationCounter.Value + 3);
+        FListFile.Value := FLocationCounter.Value + 3;
+        FListFile.Print;
+        FListFile.InitLine(lineNum, FLocationCounter.Value + 2, '');
+
+        op1 := FOpcodes['JP.MAN'];
+        FCurInst.Value := 0;
+        FCurInst.f := op1.Opcode;
+        FCurInst.y := FLocationCounter.Value + 3 + len;
+        FOutFile.EmitSingleWord(FLocationCounter.Value, rtNone, FCurInst.Value);
+        FListFile.Value := FCurInst.Value;
+        FListFile.Print;
+        FListFile.InitLine(lineNum, FLocationCounter.Value + 3, '');
+    end;
+    Inc(FLocationCounter.Value, 3);
+    word := 0;
+    i := 0;
+    while ((len > 0) and (i < Length(text))) do
+    begin
+        word := (word shl 6) or Byte(text[i + 1]);
+        Inc(i);
+        if ((i mod 5) = 0) then
+        begin
+            if (FPass = 2) then
+            begin
+                FOutFile.EmitSingleWord(FLocationCounter.Value, rtNone, word);
+                FListFile.Value := word;
+                FListFile.Print;
+                Inc(FLocationCounter.Value);
+                FListFile.InitLine(lineNum, FLocationCounter.Value, '');
+            end else
+                Inc(FLocationCounter.Value);
+            word := 0;
+            Dec(len);
+        end;
+    end;
+    bytes := i mod 5;
+    if (bytes <> 0) then
+    begin
+        // Emit last word
+        if (FPass = 2) then
+        begin
+            word := word shl (30 - (bytes * 6));
+            FOutFile.EmitSingleWord(FLocationCounter.Value, rtNone, word);
+            FListFile.Value := word;
+            FListFile.Print;
+            Inc(FLocationCounter.Value);
+            FListFile.InitLine(lineNum, FLocationCounter.Value, '');
+        end else
+            Inc(FLocationCounter.Value);
+    end;
+end;
+
 procedure TAssembler.DoUTAG(lineNum: Integer; ops: AnsiString; op: TOpcode);
 var
     word, h1, h2: UInt32;
@@ -1885,7 +2437,7 @@ begin
         h2 := GetY(lineNum, ops, rel2, b);
         if (b <> 0) then
             raise Exception.Create('B-register not allowed');
-        if ((rel1 <> rtNone) and (rel2 <> rtNone))  then
+        if ((rel1 <> rtNone) and (rel2 <> rtNone)) then
             rel := rtH1H2
         else if (rel1 <> rtNone) then
             rel := rtH1
@@ -1893,11 +2445,61 @@ begin
             rel := rtH2
         else
             rel := rtNone;
-        word := ((h1 and $7fff) shl 15) or (h2 and $7fff);
+        word := ((h1 and $7FFF) shl 15) or (h2 and $7FFF);
         FOutFile.EmitSingleWord(FLocationCounter.Value, rel, word);
         FListFile.Value := word;
         FListFile.Print;
     end;
+    Inc(FLocationCounter.Value);
+end;
+
+procedure TAssembler.DoVRBL(lineNum: Integer; ops: AnsiString; op: TOpcode);
+var
+    token: AnsiString;
+    sym: TSymbol;
+    val: Integer;
+begin
+    GetToken(ops, token);
+    if (token = '') then
+        raise Exception.Create('Variable name expected, got ''''');
+    if (FSymbols.TryGetValue(AdjustIdent(token), sym)) then
+    begin
+        if (FPass = 1) then
+            raise Exception.CreateFmt('%s is multiply defined', [token]);
+    end else
+    begin
+        sym := TSymbol.Create;
+        sym.id := AdjustIdent(token);
+        sym.SourceID := token;
+        sym.SymbolType := stIdentifier;
+        sym.DefLine := lineNum;
+        sym.Value := FLocationCounter.Value;
+        sym.Relocatable := True;
+        sym.DefCount := 1;
+        FSymbols.Add(AdjustIdent(token), sym);
+    end;
+
+    GetToken(ops, token);
+    if (token = '.') then
+        GetToken(ops, token);
+    if ((token <> 'FXW') and (token <> 'FXH')) then
+        raise Exception.CreateFmt('Expected FXW or FXH, got %s', [token]);
+
+    GetToken(ops, token);
+    if (token = '.') then
+        GetToken(ops, token);
+    GetNumber(token, val);
+    if ((val < 0) or (val > 30)) then
+        raise Exception.Create('Invalid scale');
+    sym.Scale := val;
+
+    if (FPass = 2) then
+    begin
+        FOutFile.EmitSingleWord(FLocationCounter.Value, rtNone, 0);
+        FListFile.Value := 0;
+        FListFile.Print;
+    end;
+
     Inc(FLocationCounter.Value);
 end;
 
@@ -1908,27 +2510,27 @@ var
     rel, rel2: Boolean;
     relType: TRelocatableType;
 
-procedure GetValue(op: String; var rel: Boolean; var val: Integer);
-var
-    c: Char;
-    sym: TSymbol;
-begin
-    c := FirstChar(op);
-    if ((c = '+') or (c = '-') or ((c >= '0') and (c <= '9'))) then
+    procedure GetValue(op: String; var rel: Boolean; var val: Integer);
+    var
+        c: Char;
+        sym: TSymbol;
     begin
-        val := NumberToInt(op);
-        rel := False;
-    end else
-    begin
-        if (not FSymbols.TryGetValue(AdjustIdent(AnsiString(op)), sym)) then
-            raise Exception.CreateFmt('%s is undefined', [op]);
-        if (sym.DefCount < 1) then
-            raise Exception.CreateFmt('%s is undefined', [op]);
-        sym.Xref.Add(lineNum);
-        val := sym.Value;
-        rel := sym.Relocatable;
+        c := FirstChar(op);
+        if ((c = '+') or (c = '-') or ((c >= '0') and (c <= '9'))) then
+        begin
+            val := NumberToInt(op);
+            rel := False;
+        end else
+        begin
+            if (not FSymbols.TryGetValue(AdjustIdent(AnsiString(op)), sym)) then
+                raise Exception.CreateFmt('%s is undefined', [op]);
+            if (sym.DefCount < 1) then
+                raise Exception.CreateFmt('%s is undefined', [op]);
+            sym.xref.Add(lineNum);
+            val := sym.Value;
+            rel := sym.Relocatable;
+        end;
     end;
-end;
 
 begin
     if (FPass = 1) then
@@ -1964,7 +2566,7 @@ begin
             begin
                 GetValue(fields[0], rel, val);
                 GetValue(fields[1], rel2, val2);
-                val := ((val and $7fff) shl 15) or (val2 and $7fff);
+                val := ((val and $7FFF) shl 15) or (val2 and $7FFF);
                 if (rel and rel2) then
                     relType := rtH1H2
                 else if (rel) then
@@ -1998,7 +2600,7 @@ procedure TAssembler.GetChannel(var ops, channel: AnsiString);
 // Cn[ACTIVEIN | ACTIVEOUT]
 var
     fields: TSpurtStringList;
-    mnemonic, chan, active: String;
+    Mnemonic, chan, active: String;
     c: Char;
     num: Integer;
 begin
@@ -2010,42 +2612,42 @@ begin
         if ((fields[0] = 'C') or (fields[0] = 'F')) then
         begin
             // Channel mnemonic given in 2 parts
-            mnemonic := fields[0];
+            Mnemonic := fields[0];
             fields.Delete(0);
             if (fields.Count > 0) then
             begin
-                mnemonic := mnemonic + fields[0];
+                Mnemonic := Mnemonic + fields[0];
                 fields.Delete(0);
             end;
         end else
         begin
             // Channel mnemonic given in 1 part
-            mnemonic := fields[0];
+            Mnemonic := fields[0];
             fields.Delete(0);
         end;
         if (fields.Count > 0) then
         begin
             // activein or activeout given as separate operand
-            mnemonic := mnemonic + fields[0];
+            Mnemonic := Mnemonic + fields[0];
             fields.Delete(0);
         end;
         ops := AnsiString(fields.DelimitedText);
         // Now we should have something like Cchan#active??
         // So we need validate the entire mnemonic.
-        c := (Copy(mnemonic, 1, 1) + ' ')[1];
+        c := (Copy(Mnemonic, 1, 1) + ' ')[1];
         if ((c <> 'C') and (c <> 'F')) then
             raise Exception.Create('Invalid channel identifier');
         if (c = 'F') then
-            mnemonic[1] := 'C';
-        c := (Copy(mnemonic, 3, 1) + ' ')[1];
+            Mnemonic[1] := 'C';
+        c := (Copy(Mnemonic, 3, 1) + ' ')[1];
         if ((c >= '0') and (c <= '9')) then
         begin
-            chan := Copy(mnemonic, 1, 3);
-            active := Copy(mnemonic, 4);
+            chan := Copy(Mnemonic, 1, 3);
+            active := Copy(Mnemonic, 4);
         end else
         begin
-            chan := Copy(mnemonic, 1, 2);
-            active := Copy(mnemonic, 3);
+            chan := Copy(Mnemonic, 1, 2);
+            active := Copy(Mnemonic, 3);
         end;
         active := AdjustIdent(active);
         // Validate the channel #
@@ -2053,23 +2655,22 @@ begin
             raise Exception.Create('Invalid channel identifier');
         if ((num < 0) or (num > 15)) then
             raise Exception.Create('Invalid channel identifier');
-        if ((active <> '') and (active <> 'ACTIVEIN') and (active <> 'ACTIVEOUT')) then
+        if ((active <> '') and (active <> 'ACTIVEIN') and
+          (active <> 'ACTIVEOUT')) then
             raise Exception.Create('Invalid channel identifier');
 
-        channel := AnsiString(mnemonic);
+        channel := AnsiString(Mnemonic);
     finally
         fields.Free;
     end;
 end;
 
-procedure TAssembler.GetFields(sline: AnsiString; var lbl, operands, cmnt: AnsiString);
+procedure TAssembler.GetFields(sline: AnsiString;
+  var lbl, operands, cmnt: AnsiString);
 const
-    invLabels: array [1..26] of AnsiString = (
-        'A', 'Q',
-        'B0', 'B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7',
-        'C0', 'C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7',
-        'C8', 'C9', 'C10', 'C11', 'C12', 'C13', 'C14', 'C15'
-    );
+    invLabels: array [1 .. 26] of AnsiString = ('A', 'Q', 'B0', 'B1', 'B2',
+      'B3', 'B4', 'B5', 'B6', 'B7', 'C0', 'C1', 'C2', 'C3', 'C4', 'C5', 'C6',
+      'C7', 'C8', 'C9', 'C10', 'C11', 'C12', 'C13', 'C14', 'C15');
 
 var
     i: Integer;
@@ -2110,7 +2711,11 @@ begin
         begin
             operands := Trim(Copy(sline, 8));
         end;
-        if (AnsiPos(AnsiString('FD.'), operands) = 0) then
+        if ((AnsiPos(AnsiString('FD.'), operands) = 1) or
+          (AnsiPos(AnsiString('TYPET.'), operands) = 1)) then
+        begin
+            ;
+        end else
         begin
             i := AnsiPos(AnsiString(' '), operands);
             if (i <> 0) then
@@ -2156,8 +2761,9 @@ begin
     end;
     //
     c := FirstChar(lbl);
-    if ((c = 'O') or (c = 'X') or ((c >= '0') and (c<= '9'))) then
-        raise Exception.Create('Label may not start with ''O'', ''X'' or ''0'' thru ''9''');
+    if ((c = 'O') or (c = 'X') or ((c >= '0') and (c <= '9'))) then
+        raise Exception.Create
+          ('Label may not start with ''O'', ''X'' or ''0'' thru ''9''');
     for l in invLabels do
     begin
         if (l = lbl) then
@@ -2183,13 +2789,14 @@ begin
     end;
 end;
 
-function TAssembler.GetOpcode(var ops: AnsiString; var rslt: TOpcode; var b: Integer): Boolean;
+function TAssembler.GetOpcode(var ops: AnsiString; var rslt: TOpcode;
+  var b: Integer): Boolean;
 // Extract the opcode from the instruction. Assembler opcodes may consist of the opcode itself
 // and a modifier. A modifier may be an register (A, Q, B0 - B7 or something else). The ops
 // argument will be modified by having the opcode removed.
 var
     flds: TSpurtStringList;
-    opcode: String;
+    Opcode: String;
 begin
     if (ops = '..') then
     begin
@@ -2207,16 +2814,17 @@ begin
             Result := False;
             Exit;
         end;
-        opcode := AdjustIdent(flds[0]);
+        Opcode := AdjustIdent(flds[0]);
         if (flds.Count > 1) then
         begin
-            if ((Length(flds[1]) = 2) and (FirstChar(AnsiString(flds[1])) = 'B'))  then
+            if ((Length(flds[1]) = 2) and (FirstChar(AnsiString(flds[1])) = 'B'))
+            then
             begin
-                opcode := opcode + '.B';
+                Opcode := Opcode + '.B';
                 b := StrToInt(Copy(flds[1], 2));
             end else
-                opcode := opcode + '.' + AdjustIdent(flds[1]);
-            Result := FOpcodes.TryGetValue(opcode, Rslt);
+                Opcode := Opcode + '.' + AdjustIdent(flds[1]);
+            Result := FOpcodes.TryGetValue(Opcode, rslt);
             if (Result) then
             begin
                 flds.Delete(0);
@@ -2225,8 +2833,8 @@ begin
                 Exit;
             end;
         end;
-        opcode := AdjustIdent(flds[0]);
-        Result := FOpcodes.TryGetValue(opcode, rslt);
+        Opcode := AdjustIdent(flds[0]);
+        Result := FOpcodes.TryGetValue(Opcode, rslt);
         if (Result) then
         begin
             flds.Delete(0);
@@ -2239,7 +2847,7 @@ end;
 
 procedure TAssembler.GetToken(var ops, token: AnsiString);
 var
-    i: integer;
+    i: Integer;
 begin
     token := '';
     ops := Trim(ops);
@@ -2264,8 +2872,8 @@ begin
         i := 2;
     end else
     begin
-        while ((i <= Length(ops)) and (ops[i] <> '+') and (ops[i] <> '-') and (ops[i] <> '.') and
-               (ops[i] <> '(') and (ops[i] <> ')')) do
+        while ((i <= Length(ops)) and (ops[i] <> '+') and (ops[i] <> '-') and
+          (ops[i] <> '.') and (ops[i] <> '(') and (ops[i] <> ')')) do
         begin
             token := token + ops[i];
             Inc(i);
@@ -2279,7 +2887,8 @@ begin
     ops := Copy(ops, i);
 end;
 
-function TAssembler.GetY(lineNum: Integer; var ops: AnsiString; var rel: TRelocatableType; var b: Byte): Integer;
+function TAssembler.GetY(lineNum: Integer; var ops: AnsiString;
+  var rel: TRelocatableType; var b: Byte): Integer;
 var
     token, opr, sign: AnsiString;
     sym: TSymbol;
@@ -2289,9 +2898,11 @@ begin
     sign := '';
     b := 0;
     GetToken(ops, token);
-    while ((token <> '') and (token <> ')') and (token <> '.') and (token <> ').')) do
+    while ((token <> '') and (token <> ')') and (token <> '.') and
+      (token <> ').')) do
     begin
-        if (((FirstChar(token) >= 'A') and (FirstChar(token) <= 'Z')) or (token = '$')) then
+        if (((FirstChar(token) >= 'A') and (FirstChar(token) <= 'Z')) or
+          (token = '$')) then
         begin
             // process identifiers
             if (opr = '') then
@@ -2301,7 +2912,7 @@ begin
             if (sym.DefCount < 1) then
                 raise Exception.CreateFmt('%s is undefined', [token]);
             if (FPass = 2) then
-                sym.Xref.Add(lineNum);
+                sym.xref.Add(lineNum);
             if ((token[1] = 'B') and (sym.SymbolType = stSystem)) then
             begin
                 // B register
@@ -2351,7 +2962,8 @@ begin
     begin
         num := Copy(num, 1, Length(num) - 1);
         if (not TryStrToInt(String(num), Result)) then
-            raise Exception.CreateFmt('%s is not a valid decimal number', [num]);
+            raise Exception.CreateFmt
+              ('%s is not a valid decimal number', [num]);
     end else
     begin
         try
@@ -2368,20 +2980,20 @@ begin
     Result := True;
 end;
 
-procedure TAssembler.Pass1(srcFile: TSrcFileStream);
+procedure TAssembler.Pass1(SrcFile: TSrcFileStream);
 var
     lbl, operands, cmnt: AnsiString;
     lbl1, operands1: AnsiString;
     sym: TSymbol;
-    opcode: TOpcode;
+    Opcode: TOpcode;
     b: Integer;
 begin
     FPass := 1;
     FStmtLabel := nil;
-    while (not srcFile.Eof) do
+    while (not SrcFile.Eof) do
     begin
         try
-            ReadStatement(srcFile, lbl, operands, cmnt);
+            ReadStatement(SrcFile, lbl, operands, cmnt);
             if (lbl <> '') then
             begin
                 lbl1 := AdjustIdent(lbl);
@@ -2390,7 +3002,7 @@ begin
                     if (sym.DefCount = 0) then
                     begin
                         sym.Value := FLocationCounter.Value;
-                        sym.DefLine := srcFile.LineNumber;
+                        sym.DefLine := SrcFile.LineNumber;
                         sym.DefCount := 1;
                         sym.Relocatable := True;
                     end else
@@ -2398,8 +3010,7 @@ begin
                         case sym.AllocationType of
                           atNone:
                             Inc(sym.DefCount);
-                          atDirect,
-                          atRelative:
+                          atDirect, atRelative:
                           begin
                             FLocationCounter.Value := sym.Value;
                             FListFile.Address := sym.Value;
@@ -2414,10 +3025,10 @@ begin
                 end else
                 begin
                     sym := TSymbol.Create;
-                    sym.ID := lbl1;
+                    sym.id := lbl1;
                     sym.SourceID := lbl;
                     sym.SymbolType := stIdentifier;
-                    sym.DefLine := srcFile.LineNumber;
+                    sym.DefLine := SrcFile.LineNumber;
                     sym.Value := FLocationCounter.Value;
                     sym.Relocatable := True;
                     sym.DefCount := 1;
@@ -2427,69 +3038,90 @@ begin
             end;
             if (operands <> '') then
             begin
-                operands1 := StringReplace(operands, FSeparator, AnsiString('.'), [rfReplaceAll]);
-                if (GetOpcode(operands1, opcode, b)) then
+                operands1 := StringReplace(operands, FSeparator,
+                  AnsiString('.'), [rfReplaceAll]);
+                if (GetOpcode(operands1, Opcode, b)) then
                 begin
-                    if (opcode.OperandType = otDirective) then
-                        opcode.SpurtProc(srcFile.LineNumber, operands1, opcode)
+                    if (Opcode.OperandType = otDirective) then
+                        Opcode.SpurtProc(SrcFile.LineNumber, operands1, Opcode)
                     else
                         Inc(FLocationCounter.Value);
                 end else
                 begin
                     if (FAllocationType <> atNone) then
                         AllocValue(operands1)
-                    else if (((operands1[1] >= '0') and (operands1[1] <= '9')) or
-                             (operands1[1] = '-')) then
-                        DoWord(srcFile.LineNumber, operands)
-                    else
-                        raise Exception.Create('Illegal opcode');
+                    else if (((operands1[1] >= '0') and (operands1[1] <= '9'))
+                      or (operands1[1] = '-')) then
+                    begin
+                        DoWord(SrcFile.LineNumber, operands);
+                    end else
+                    begin
+                        GetToken(operands1, lbl);
+                        if ((FSymbols.TryGetValue(AdjustIdent(lbl), sym)) and
+                          (sym.SymbolType = stProcedure)) then
+                            Inc(FLocationCounter.Value)
+                        else
+                            raise Exception.Create('Illegal opcode');
+                    end;
                 end;
             end;
             if (Assigned(FCrntProgram)) then
                 FCrntProgram.EndAddr := FLocationCounter.Value;
         except
-          on E: Exception do
-          begin
-              ;
-          end;
+            on E: Exception do
+            begin;
+            end;
         end;
     end;
     { TODO : This is probably incorrent, but it will do as a starting point. }
     FObjCodeSize := FLocationCounter.Value - FTransferAddr;
 end;
 
-procedure TAssembler.Pass2(srcFile: TSrcFileStream);
+procedure TAssembler.Pass2(SrcFile: TSrcFileStream);
 var
     lbl, operands, cmnt: AnsiString;
     lbl1, operands1: AnsiString;
-    opcode: TOpcode;
+    fname: String;
+    Opcode: TOpcode;
     b: Integer;
+    p: TProgram;
+    sym: TSymbol;
+    rel: TRelocatableType;
 begin
     FPass := 2;
     if (not Assigned(FOutFile)) then
     begin
         case FOutputType of
-          otImage,
-          otExecutable: FOutFile := TMemImageStream.Create(FObjectFile, fmCreate);
-          otObject:     FOutFile := TRelocatableStream.Create(FObjectFile, fmCreate);
-          otAbsolute:   FOutFile := TAbsoluteStream.Create(FObjectFile, fmCreate);
+          otImage, otExecutable:
+            FOutFile := TMemImageStream.Create(FObjectFile, fmCreate);
+          otObject:
+            FOutFile := TRelocatableStream.Create(FObjectFile, fmCreate);
+          otAbsolute:
+            FOutFile := TAbsoluteStream.Create(FObjectFile, fmCreate);
         end;
         // Reset source file to beginning only if we are not being
         // called recursively.
-        srcFile.Reset;
-        srcFile.Column := 81;
+        SrcFile.Reset;
+        SrcFile.Column := 81;
         FStmtLabel := nil;
         if (FOutputType = otExecutable) then
             FLocationCounter.Value := 96
         else
             FLocationCounter.Value := 0;
+        if (FPrograms.Count > 0) then
+        begin
+            p := FPrograms[0];
+            FOutFile.EmitTransferAddr(p.StartAddr, FTransferAddr,
+              p.EndAddr - p.StartAddr);
+            p.TransferAddrEmitted := True;
+        end;
         FListFile.Enabled := True;
     end;
-    while (not srcFile.Eof) do
+    while (not SrcFile.Eof) do
     begin
         try
             FCurInst.Value := 0;
-            ReadStatement(srcFile, lbl, operands, cmnt);
+            ReadStatement(SrcFile, lbl, operands, cmnt);
             if ((lbl = '') and (operands = '') and (cmnt = '')) then
             begin
                 FListFile.Print;
@@ -2500,38 +3132,43 @@ begin
                 lbl1 := AdjustIdent(lbl);
                 FStmtLabel := FSymbols.Items[lbl1];
                 if (FStmtLabel.DefCount > 1) then
-                    raise Exception.CreateFmt('%s is defined multiple times', [lbl1]);
-                if ((FAllocationType = atNone) and (FStmtLabel.DefLine <= srcFile.LineNumber)) then
+                    raise Exception.CreateFmt
+                      ('%s is defined multiple times', [lbl1]);
+                if ((FAllocationType = atNone) and
+                  (FStmtLabel.DefLine <= SrcFile.LineNumber)) then
                 begin
                     case FStmtLabel.AllocationType of
-                      atDirect,
-                      atRelative:
-                      begin
-                        FLocationCounter.Value := FStmtLabel.Value;
-                        FListFile.Address := FStmtLabel.Value;
-                      end;
+                      atDirect, atRelative:
+                       begin
+                         FLocationCounter.Value := FStmtLabel.Value;
+                         FListFile.Address := FStmtLabel.Value;
+                       end;
                     end;
                 end;
             end;
             if (operands <> '') then
             begin
-                operands1 := StringReplace(operands, FSeparator, AnsiString('.'), [rfReplaceAll]);
-                if (GetOpcode(operands1, opcode, b)) then
+                operands1 := StringReplace(operands, FSeparator,
+                  AnsiString('.'), [rfReplaceAll]);
+                if (GetOpcode(operands1, Opcode, b)) then
                 begin
-                    if (opcode.OperandType = otDirective) then
-                        opcode.SpurtProc(srcFile.LineNumber, operands1, opcode)
+                    if (Opcode.OperandType = otDirective) then
+                        // Process a directive, mono or poly-op
+                        Opcode.SpurtProc(SrcFile.LineNumber, operands1, Opcode)
                     else
                     begin
+                        // Generate an instruction
                         FCurInst.Value := 0;
-                        FCurInst.f := opcode.Opcode;
+                        FCurInst.f := Opcode.Opcode;
                         FCurInst.j := b;
-                        if (opcode.InstType = it77) then
+                        if (Opcode.InstType = it77) then
                         begin
-                            FCurInst.f := $3f;
-                            FCurInst.g := opcode.Opcode;
+                            FCurInst.f := $3F;
+                            FCurInst.g := Opcode.Opcode;
                         end;
                         try
-                            opcode.SpurtProc(srcFile.LineNumber, operands1, opcode);
+                            Opcode.SpurtProc(SrcFile.LineNumber,
+                              operands1, Opcode);
                         finally
                             Inc(FLocationCounter.Value);
                         end;
@@ -2540,23 +3177,65 @@ begin
                 begin
                     if (FAllocationType <> atNone) then
                         AllocValue(operands1)
-                    else if (((operands1[1] >= '0') and (operands1[1] <= '9')) or
-                             (operands1[1] = '-')) then
-                        DoWord(srcFile.LineNumber, operands1)
-                    else
-                        raise Exception.Create('Illegal opcode');
+                    else if (((operands1[1] >= '0') and (operands1[1] <= '9'))
+                      or (operands1[1] = '-')) then
+                    begin
+                        // Generate 1 word of storage
+                        DoWord(SrcFile.LineNumber, operands1);
+                    end else
+                    begin
+                        GetToken(operands1, lbl);
+                        if ((FSymbols.TryGetValue(AdjustIdent(lbl), sym)) and
+                          (sym.SymbolType = stProcedure)) then
+                        begin
+                            // Call a procedure
+                            sym.xref.Add(SrcFile.LineNumber);
+                            Opcode := FOpcodes['RJP.MAN'];
+                            FCurInst.Clear;
+                            FCurInst.f := Opcode.Opcode;
+                            FCurInst.y := sym.Value;
+                            if (sym.Relocatable) then
+                                rel := rtH2
+                            else
+                                rel := rtNone;
+                            FOutFile.EmitSingleWord(FLocationCounter.Value, rel,
+                              FCurInst.Value);
+                            FListFile.Value := FCurInst.Value;
+                            FListFile.Print;
+                            Inc(FLocationCounter.Value);
+                        end else
+                            raise Exception.Create('Illegal opcode');
+                    end;
                 end;
             end else
                 FListFile.Print;
         except
-          on E: Exception do
-          begin
+            on E: Exception do
+            begin
+                FListFile.Print;
+                FListFile.Print(Format('**** %s', [E.Message]));
+                WriteLn(Format('%s: %s', [FListFile.lineNum, E.Message]));
+                FStmtLabel := nil;
+                Inc(FErrorCount);
+            end;
+        end;
+    end;
+    try
+        if (FIOLibRequired) then
+        begin
+            fname := ExtractFilePath(ParamStr(0)) + '..\..\Bin\iolib.mem';
+            if (not FileExists(fname)) then
+                fname := ExtractFilePath(ParamStr(0)) + 'iolib.mem';
+            FOutFile.Append(fname);
+        end;
+    except
+        on E: Exception do
+        begin
             FListFile.Print;
             FListFile.Print(Format('**** %s', [E.Message]));
-            WriteLn(Format('%s: %s', [FListFile.LineNum, E.Message]));
+            WriteLn(Format('%s: %s', [FListFile.lineNum, E.Message]));
             FStmtLabel := nil;
             Inc(FErrorCount);
-          end;
         end;
     end;
 end;
@@ -2566,7 +3245,7 @@ var
     syms: TStringList;
     sym: TSymbol;
     val: String;
-    i, l, count: Integer;
+    i, l, Count: Integer;
     s, ref, id: String;
 begin
     if (not FPrintXref) then
@@ -2577,7 +3256,7 @@ begin
         syms.Sorted := True;
         syms.OwnsObjects := False;
         for sym in FSymbols.Values do
-            syms.AddObject(String(sym.ID), sym);
+            syms.AddObject(String(sym.id), sym);
         FListFile.Print('');
         FListFile.Print('Symbol Cross Reference');
         FListFile.Print('ID         Addr  Line References');
@@ -2586,34 +3265,34 @@ begin
         begin
             sym := TSymbol(syms.Objects[i]);
             if ((sym.SymbolType <> stSystem) and
-                (sym.SymbolType <> stBDesignator) and
-                (sym.SymbolType <> stJDesignator) and
-                (sym.SymbolType <> stJDesignator) and
-                (sym.SymbolType <> stForm)) then
+              (sym.SymbolType <> stBDesignator) and
+              (sym.SymbolType <> stJDesignator) and
+              (sym.SymbolType <> stJDesignator) and (sym.SymbolType <> stForm))
+            then
             begin
                 if (sym.IsEntry) then
-                    id := String(sym.ID) + '*'
+                    id := String(sym.id) + '*'
                 else
-                    id := String(sym.ID);
+                    id := String(sym.id);
                 val := Copy(FormatOctal(sym.Value), 6);
                 if (sym.IsExternal) then
                     val := '?????';
                 s := Format('%-10.10s %s %4d ', [id, val, sym.DefLine]);
                 ref := '';
-                count := 0;
-                for l in sym.Xref do
+                Count := 0;
+                for l in sym.xref do
                 begin
                     ref := ref + Format('%4d ', [l]);
-                    Inc(count);
-                    if (count >= 15) then
+                    Inc(Count);
+                    if (Count >= 15) then
                     begin
                         FListFile.Print(Format('%s %s', [s, ref]));
                         s := StringOfChar(' ', 22);
                         ref := '';
-                        count := 0;
+                        Count := 0;
                     end;
                 end;
-                if (count > 0) then
+                if (Count > 0) then
                     FListFile.Print(Format('%s %s', [s, ref]));
             end;
         end;
@@ -2622,39 +3301,41 @@ begin
     end;
 end;
 
-procedure TAssembler.ReadStatement(srcFile: TSrcFileStream; var lbl, operands, cmnt: AnsiString);
+procedure TAssembler.ReadStatement(SrcFile: TSrcFileStream;
+  var lbl, operands, cmnt: AnsiString);
 var
     sline: AnsiString;
     l, o, c: AnsiString;
     emsg: String;
 begin
     emsg := '';
-    sline := UpperCase(srcFile.ReadLine);
+    sline := UpperCase(SrcFile.ReadLine);
+    sline := StringReplace(sline, FSeparator, AnsiString('.'), [rfReplaceAll]);
     try
         GetFields(sline, lbl, operands, cmnt);
     except
-      on E: Exception do
-      begin
-          emsg := E.Message;
-      end;
+        on E: Exception do
+        begin
+            emsg := E.Message;
+        end;
     end;
     if (FPass = 2) then
     begin
         if (FTab = ' ') then
-            FListFile.InitLine(srcFile.LineNumber, FLocationCounter.Value, sline)
+            FListFile.InitLine(SrcFile.LineNumber,
+              FLocationCounter.Value, sline)
         else
         begin
             if (Pos('COMMENT', String(operands)) <> 0) then
-                FListFile.InitLine(srcFile.LineNumber, FLocationCounter.Value,
-                                   AnsiString(Format('       %-10.10s %s',
-                                                     [lbl,
-                                                      StringReplace(operands + cmnt, FSeparator, AnsiString('.'), [rfReplaceAll])])))
+                FListFile.InitLine(SrcFile.LineNumber, FLocationCounter.Value,
+                  AnsiString(Format('       %-10.10s %s',
+                  [lbl, StringReplace(operands + cmnt, FSeparator,
+                  AnsiString('.'), [rfReplaceAll])])))
             else
-                FListFile.InitLine(srcFile.LineNumber, FLocationCounter.Value,
-                                   AnsiString(Format('       %-10.10s %-40.40s %s',
-                                                     [lbl,
-                                                      StringReplace(operands, FSeparator, AnsiString('.'), [rfReplaceAll]),
-                                                      cmnt])));
+                FListFile.InitLine(SrcFile.LineNumber, FLocationCounter.Value,
+                  AnsiString(Format('       %-10.10s %-40.40s %s',
+                  [lbl, StringReplace(operands, FSeparator, AnsiString('.'),
+                  [rfReplaceAll]), cmnt])));
         end;
         if (emsg <> '') then
             raise Exception.Create(emsg);
@@ -2663,14 +3344,15 @@ begin
     begin
         // if we are processing a 490 style SPURT file, then check for
         // line continuation.
-        sline := UpperCase(srcFile.PeekLine);
+        sline := UpperCase(SrcFile.PeekLine);
         while ((Length(sline) >= 7) and (sline[7] <> ' ')) do
         begin
-            sline := srcFile.ReadLine;
+            sline := SrcFile.ReadLine;
             if (FPass = 2) then
             begin
                 FListFile.Print;
-                FListFile.InitLine(srcFile.LineNumber, FLocationCounter.Value, sline);
+                FListFile.InitLine(SrcFile.LineNumber,
+                  FLocationCounter.Value, sline);
             end;
             GetFields(sline, l, o, c);
             operands := operands + o;

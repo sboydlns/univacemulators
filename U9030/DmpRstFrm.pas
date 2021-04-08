@@ -20,7 +20,7 @@ type
   private
     FEof: Boolean;
     FTape: TFileStream;
-    FDisk: T8418File;
+    FDisk: T8418Disk;
     procedure DumpBlock(blen: UInt32; blkNum: UInt32);
     function ReadLength: UInt32;
     procedure ReadLengths(blkNum: UInt32; var prevLen, nextLen: UInt32);
@@ -102,7 +102,7 @@ begin
             end;
             hex := Format('%s%2.2x', [hex, (bfr + count)^]);
             a := TCodeTranslator.EbcdicToAscii((bfr + count)^);
-            if (a = #0) then
+            if ((a < ' ') or (a > 'Z')) then
                 a := ' ';
             asc := Format('%s %s', [asc, a]);
             Inc(count);
@@ -223,9 +223,9 @@ begin
     end;
 
     if (ExtractFileExt(OpenDlg.FileName) = '.8416') then
-        FDisk := T8416File.Create(OpenDlg.FileName, fmCreate)
+        FDisk := T8416Disk.Create(OpenDlg.FileName, fmCreate)
     else
-        FDisk := T8418File.Create(OpenDlg.FileName, fmCreate);
+        FDisk := T8418Disk.Create(OpenDlg.FileName, fmCreate);
     try
         // Create an empty disk
         FDisk.Format;

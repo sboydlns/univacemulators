@@ -451,7 +451,22 @@ begin
     // Get value to test into operand
     j := FMemory.Inst.j;
     if (j = 0) then
+    begin
+        case gConfig.Mode of
+          m494:
+          begin
+            if (FMemory.Inst.k = 0) then
+                FMemory.P := FMemory.P + 1;
+          end;
+          else
+          begin
+            operand := StdFetch;
+            if (operand = 0) then
+                FMemory.P := FMemory.P + 1;
+          end;
+        end;
         Exit;
+    end;
     case FMemory.Inst.k of
       0:
       begin

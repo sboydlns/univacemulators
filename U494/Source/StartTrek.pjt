@@ -7,14 +7,14 @@ ProjCheckPath='C:\Development\Emulators\U494\Source\\'
 SysSetCwd='C:\Development\Emulators\U9030\Disks'
 SrchSetFlags=0x4410600b
 FileSortMode=0x0
-StateWindowFrame=5,4,930,1082,0x63097f08
-_StateWindow=130,130,494,559,0x00100010,'C:\Development\Emulators\U494\Source\StarTrek.spurt',208,31,212,4,20,12,46,26,126,176,8,4294967295,4294967295,1,10,'',12,255,48,72,10,467,0,0,721,252,249,2236,38,400,0,212,214,210,220,721,721,720,729,217,80,0,223,224,14,2224,1,208,1,6
-_StateBuffer='C:\Development\Emulators\U494\Source\StarTrek.spurt',0x0400048a,2236,38,25,'8 20 30 50','',0x1,'',1,72,1
-_StateHistory=FILELIST,'C:\Development\Emulators\U494\Source\StarTrek.spurt','C:\Development\Emulators\U494\Source\MOS.asm','C:\Development\Emulators\U494\Bin\StarTrek.pt','C:\Development\Emulators\U494\Source\Cave.asm','C:\Development\Emulators\U494\Source\Monitor6.spurt','C:\Development\Emulators\U9200\CardFiles\Source\primes_compile.ccl','C:\Elegoo\Libraries\LedControl.zip','C:\Elegoo\Libraries\LiquidCrystal.zip','C:\Development\Emulators\U9030\Disks\REL042.8418'
-_StateHistory=SEARCH,'GETSTR','B4','QUADNAME','REGIONS1','DAMAGE','WARP ENGINES','DAMAGECTL','DS$1FLT2STR','FLT2STR','DS$1'
+StateWindowFrame=0,9,930,1082,0x63097f08
+_StateWindow=26,26,450,556,0x00100010,'C:\Development\Emulators\U9030\Source\boot2.asm',208,31,212,4,20,12,46,26,126,176,8,4294967295,4294967295,1,10,'',12,255,48,72,10,467,0,0,721,252,249,409,1,400,0,212,214,210,220,721,721,720,729,217,80,0,223,224,14,409,1,208,1,6
+_StateBuffer='C:\Development\Emulators\U9030\Source\boot2.asm',0x0400048a,409,1,25,'8 20 30 50','',0x1,'',1,72,1
+_StateHistory=FILELIST,'C:\Development\Emulators\U494\Source\Monitor6.spurt','C:\Development\Emulators\U9200\CardFiles\Source\primes_compile.ccl','C:\Elegoo\Libraries\LedControl.zip','C:\Elegoo\Libraries\LiquidCrystal.zip','C:\Development\Emulators\U9030\Disks\REL042.8418','C:\Development\Emulators\U9030\Disks\boot.dta','C:\Development\Emulators\U9030\Source\boot2.asm','C:\Development\Emulators\U9030\Source\boot.asm','C:\Development\Emulators\U9030\Disks\boot2.dis'
+_StateHistory=SEARCH,'\'CF6','1','C6F','5D9','SY$STD','C28','\'5D','A3F','BB8','BBA'
 _StateHistory=REPLACE,''
-_StateHistory=EDITFILE,'C:\Development\Emulators\U494\Source\MOS.ASM','C:\Development\Emulators\U494\Bin\StarTrek.pt','C:\Development\Emulators\U494\Bin\CVE','C:\Development\Emulators\U494\Source\Cave.asm','C:\Development\Emulators\U494\Source\Monitor6.spurt','FINDEMPTY','C:\Development\Emulators\U9200\CardFiles\Source\primes_compile.ccl','C:\Elegoo\Libraries\LedControl.zip','C:\Elegoo\Libraries\LiquidCrystal.zip','C:\Development\Emulators\U9030\Disks\REL042.8418'
-_StateHistory=GOTOMARK,'1','2','1','2','1'
+_StateHistory=EDITFILE,'C:\Development\Emulators\U494\Source\Monitor6.spurt','FINDEMPTY','C:\Development\Emulators\U9200\CardFiles\Source\primes_compile.ccl','C:\Elegoo\Libraries\LedControl.zip','C:\Elegoo\Libraries\LiquidCrystal.zip','C:\Development\Emulators\U9030\Disks\REL042.8418','C:\Development\Emulators\U9030\Disks\boot.dta','C:\Development\Emulators\U9030\Source\boot2.asm','C:\Development\Emulators\U9030\Source\boot.asm','C:\Development\Emulators\U9030\Disks\boot2.dis'
+_StateHistory=GOTOMARK,'1','2','1','2','1','2','3','2','1'
 
 [Editor]
 VCSProject=''
