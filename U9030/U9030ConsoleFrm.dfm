@@ -21,6 +21,7 @@ object U9030ConsoleForm: TU9030ConsoleForm
   object Telnet: TIdTelnet
     OnStatus = TelnetStatus
     Host = 'localhost'
+    Port = 9030
     OnTelnetCommand = TelnetTelnetCommand
     Terminal = 'U100'
     Left = 580

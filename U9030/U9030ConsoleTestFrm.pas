@@ -5,7 +5,7 @@ interface
 uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, IdBaseComponent, IdComponent, IdCustomTCPServer, IdTelnetServer,
-  IdContext;
+  IdContext, idTelnet;
 
 type
   TU9030ConsoleTestForm = class(TForm)
@@ -18,8 +18,11 @@ type
       var AAuthenticated: Boolean);
     procedure TelnetListenException(AThread: TIdListenerThread; AException: Exception);
     procedure FormShow(Sender: TObject);
+    procedure TelnetExecute(AContext: TIdContext);
   private
     FConsole: TIdContext;
+    FBuffer: AnsiString;
+    FStxSeen: Boolean;
     procedure Display(sender : String; msg : string);
   public
     { Public declarations }
@@ -30,7 +33,7 @@ var
 
 implementation
 
-uses EmulatorTypes;
+uses IdGlobal, EmulatorTypes;
 
 const
   // ASCII  control characters
@@ -122,6 +125,8 @@ begin
 end;
 
 procedure TU9030ConsoleTestForm.TelnetConnect(AContext: TIdContext);
+const
+   cmd: array [0..1] of Byte = ( TNC_IAC, Ord(' ') );
 var
     ip: String;
     port: Integer;
@@ -138,6 +143,46 @@ begin
                       + ' - ' + 'PeerPort=' + IntToStr(PeerPort) + ')'
            );
     FConsole := AContext;
+    FConsole.Connection.IOHandler.Write(cmd[0]);
+    FConsole.Connection.IOHandler.Write(cmd[1]);
+end;
+
+procedure TU9030ConsoleTestForm.TelnetExecute(AContext: TIdContext);
+var
+    bfr: TIdBytes;
+    i: Integer;
+    b: Byte;
+    etxSeen: Boolean;
+begin
+    AContext.Connection.IOHandler.ReadTimeout := 10;
+    AContext.Connection.IOHandler.ReadBytes(bfr, -1, False);
+    etxSeen := False;
+    i := Low(bfr);
+    while ((not FStxSeen) and (i <= High(bfr))) do
+    begin
+        FStxSeen := (bfr[i] = STX);
+        Inc(i);
+    end;
+    if (FStxSeen) then
+    begin
+        while ((not etxSeen) and (i <= High(bfr))) do
+        begin
+            if (bfr[i] = ETX) then
+            begin
+                etxSeen := True;
+            end else
+            begin
+                FBuffer := FBuffer + AnsiChar(bfr[i]);
+                Inc(i);
+            end;
+        end;
+    end;
+    if (etxSeen) then
+    begin
+        ShowMessage(FBuffer);
+        FStxSeen := False;
+        FBuffer := '';
+    end;
 end;
 
 procedure TU9030ConsoleTestForm.TelnetListenException(AThread: TIdListenerThread; AException: Exception);

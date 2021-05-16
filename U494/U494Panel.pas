@@ -1086,6 +1086,8 @@ begin
     if (not FConsoleStarted) then
     begin
         FConsoleStarted := True;
+        FillChar(si, SizeOf(si), 0);
+        FillChar(pi, SizeOf(pi), 0);
         if (not CreateProcess('U494Console.exe',
                               nil,
                               nil,

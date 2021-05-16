@@ -96,6 +96,10 @@ Source: ..\Source\RTExec.spurt; DestDir: {app}\Source
 Source: ..\Bin\iolib.mem; DestDir: {app}\Bin
 Source: ..\Bin\RTExec.mem; DestDir: {app}\Bin
 Source: ..\JoeCousins\a060228.pdf; DestDir: {app}\Manuals; DestName: RTExec.pdf
+Source: ..\Bin\642b_upac.mem; DestDir: {app}\Bin
+Source: ..\Manuals\642\CP-642B Utility Package Function Repertoire ((NAVSHIPS 0967-011-2030).PDF; DestDir: {app}\Manuals
+Source: ..\Bin\642b_upac.mem; DestDir: {commonappdata}\Univac 494 Emulator\Data
+Source: ..\Docs\Monitor6.pdf; DestDir: {app}\Manuals
 
 [Icons]
 Name: {group}\{#MyAppName}; Filename: {app}\{#MyAppExeName}; WorkingDir: {app}

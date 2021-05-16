@@ -66,15 +66,7 @@ end;
 
 procedure TU9030ConsoleForm.FormKeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
-//    case Key of
-//      VK_BACK:
-//      begin
-//        HideCursor;
-//        DecCursor;
-//        FDisplay.CharOut(' ');
-//        DecCursor;
-//      end;
-//    end;
+    FDisplay.KeyUp(Sender, Key, Shift);
 end;
 
 procedure TU9030ConsoleForm.FormShow(Sender: TObject);
@@ -124,7 +116,14 @@ begin
     if (not Telnet.Connected) then
     begin
         FDisplay.Canvas.TextOut(0, 0, 'Connecting ...');
-        Telnet.Connect;
+        try
+            Telnet.Connect;
+        except
+          on E: Exception do
+          begin
+            FDisplay.Canvas.TextOut(0, 0, E.Message);
+          end;
+        end;
     end;
 end;
 

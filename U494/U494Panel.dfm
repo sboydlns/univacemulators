@@ -688,6 +688,10 @@ object U494PanelFrm: TU494PanelFrm
       TabOrder = 0
       object CardPage: TTabSheet
         Caption = 'Reader/Punch'
+        ExplicitLeft = 0
+        ExplicitTop = 0
+        ExplicitWidth = 0
+        ExplicitHeight = 0
         object Panel4: TPanel
           Left = 0
           Top = 0
@@ -717,6 +721,10 @@ object U494PanelFrm: TU494PanelFrm
       object PrinterPage: TTabSheet
         Caption = 'Printer'
         ImageIndex = 1
+        ExplicitLeft = 0
+        ExplicitTop = 0
+        ExplicitWidth = 0
+        ExplicitHeight = 0
         object PrinterPanel: TPanel
           Left = 0
           Top = 0

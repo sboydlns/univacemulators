@@ -65,6 +65,7 @@
 			<DCC_RemoteDebug>true</DCC_RemoteDebug>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Cfg_1_Win32)'!=''">
+			<Debugger_CWD>C:\Development\Emulators\U9030\Win32\Debug</Debugger_CWD>
 			<DCC_RemoteDebug>false</DCC_RemoteDebug>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Cfg_2)'!=''">
@@ -85,6 +86,16 @@
 			<DCCReference Include="Cpu.pas"/>
 			<DCCReference Include="Channels.pas"/>
 			<DCCReference Include="U9030Types.pas"/>
+			<DCCReference Include="Globals.pas"/>
+			<DCCReference Include="IDA.pas"/>
+			<DCCReference Include="U8418.pas"/>
+			<DCCReference Include="IPC.pas"/>
+			<DCCReference Include="Console.pas"/>
+			<DCCReference Include="..\Common\EmulatorTypes.pas"/>
+			<DCCReference Include="DebuggerFrm.pas">
+				<Form>DebuggerForm</Form>
+			</DCCReference>
+			<DCCReference Include="..\Common\Bcd.pas"/>
 			<BuildConfiguration Include="Release">
 				<Key>Cfg_2</Key>
 				<CfgParent>Base</CfgParent>

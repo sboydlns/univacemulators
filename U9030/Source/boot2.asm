@@ -10,40 +10,41 @@
 000E:         LA    1,X'2B8'(,R12)               CHANGE PGM. EXCP. NEW PSW ADDR
 0012:         ST    1,X'004C'
 0016:         BC    15,X'076'(,R12)              GET STARTED
-     *
-001A:         LTE   R1,R1                        TEST R1
-001C:         BC    8,X'066'(,R12)               R1 = 0
-0020:         STM   R6,R9,X'AF4'(,R12)
-0024:         LH    6,X'BCA'(,R12)
+     * IT LOOKS LIKE THIS CALCULATES THE PHYSICAL RECORD # FROM THE
+     * LOGICAL RECORD # AND THE LACE FACTOR.
+001A:         LTE   R1,R1                        LACE FACTOR = 0?
+001C:         BC    8,X'066'(,R12)               YES
+0020:         STM   R6,R9,X'AF4'(,R12)           SAVE REGISTERS
+0024:         LH    6,X'BCA'(,R12)               GET RECORD #
 0028:         ST    6,X'070'(,R12)
-002C:         LR    R7,R1
-002E:         M     6,X'070'(,R12)
-0032:         SR    R7,R1
-0034:         LA    7,X'0001'(R7)
-0038:         XR    R6,R6
+002C:         LR    R7,R1                        GET LACE FACTOR
+002E:         M     6,X'070'(,R12)               MULTIPLY BY RECORD #
+0032:         SR    R7,R1                        SUBTRACT LACE FACTOR
+0034:         LA    7,X'0001'(R7)                ADD 1
+0038:         XR    R6,R6                        DIVIDE BY RECS/TRK
 003A:         D     6,X'B48'(,R12)
-003E:         LR    R1,R6
+003E:         LR    R1,R6                        GET REMAINDER
 0040:         ST    0,X'070'(,R12)
-0044:         LH    7,X'BCA'(,R12)
-0048:         BCTR  R7,R0
+0044:         LH    7,X'BCA'(,R12)               GET RECORD #
+0048:         BCTR  R7,R0                        DECREMENT BY 1
 004A:         XR    R6,R6
-004C:         D     6,X'070'(,R12)
+004C:         D     6,X'070'(,R12)               DIVIDE BY REM OF PRIOR DIVISION
 0050:         AR    R1,R7
-0052:         LTE   R1,R1
-0054:         BC    2,X'05C'(,R12)
-0058:         L     1,X'B48'(,R12)
+0052:         LTE   R1,R1                        RESULT > 0?
+0054:         BC    2,X'05C'(,R12)               YES
+0058:         L     1,X'B48'(,R12)               NO, GET RECS/TRK
 005C:         STC   1,X'074'(,R12)
-0060:         LM    R6,R9,X'AF4'(,R12)
+0060:         LM    R6,R9,X'AF4'(,R12)           RESTORE REGISTERS
 0064:         BCR   R15,R15
      * COME HERE IF R1 = 0
-0066:         LH    1,X'BCA'(,R12)               GET RECORD #?
-006A:         BC    15,X'05C'(,R12)
+0066:         LH    1,X'BCA'(,R12)               GET RECORD #
+006A:         BC    15,X'05C'(,R12)              RETURN
      *
 006E:         DC    XL8'0000000000010000'
 0076:         ST    5,X'B20'(,R12)               SAVE MEM. SIZE
 007A:         ST    3,X'B2C'(,R12)               SAVE BOOT DVC. ADDR.
 007E:         CLI   X'B2E'(R12),3                CHANNEL = 3?
-0082:         BC    7,X'08A'(,R12)               YES
+0082:         BC    7,X'08A'(,R12)               NO
 0086:         MVI   X'B24'(R12),255
 008A:         BAL   14,X'2C4'(,R12)              REQUEST ALTERNATE SUPER NAME
 008E:         BAL   14,X'282'(,R12)              DETERMINE # BYTES / STORAGE KEY?
@@ -63,8 +64,8 @@
 00C6:         BAL   14,X'586'(,R12)              READ FMT2
 00CA:         BAL   14,X'5D8'(,R12)              FIND SUPER IN $Y$LOD
 00CE:         BAL   14,X'6EE'(,R12)
-00D2:         CLI   X'C27'(R12),255
-00D6:         BC    7,X'0E2'(,R12)
+00D2:         CLI   X'C27'(R12),255              WAS LAST CHAR OF SUPER NAME = 'C'
+00D6:         BC    7,X'0E2'(,R12)               NO
 00DA:         BAL   14,X'838'(,R12)
 00DE:         BC    15,X'0E6'(,R12)
 00E2:         BAL   14,X'8CA'(,R12)
@@ -184,7 +185,8 @@
      * I THINK THIS IS TRYING TO DETERMINE THE SIZE OF A MEMORY BLOCK
      * DEFINED BY A SINGLE STORAGE KEY. A BLOCK CAN BE 512, 1024 OR 2048
      * BYTES DEPENDING ON INSTALLED MEMORY. THE RESULT SHOULD BE 1, 2 OR
-     * 3 DEPENDING ON THE SIZE OF THE MEMORY BLOCKS.
+     * 3 DEPENDING ON THE SIZE OF THE MEMORY BLOCKS. OR ZERO IF THE
+     * MEMORY PROTECTION FEATURE IS NOT INSTALLED.
 028E:         XR    R8,R8
 0290:         LA    4,X'0010'                    
 0294:         LH    2,X'C56'(,R12)
@@ -231,8 +233,8 @@
 0322:         BC    8,X'32A'(,R12)               YES, DONE
 0326:         BCT   8,X'308'(,R12)               LOOP
 032A:         MVC   X'C28'(8,R12),X'C48'(R12)    OVERWRITE SY$STD00 WITH NEW
-0330:         CLI   X'C26'(R12),195
-0334:         BC    7,X'33C'(,R12)
+0330:         CLI   X'C26'(R12),195              CHAR AFTER COMMA = 'C'?
+0334:         BC    7,X'33C'(,R12)               NO
 0338:         MVI   X'C27'(R12),255
 033C:         BCR   R15,R14
      * END OF SUBROUTINE X'2C4'
@@ -456,7 +458,7 @@
 067A:         LH    7,X'0000'(R10)               GET CRNT EXTENT INFO
 067E:         N     7,X'BBC'(,R12)               ISOLATE REL. TRACK #
 0682:         STH   7,X'BCC'(,R12)
-0686:         XR    R6,R6                        DIVIDE BY BLKS/TRK
+0686:         XR    R6,R6                        DIVIDE BY TRKS/CYL
 0688:         D     6,X'BC0'(,R12)
 068C:         STH   6,X'BC6'(,R12)               SAVE ABS. TRACK #
 0690:         STH   7,X'BC4'(,R12)               SAVE ABS. CYL #
@@ -466,8 +468,8 @@
 06A0:         XR    R1,R1                        CLEAR R1
 06A2:         BC    15,X'6AE'(,R12)              SKIP FOLLOWING
      * NO FRIGGING CLUE WHAT THIS IS DOING. IT IS UNDOCUMENTED.
-06A6:         L     1,X'01C'(,R8)                GET LACE FACTOR PARTN #4???
-06AA:         L     0,X'020'(,R8)                GET EOD ID PARTN #4???
+06A6:         L     1,X'01C'(,R8)                GET LACE FOR DIRECTORY PARTN
+06AA:         L     0,X'020'(,R8)                GET ROT ADJUST FOR DIRECTORY PARTN
      *
 06AE:         BAL   15,X'01A'(,R12)
 06B2:         LA    9,X'694'(,R12)
@@ -485,29 +487,29 @@
 06E6:         BC    15,X'662'(,R12)
 06EA:         BC    15,X'5DC'(,R12)
      *
-06EE:         MVC   X'B10'(4,R12),X'B60'(R12)    CLEAR TO SPACES                    
+06EE:         MVC   X'B10'(4,R12),X'B60'(R12)    GET LOAD MODULE BLOCK #
 06F4:         L     7,X'B10'(,R12)
-06F8:         N     7,X'B18'(,R12)
+06F8:         N     7,X'B18'(,R12)               ISOLATE THE BLOCK #
 06FC:         XR    R6,R6
-06FE:         LA    8,X'E50'(,R12)
-0702:         LH    4,X'02E'(,R8)
+06FE:         LA    8,X'E50'(,R12)               POINT TO FMT2
+0702:         LH    4,X'02E'(,R8)                GET BLOCKS/TRACK
 0706:         ST    4,X'B14'(,R12)
-070A:         D     6,X'B14'(,R12)
-070E:         LTE   R6,R6
-0710:         BC    7,X'718'(,R12)
+070A:         D     6,X'B14'(,R12)               DIVIDE BLOCK # BY BLKS/TRK
+070E:         LTE   R6,R6                        REMAINDER = 0?
+0710:         BC    7,X'718'(,R12)               NO
 0714:         LR    R6,R4
 0716:         BCTR  R7,R0
-0718:         STH   6,X'BCA'(,R12)
-071C:         LA    9,X'030'(,R8)
-0720:         TM    X'000'(R9),64
-0724:         BC    1,X'73C'(,R12)
-0728:         LA    9,X'0004'(R9)
-072C:         BC    15,X'720'(,R12)
-0730:         SH    7,X'0002'(R9)
-0734:         LA    9,X'0004'(R9)
+0718:         STH   6,X'BCA'(,R12)               SAVE RECORD #
+071C:         LA    9,X'030'(,R8)                POINT TO PARTITION TABLE
+0720:         TM    X'000'(R9),64                ENTRY FOR PARTITION #2
+0724:         BC    1,X'73C'(,R12)               YES
+0728:         LA    9,X'0004'(R9)                NO, BUMP TO NEXT ENTRY
+072C:         BC    15,X'720'(,R12)              LOOP
+0730:         SH    7,X'0002'(R9)                DEC TRACK #
+0734:         LA    9,X'0004'(R9)                BUMP TO NEXT ENTRY
 0738:         BC    15,X'73C'(,R12)
-073C:         CH    7,X'0002'(R9)
-0740:         BC    11,X'730'(,R12)
+073C:         CH    7,X'0002'(R9)                TRACK # >= # OF TRACKS THIS ENTRY?
+0740:         BC    11,X'730'(,R12)              YES
 0744:         AH    7,X'0000'(R9)
 0748:         N     7,X'BBC'(,R12)
 074C:         XR    R6,R6
@@ -608,6 +610,7 @@
 08C0:         SIO   X'000'(R3),0
 08C4:         BAL   13,X'18E'(,R12)
 08C8:         BCR   R15,R11
+      * THIS IS LOADING SOMETHING INTO CONTROL STORAGE. NO IDEA WHAT THAT MIGHT BE.
 08CA:         MVC   X'CF6'(4,R12),X'CEC'(R12)
 08D0:         LA    5,X'0009'
 08D4:         MVI   X'CFA'(R12),1
@@ -624,6 +627,7 @@
 08FC:         BC    4,X'904'(,R12)
 0900:         BC    15,X'186'(,R12)
 0904:         BCR   R15,R14
+      *
 0906:         CLI   X'B24'(R12),255
 090A:         BC    7,X'926'(,R12)
 090E:         STM   R2,R4,X'960'(,R12)

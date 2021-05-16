@@ -36,12 +36,14 @@ object U9030ConsoleTestForm: TU9030ConsoleTestForm
   end
   object Telnet: TIdTelnetServer
     Bindings = <>
+    DefaultPort = 9030
     MaxConnections = 1
     OnConnect = TelnetConnect
     OnListenException = TelnetListenException
     LoginAttempts = 0
     LoginMessage = 'Sperry*Univac 90/30 Console'
     OnAuthentication = TelnetAuthentication
+    OnExecute = TelnetExecute
     Left = 560
     Top = 248
   end

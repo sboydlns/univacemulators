@@ -4,7 +4,7 @@ interface
 
 uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Classes, Vcl.Controls, Vcl.ExtCtrls, Vcl.Graphics,
-  IdTelnet, IdBaseComponent, IdComponent, IdTCPConnection, IdTCPClient, IdGlobal;
+  Vcl.Forms, IdTelnet, IdBaseComponent, IdComponent, IdTCPConnection, IdTCPClient, IdGlobal;
 
 type
   TUniscopeModel = ( umU100, umU200 );
@@ -40,6 +40,7 @@ type
     FAttributes: array of Byte;
     FModel: TUniscopeModel;
     FSize: TUniscopeSize;
+    procedure BackSpace;
     procedure ClearBuffer;
     procedure CursorHome;
     procedure CursorPosition(row, col: Byte);
@@ -59,14 +60,17 @@ type
     procedure TelnetConnected(Sender: TObject);
     procedure TelnetDataAvailable(Sender: TIdTelnet; const Buffer: TIdBytes);
     procedure TelnetDisconnected(Sender: TObject);
+    procedure Transmit;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure Clear;
     property Canvas: TCanvas read GetCanvas;
-    procedure CharOut(c: Byte); overload;
-    procedure CharOut(c: Char); overload;
+    procedure CharOut(c: Byte; incr: Boolean = True); overload;
+    procedure CharOut(c: Char; incr: Boolean = True); overload;
     procedure KeyPress(var Key: Char); override;
+    procedure KeyUp(Sender: TObject; var Key: Word; Shift: TShiftState); reintroduce;
+    procedure Repaint; override;
     property CharSize: TSize read GetCharSize;
     property ColCount: Integer read FMaxCol;
     property DisplaySize: TSize read GetDisplaySize;
@@ -136,16 +140,24 @@ const
 
 { TUniscope }
 
-procedure TUniscope.CharOut(c: Byte);
+procedure TUniscope.BackSpace;
 begin
-    CharOut(Char(AnsiChar(c)));
+    HideCursor;
+    DecCursor;
+    CharOut(' ', False);
 end;
 
-procedure TUniscope.CharOut(c: Char);
+procedure TUniscope.CharOut(c: Byte; incr: Boolean);
+begin
+    CharOut(Char(AnsiChar(c)), incr);
+end;
+
+procedure TUniscope.CharOut(c: Char; incr: Boolean);
 begin
     FCanvas.TextOut(FCol * FCharSize.cx, FRow * FCharSize.cy, c);
     SetCharacter(c);
-    IncCursor;
+    if (incr) then
+        IncCursor;
 end;
 
 procedure TUniscope.Clear;
@@ -261,7 +273,7 @@ begin
     if (FCursorOn) then
     begin
         FCursorOn := False;
-        FCanvas.TextOut(FCol * FCharSize.cx, FRow * FCharSize.cy, ' ');
+        FCanvas.TextOut(FCol * FCharSize.cx, FRow * FCharSize.cy, FCharacters[FRow * FMaxCol + FCol]);
         i := Low(FCharacters);
         for row := 0 to FMaxRow - 1 do
             for col := 0 to FMaxCol - 1 do
@@ -359,10 +371,8 @@ end;
 
 procedure TUniscope.IncCursor;
 var
-    holdRow, holdCol: Integer;
+    i, start, fin: Integer;
 begin
-    holdRow := FRow;
-    holdCol := FCol;
     Inc(FCol);
     if (FCol >= FMaxCol) then
     begin
@@ -371,42 +381,83 @@ begin
         if (FRow >= FMaxRow) then
             FRow := 0;
     end;
-    if ((not FHostControl) and IsProtected(FRow, FCol)) then
+    // Skip until beginning of next unprotected field
+    i := (FRow * FMaxCol) + FCol;
+    fin := (FMaxRow * FMaxCol) - 1;
+    if ((not FHostControl) and ((FAttributes[i] and ATTR_START_PROTECT) <> 0)) then
     begin
-        FRow := holdRow;
-        FCol := holdCol;
+        start := i;
+        repeat
+            if ((FAttributes[i] and ATTR_END_PROTECT) <> 0) then
+                Break;
+            Inc(i);
+        until (i > fin);
+        if (i <= fin) then
+        begin
+            Inc(i);
+            FRow := i div FMaxCol;
+            FCol := i mod FMaxCol;
+        end;
     end;
 end;
 
 function TUniscope.IsProtected(row, col: Integer): Boolean;
 var
-    i: Integer;
+    i, test: Integer;
+
 begin
     i := (row * FMaxCol) + col;
-    // if current column = ATTR_END_PROTECT then we are at the last
-    // column of a protected field
-    if ((FAttributes[i] and ATTR_END_PROTECT) <> 0) then
+    // If this character has ATTR_START_PROTECT then this is the start of a protected field.
+    if ((FAttributes[i] and ATTR_START_PROTECT) <> 0) then
     begin
         Result := True;
         Exit;
     end;
-    // Otherwise, scan backward until we find a protected attribute. If it is
-    // ATTR_START_PROTECT then we are inside a protected field.
-    while ((i >= 0) and
-           ((FAttributes[i] and (ATTR_START_PROTECT or ATTR_END_PROTECT)) = 0)) do
+    // Scan backward until we find a protected attribute.
+    Dec(i);
+    test := 0;
+    while ((i >= 0) and (test = 0)) do
+    begin
+        test := FAttributes[i] and (ATTR_START_PROTECT or ATTR_END_PROTECT);
         Dec(i);
-    Result := (FAttributes[i] and ATTR_START_PROTECT) <> 0;
+    end;
+    if ((i < 0) or ((test and ATTR_END_PROTECT) <> 0)) then
+        Result := False
+    else
+        Result := True;
 end;
 
 procedure TUniscope.KeyPress(var Key: Char);
 begin
-    if ((Key >= ' ') and (Key <= '~')) then
-    begin
-        if (not IsProtected(FRow, FCol)) then
+    case Key of
+      #8:
+      begin
+        BackSpace;
+      end;
+      else
+      begin
+        if ((Key >= ' ') and (Key <= '~')) then
         begin
-            CharOut(UpCase(Key));
+            if (not IsProtected(FRow, FCol)) then
+            begin
+                CharOut(UpCase(Key));
+            end;
         end;
+      end;
     end;
+end;
+
+procedure TUniscope.KeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
+begin
+    case Key of
+        VK_F12:  Transmit;
+    end;
+end;
+
+procedure TUniscope.Repaint;
+begin
+    inherited;
+    Refresh;
 end;
 
 procedure TUniscope.Refresh;
@@ -585,6 +636,11 @@ begin
               begin
                 CharOut(SOE_CHAR);
               end;
+              $fe:
+              begin
+                PostMessage(Application.MainFormHandle, WM_CLOSE, 0, 0);
+                Exit;
+              end;
               else
                 if (b >= SPACE) then
                     CharOut(b);
@@ -603,6 +659,82 @@ begin
         Clear;
         FCanvas.TextOut(0, 0, 'Connection terminated');
     end;
+end;
+
+procedure TUniscope.Transmit;
+var
+    row, col, maxCol, i: Integer;
+    soeFound, inProt: Boolean;
+    bfr: String;
+begin
+    row := FRow;
+    col := FCol;
+    // Scan backward to find SOE
+    soeFound := False;
+    while (row >= 0) do
+    begin
+        while (col >= 0) do
+        begin
+            if (FCharacters[(row * FMaxCol) + col] = SOE_CHAR) then
+            begin
+                soeFound := True;
+                Break;
+            end;
+            Dec(col);
+        end;
+        if (soeFound) then
+            Break;
+        Dec(row);
+        col := FMaxCol;
+    end;
+    //  Send SOE location
+    if (not soeFound) then
+    begin
+        col := 0;
+        row := 0;
+    end;
+    bfr := Chr(ESC) + Chr(VT) + Chr(row + Ord(' ')) + Chr(col + Ord(' ')) + Chr(0) + Chr(SI);
+    // Send text
+    inProt := False;
+    while (row <= FRow) do
+    begin
+        if (row = FRow) then
+            maxCol := FCol
+        else
+            maxCol := FMaxCol;
+        while (col <= maxcol) do
+        begin
+            i := (row * FMaxCol) + col;
+            if ((FAttributes[i] and ATTR_START_PROTECT) <> 0)  then
+            begin
+                inProt := True;
+                bfr := bfr + Chr(SUB);
+            end;
+            if (not inProt) then
+            begin
+                case FCharacters[i] of
+                  SOE_CHAR:     bfr := bfr + Chr(RS);
+                  TAB_CHAR:     bfr := bfr + Chr(HT);
+                  else          bfr := bfr + FCharacters[i];
+                end;
+            end;
+            if ((FAttributes[i] and ATTR_END_PROTECT) <> 0) then
+                inProt := False;
+            Inc(col);
+        end;
+        if (row < FRow) then
+        begin
+            // On all rows but the last, replace trailing spaces with <CR>
+            i := Length(bfr);
+            while ((i > 0) and (bfr[i] = ' ')) do
+                Dec(i);
+            bfr := Copy(bfr, 1 , i) + #13;
+        end;
+        col := 0;
+        Inc(row);
+    end;
+    bfr := Chr(STX) + bfr + Chr(ETX);
+    FTelnet.SendString(bfr);
 end;
 
 end.
