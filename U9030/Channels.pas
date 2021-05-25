@@ -32,14 +32,26 @@ const
   CONTROL_CHECK = $02;
 
 type
+  TIOTraceFile = class(TFileStream)
+  private
+    FLock: TCriticalSection;
+  public
+    constructor Create(const AFileName: string; Mode: Word); reintroduce;
+    destructor Destroy; override;
+    function Write(const Buffer; Count: Longint): Longint; override;
+  end;
+
   TChannel = class;
 
   TBCW = class
   public
     Address: TMemoryAddress;
+    Cylinder: THalfWord;
     Command: Byte;
     Count: THalfWord;
+    Head: Byte;
     Key: Byte;
+    RecordNum: Byte;
     procedure Fetch(addr: TMemoryAddress); virtual;
   end;
 
@@ -53,6 +65,7 @@ type
     FBusy: Boolean;
     procedure DoReset; virtual;
     procedure ProcessCommand; virtual; abstract;
+    procedure DoTimer; virtual;
   public
     constructor Create(num: Byte); virtual;
     destructor Destroy; override;
@@ -97,6 +110,7 @@ type
     FSense: array [0..31, 0..4] of Byte;
     function BcwAddress(chan, dvc: Byte): TMemoryAddress;
     procedure ClearSense(dvc: Byte);
+    procedure TraceSIO(dvc: Byte);
   public
     constructor Create(chan: Byte); virtual;
     destructor Destroy; override;
@@ -119,9 +133,13 @@ type
     property Channel[chan: Integer]: TChannel read GetChannel write SetChannel;
   end;
 
+var
+  IOTraceFile: TIOTraceFile;
+  IOTraceEnabled: Boolean;
+
 implementation
 
-uses Dialogs, Globals, Memory;
+uses Dialogs, Globals, Memory, EmulatorTypes;
 { TChannelList }
 
 constructor TChannelList.Create;
@@ -306,6 +324,8 @@ begin
     chan := (addr shr 8) and $7;
     dvc := addr and $ff;
 
+    TraceSIO(dvc);
+
     bcw := TBCW.Create;
     try
         stat := TStatus.Create;
@@ -344,6 +364,48 @@ begin
     end;
 end;
 
+procedure TChannel.TraceSIO(dvc: Byte);
+var
+    bcw: TBCW;
+    bfr, text: AnsiString;
+    b: Byte;
+    i: Integer;
+begin
+    if (IOTraceEnabled) then
+    begin
+        bcw := TBCW.Create;
+        try
+            bcw.Fetch(BcwAddress(FChannelNum, dvc));
+            bfr := AnsiString(Format('SIO chan = %d dvc = %2.2x cmd = %2.2x count = %d'#13#10,
+                                     [FChannelNum, dvc, bcw.Command, bcw.Count]));
+            IOTraceFile.Write(PAnsiChar(bfr)^, Length(bfr));
+            if (FChannelNum = 3) then
+            begin
+                bfr := AnsiString(Format('  cyl = %d head = %d rec = %d'#13#10,
+                                         [bcw.Cylinder, bcw.Head, bcw.RecordNum]));
+                IOTraceFile.Write(PAnsiChar(bfr)^, Length(bfr));
+                if (bcw.Command = $09) then
+                begin
+                    bfr := '  key = ';
+                    text := '        ';
+                    for i := 0 to bcw.Count - 1 do
+                    begin
+                        b := Core.FetchByte(0, bcw.Address + i);
+                        bfr := AnsiString(Format('%s%2.2x', [bfr, b]));
+                        text := text + TCodeTranslator.EbcdicToAscii(b);
+                    end;
+                    bfr := bfr + #13#10;
+                    IOTraceFile.Write(PAnsiChar(bfr)^, Length(bfr));
+                    text := text + #13#10;
+                    IOTraceFile.Write(PAnsiChar(text)^, Length(text));
+                end;
+            end;
+        finally
+            bcw.Free;
+        end;
+    end;
+end;
+
 { TDevice }
 
 constructor TDevice.Create(num: Byte);
@@ -373,6 +435,11 @@ begin
     FResetDone.SetEvent;
 end;
 
+procedure TDevice.DoTimer;
+begin
+    ;
+end;
+
 procedure TDevice.Execute;
 var
     stat: TWaitResult;
@@ -381,13 +448,16 @@ begin
     begin
         stat := FCmdRecvd.WaitFor(100);
         case stat of
-          wrSignaled,
-          wrTimeout:
+          wrSignaled:
           begin
             if (FReset) then
                 DoReset
             else
                 ProcessCommand;
+          end;
+          wrTimeout:
+          begin
+            DoTimer;
           end;
           else
           begin
@@ -441,6 +511,47 @@ begin
     Address := w and $7ffff;
     w := Core.FetchWord(0, addr + 4);
     Count := w and $1ff;
+    w := Core.FetchWord(0, addr + 8);
+    Head := (w shr 8) and $f;
+    w := Core.FetchWord(0, addr + 12);
+    Cylinder := (w shr 16) and $fff;
+    RecordNum := (w shr 8) and $ff;
 end;
+
+{ TIOTraceFile }
+
+constructor TIOTraceFile.Create(const AFileName: string; Mode: Word);
+begin
+    inherited;
+    FLock := TCriticalSection.Create;
+end;
+
+destructor TIOTraceFile.Destroy;
+begin
+    FreeAndNil(FLock);
+    inherited;
+end;
+
+function TIOTraceFile.Write(const Buffer; Count: Integer): Longint;
+begin
+    if (IOTraceEnabled) then
+    begin
+        FLock.Acquire;
+        try
+            Result := inherited;
+        finally
+            FLock.Release;
+        end;
+    end;
+end;
+
+initialization
+
+    IOTraceFile := TIOTraceFile.Create(UserDataDir + '\U9030IO.trc', fmCreate);
+    IOTraceEnabled := False;
+
+finalization
+
+    FreeAndNil(IOTraceFile);
 
 end.

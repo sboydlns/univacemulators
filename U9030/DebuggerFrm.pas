@@ -277,24 +277,38 @@ begin
     for i := 0 to FTraceList.Count - 1 do
     begin
         pc := FTraceList[i];
-        opcd := Core.FetchByte(0, pc);
+        if (i = (FTraceList.Count - 1)) then
+            opcd := CurInst.Opcode
+        else
+            opcd := Core.FetchByte(0, pc);
         if (Opcodes.IsOpcode(opcd)) then
             opcode := Opcodes[opcd]
         else
             Continue;
-        fal := Core.FetchByte(0, pc + 1);
-        fad1 := Core.FetchHalfWord(0, pc + 2);
-        if (opcode.Length = 6) then
-            fad2 := Core.FetchHalfWord(0, pc + 4)
-        else
-            fad2 := 0;
+        if (i = (FTraceList.Count - 1)) then
+        begin
+            fal := CurInst.AsBytes[1];
+            fad1 := (CurInst.AsBytes[2] shl 8) or CurInst.AsBytes[3];
+            fad2 := (CurInst.AsBytes[4] shl 8) or CurInst.AsBytes[5];
+        end else
+        begin
+            fal := Core.FetchByte(0, pc + 1);
+            fad1 := Core.FetchHalfWord(0, pc + 2);
+            if (opcode.Length = 6) then
+                fad2 := Core.FetchHalfWord(0, pc + 4)
+            else
+                fad2 := 0;
+        end;
         TraceGrid.Cells[0, i + 1] := Format('%6.6x', [pc]);
         case opcode.InstType of
           itRR:
           begin
             r := (fal and $f0) shr 4;
             r2 := fal and $0f;
-            TraceGrid.Cells[1, i + 1] := Format('%s %d,%d', [opCode.Code, r, r2]);
+            if (opCode.Code = 'SVC') then
+                TraceGrid.Cells[1, i + 1] := Format('%s %d', [opCode.Code, fal])
+            else
+                TraceGrid.Cells[1, i + 1] := Format('%s %d,%d', [opCode.Code, r, r2]);
           end;
           itRX,
           itBranch:

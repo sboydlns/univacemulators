@@ -182,6 +182,7 @@ type
     procedure CH;
     procedure CR;
     procedure CVB;
+    procedure CVD;
     procedure D;
     procedure DIAG;
     procedure EX;
@@ -205,6 +206,7 @@ type
     procedure N;
     procedure NC;
     procedure NI;
+    procedure NR;
     procedure O;
     procedure OC;
     procedure OI;
@@ -228,6 +230,8 @@ type
     procedure STR;
     procedure SVC;
     procedure TM;
+    procedure TR;
+    procedure UNPK;
     procedure XC;
     procedure XI;
     procedure XR;
@@ -312,16 +316,22 @@ begin
 end;
 
 procedure TCpu.BAL;
+var
+    addr: TMemoryAddress;
 begin
-    FRegisters[PSW.RegisterSet, CurInst.R1] := PSW.InstAddr - FRelocateReg;
+    addr := PSW.InstAddr - FRelocateReg;
     PSW.InstAddr := GetAbsAddress(CurInst.B1, CurInst.X1, CurInst.Off1);
+    FRegisters[PSW.RegisterSet, CurInst.R1] := addr;
 end;
 
 procedure TCpu.BALR;
+var
+    addr: TMemoryAddress;
 begin
-    FRegisters[PSW.RegisterSet, CurInst.R1] := PSW.InstAddr - FRelocateReg;
+    addr := PSW.InstAddr - FRelocateReg;
     if (CurInst.R2 <> 0) then
         PSW.InstAddr := TMemoryAddress(FRegisters[PSW.RegisterSet, CurInst.R2]) + FRelocateReg;
+    FRegisters[PSW.RegisterSet, CurInst.R1] := addr;
 end;
 
 procedure TCpu.BC;
@@ -522,6 +532,7 @@ begin
     Opcodes.FindOpcode('CH').Proc := CH;
     Opcodes.FindOpcode('CR').Proc := CR;
     Opcodes.FindOpcode('CVB').Proc := CVB;
+    Opcodes.FindOpcode('CVD').Proc := CVD;
     Opcodes.FindOpcode('D').Proc := D;
     Opcodes.FindOpcode('DIAG').Proc := DIAG;
     Opcodes.FindOpcode('EX').Proc := EX;
@@ -545,6 +556,7 @@ begin
     Opcodes.FindOpcode('N').Proc := N;
     Opcodes.FindOpcode('NC').Proc := NC;
     Opcodes.FindOpcode('NI').Proc := NI;
+    Opcodes.FindOpcode('NR').Proc := NR;
     Opcodes.FindOpcode('O').Proc := O;
     Opcodes.FindOpcode('OC').Proc := OC;
     Opcodes.FindOpcode('OI').Proc := OI;
@@ -568,6 +580,8 @@ begin
     Opcodes.FindOpcode('STR').Proc := STR;
     Opcodes.FindOpcode('SVC').Proc := SVC;
     Opcodes.FindOpcode('TM').Proc := TM;
+    Opcodes.FindOpcode('TR').Proc := TR;
+    Opcodes.FindOpcode('UNPK').Proc := UNPK;
     Opcodes.FindOpcode('XC').Proc := XC;
     Opcodes.FindOpcode('XI').Proc := XI;
     Opcodes.FindOpcode('XR').Proc := XR;
@@ -581,6 +595,14 @@ begin
     FRegisters[PSW.RegisterSet, CurInst.R1] := Integer(bcd);
     if (Int64(bcd) > MaxInt) then
         raise EDecimalDivideException.Create('CVB overflow');
+end;
+
+procedure TCpu.CVD;
+var
+    bcd: TBcd;
+begin
+    bcd := FRegisters[PSW.RegisterSet, CurInst.R1];
+    Core.StorePacked(PSW.Key, GetAbsAddress(CurInst.B1, CurInst.X1, CurInst.Off1), 7, bcd);
 end;
 
 procedure TCpu.D;
@@ -695,8 +717,10 @@ begin
         FRegisters[PSW.RegisterSet, CurInst.B1] := 0;
         PSW.CondCode := 0;
 //        PSW.CondCode := 1;
-        { TODO : Figure out what this is suppsed to do. }
-        // No idea what this is supposed to do. Implement as no-op for now.
+        { TODO : It looks like this is supposed to calculate a
+                 longitudinal redundancy check. Reg B1 contains # of bytes
+                 to calculate for and B1 + 1 contains the address of the
+                 first byte. }
         ;
       end;
       15:
@@ -987,9 +1011,13 @@ begin
 end;
 
 procedure TCpu.LPSW;
+// On the 90/30 the LPSW instructions takes an undocumented immediate operand.
+// The immediate operand seems to specify which register set to use.
+// 0 = supervisor
+// 1 = program
 begin
-    if (CurInst.ImmedOperand <> 0) then
-        raise ESpecificationException.CreateFmt('LPSW with non-zero immediate @ %6.6x', [PSW.InstAddr]);
+    if (CurInst.ImmedOperand = 1) then
+        PSW.RegisterSet := rsProgram;
     PSW.AsDblWord := Core.FetchDblWord(PSW.Key, GetAbsAddress(CurInst.B1, CurInst.Off1));
     PSW.IntCode := 0;
     if (FMachineCheckMasked) then
@@ -1161,6 +1189,18 @@ begin
     b := Core.FetchByte(PSW.Key, addr) and CurInst.ImmedOperand;
     Core.StoreByte(PSW.Key, addr, b);
     if (b = 0) then
+        PSW.CondCode := 0
+    else
+        PSW.CondCode := 1;
+end;
+
+procedure TCpu.NR;
+var
+    w: TWord;
+begin
+    w := FRegisters[PSW.RegisterSet, CurInst.R1] and FRegisters[PSW.RegisterSet, CurInst.R2];
+    FRegisters[PSW.RegisterSet, CurInst.R1] := w;
+    if (w = 0) then
         PSW.CondCode := 0
     else
         PSW.CondCode := 1;
@@ -1447,7 +1487,7 @@ procedure TCpu.SPM;
 var
     val: TWord;
 begin
-    val := FRegisters[PSW.RegisterSet, CurInst.R1];
+    val := FRegisters[PSW.RegisterSet, CurInst.R1] shr 24;
     PSW.CondCode := (val shr 4) and $3;
     PSW.FixedOvflExcp := (val and $08) <> 0;
     PSW.DecOvflExcp := (val and $04) <> 0;
@@ -1685,6 +1725,67 @@ begin
         PSW.CondCode := 1;
 end;
 
+procedure TCpu.TR;
+var
+    len: Integer;
+    data, table: TMemoryAddress;
+begin
+    len := CurInst.Length;
+    data := GetAbsAddress(CurInst.B1, CurInst.Off1);
+    table := GetAbsAddress(CurInst.B2, CurInst.Off2);
+    while (len >= 0) do
+    begin
+        Core.StoreByte(PSW.Key, data, Core.FetchByte(PSW.Key, table + Core.FetchByte(PSW.Key, data)));
+        Inc(data);
+        Dec(len);
+    end;
+end;
+
+procedure TCpu.UNPK;
+var
+    l1, l2: Integer;
+    op1, op2: TMemoryAddress;
+    b: Byte;
+    zone: Byte;
+begin
+    l1 := CurInst.Length1;
+    l2 := CurInst.Length2;
+    op1 := GetAbsAddress(CurInst.B1, CurInst.Off1) + l1;
+    op2 := GetAbsAddress(CurInst.B2, CurInst.Off2) + l2;
+    b := Core.FetchByte(PSW.Key, op2);
+    Core.StoreByte(PSW.Key, op1, ((b and $0F) shl 4) or ((b and $F0) shr 4));
+    Dec(op1);
+    Dec(op2);
+    Dec(l1);
+    Dec(l2);
+    if (PSW.Ascii) then
+        zone := $50 // ASCII mode
+    else
+        zone := $F0; // EBCDIC
+    while ((l1 >= 0) or (l2 >= 0)) do
+    begin
+        if (l1 < 0) then
+            Break;
+        if (l2 >= 0) then
+        begin
+            b := Core.FetchByte(PSW.Key, op2);
+            Dec(op2);
+            Dec(l2);
+        end
+        else
+            b := 0;
+        Core.StoreByte(PSW.Key, op1, (b and $0F) or zone);
+        Dec(op1);
+        Dec(l1);
+        if (l1 >= 0) then
+        begin
+            Core.StoreByte(PSW.Key, op1, ((b and $F0) shr 4) or zone);
+            Dec(op1);
+            Dec(l1);
+        end;
+    end;
+end;
+
 procedure TCpu.XC;
 var
     len: Integer;
@@ -1723,7 +1824,7 @@ end;
 
 procedure TCpu.XR;
 var
-    b: Byte;
+    b: TWord;
 begin
     b := FRegisters[PSW.RegisterSet, CurInst.R1] xor
          FRegisters[PSW.RegisterSet, CurInst.R2];
@@ -1834,6 +1935,7 @@ procedure TIOST.ProcessInterrupts;
 var
     i: Integer;
     stat: TStatus;
+    bfr: AnsiString;
 begin
     if (FSuspended) then
         Exit;
@@ -1846,6 +1948,13 @@ begin
             begin
                 // Copy status to BCSW
                 stat := Adapters.Channel[i].GetStatus;
+                if (IOTraceEnabled) then
+                begin
+                    bfr := AnsiString(Format('  Status chan = %d dvc = %2.2x stat = %2.2x%2.2x%2.2x%2.2x'#13#10,
+                                             [stat.ChannelNum, stat.DeviceNum, stat.Status[0],
+                                              stat.Status[1], stat.Status[2], stat.Status[3]]));
+                    IOTraceFile.Write(PAnsiChar(bfr)^, Length(bfr));
+                end;
                 Core.Copy(@stat.Status, BCSW0, 16);
                 FStatLength := stat.Length;
                 FStatChannel := stat.Status[0] and $7;

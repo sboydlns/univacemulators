@@ -21,6 +21,9 @@ type
     FInitialized: Boolean;
     FCursorOn: Boolean;
     FHostControl: Boolean;
+    FTraceFile: TFileStream;
+    FLockKbd: Boolean;
+    FKbdLocked: Boolean;
     function GetCanvas: TCanvas;
     procedure SetBackColour(const Value: TColor);
     procedure SetTextColour(const Value: TColor);
@@ -47,12 +50,16 @@ type
     procedure DecCursor;
     procedure DeleteLine;
     procedure DoTimer(Sender: TObject);
+    procedure DrawStatus;
     procedure EndProtected;
     procedure EraseDisplay;
     function GetCharacter: Char;
     procedure HideCursor;
     procedure IncCursor;
     function IsProtected(row, col: Integer): Boolean;
+    procedure MsgWait;
+    procedure Print;
+    procedure PrintTransparent;
     procedure Refresh;
     procedure SetArrayLengths;
     procedure SetCharacter(c: Char);
@@ -87,6 +94,9 @@ type
 procedure Register;
 
 implementation
+
+uses Dialogs;
+
 
 procedure Register;
 begin
@@ -145,6 +155,7 @@ begin
     HideCursor;
     DecCursor;
     CharOut(' ', False);
+    DrawStatus;
 end;
 
 procedure TUniscope.CharOut(c: Byte; incr: Boolean);
@@ -158,6 +169,7 @@ begin
     SetCharacter(c);
     if (incr) then
         IncCursor;
+    DrawStatus;
 end;
 
 procedure TUniscope.Clear;
@@ -177,8 +189,11 @@ begin
 end;
 
 constructor TUniscope.Create(AOwner: TComponent);
+var
+    i: Integer;
 begin
     inherited;
+    FTraceFile := TFileStream.Create('c:\temp\uniscope.trc', fmCreate);
     Model := umU100;
     Size := us16x64;
     FCanvas := TControlCanvas.Create;
@@ -188,26 +203,30 @@ begin
     FTimer.OnTimer := DoTimer;
     FTimer.Enabled := True;
     SetArrayLengths;
+    for i := Low(FCharacters) to High(FCharacters) do
+        FCharacters[i] := ' ';
 end;
 
 procedure TUniscope.CursorHome;
 begin
     FRow := 0;
     FCol := 0;
+    DrawStatus;
 end;
 
 procedure TUniscope.CursorPosition(row, col: Byte);
 begin
     FRow := row;
     FCol := col;
+    DrawStatus;
 end;
 
 procedure TUniscope.DecCursor;
 var
-    holdRow, holdCol: Integer;
+    i, fin, origCol, origRow: Integer;
 begin
-    holdRow := FRow;
-    holdCol := FCol;
+    origRow := FRow;
+    origCol := FCol;
     Dec(FCol);
     if (FCol < 0) then
     begin
@@ -216,10 +235,26 @@ begin
         if (FRow < 0) then
             FRow := FMaxRow - 1;
     end;
-    if ((not FHostControl) and IsProtected(FRow, FCol)) then
+    // Skip until beginning of next unprotected field
+    i := (FRow * FMaxCol) + FCol;
+    fin := 0;
+    if ((not FHostControl) and ((FAttributes[i] and ATTR_END_PROTECT) <> 0)) then
     begin
-        FRow := holdRow;
-        FCol := holdCol;
+        repeat
+            if ((FAttributes[i] and ATTR_START_PROTECT) <> 0) then
+                Break;
+            Dec(i);
+        until (i < fin);
+        if (i > fin) then
+        begin
+            Dec(i);
+            FRow := i div FMaxCol;
+            FCol := i mod FMaxCol;
+        end else
+        begin
+            FCol := origCol;
+            FRow := origRow;
+        end;
     end;
 end;
 
@@ -252,6 +287,7 @@ end;
 
 destructor TUniscope.Destroy;
 begin
+    FreeAndNil(FTraceFile);
     FreeAndNil(FTimer);
     FreeAndNil(FCanvas);
     inherited;
@@ -299,6 +335,30 @@ begin
     end;
 end;
 
+procedure TUniscope.DrawStatus;
+var
+    holdCol: TColor;
+    s: String;
+    r: TRect;
+begin
+    r := Rect(0, FMaxRow * FCharSize.cy, FMaxCol * FCharSize.cx, (FMaxRow + 1) * FCharSize.cy);
+    FCanvas.FillRect(r);
+
+    s := Format('%2d %2d', [FRow + 1, FCol + 1]);
+    FCanvas.TextOut(0, FMaxRow * FCharSize.cy, s);
+
+    if (FKbdLocked) then
+    begin
+        holdCol := TextColour;
+        TextColour := BackColour;
+        BackColour := holdCol;
+        FCanvas.TextOut((FMaxCol - 4) * FCharSize.cx, FMaxRow * FCharSize.cy, 'WAIT');
+        holdCol := TextColour;
+        TextColour := BackColour;
+        BackColour := holdCol;
+    end;
+end;
+
 procedure TUniscope.EndProtected;
 var
     i: Integer;
@@ -318,8 +378,8 @@ end;
 
 procedure TUniscope.EraseDisplay;
 begin
-    FCanvas.TextRect(Rect(0, 0, ClientWidth, ClientHeight), 0, 0, ' ');
     ClearBuffer;
+    Refresh;
 end;
 
 function TUniscope.GetBackColour: TColor;
@@ -351,7 +411,7 @@ end;
 function TUniscope.GetDisplaySize: TSize;
 begin
     Result.cx := FMaxCol * CharSize.cx;
-    Result.cy := FMaxRow * CharSize.cy;
+    Result.cy := (FMaxRow + 1) * CharSize.cy;
 end;
 
 function TUniscope.GetFont: TFont;
@@ -371,8 +431,10 @@ end;
 
 procedure TUniscope.IncCursor;
 var
-    i, start, fin: Integer;
+    i, fin, origCol, origRow: Integer;
 begin
+    origCol := FCol;
+    origRow := FRow;
     Inc(FCol);
     if (FCol >= FMaxCol) then
     begin
@@ -386,17 +448,20 @@ begin
     fin := (FMaxRow * FMaxCol) - 1;
     if ((not FHostControl) and ((FAttributes[i] and ATTR_START_PROTECT) <> 0)) then
     begin
-        start := i;
         repeat
             if ((FAttributes[i] and ATTR_END_PROTECT) <> 0) then
                 Break;
             Inc(i);
         until (i > fin);
-        if (i <= fin) then
+        if (i < fin) then
         begin
             Inc(i);
             FRow := i div FMaxCol;
             FCol := i mod FMaxCol;
+        end else
+        begin
+            FCol := origCol;
+            FRow := origRow;
         end;
     end;
 end;
@@ -404,7 +469,6 @@ end;
 function TUniscope.IsProtected(row, col: Integer): Boolean;
 var
     i, test: Integer;
-
 begin
     i := (row * FMaxCol) + col;
     // If this character has ATTR_START_PROTECT then this is the start of a protected field.
@@ -429,6 +493,9 @@ end;
 
 procedure TUniscope.KeyPress(var Key: Char);
 begin
+    if (FKbdLocked) then
+        Exit;
+
     case Key of
       #8:
       begin
@@ -450,13 +517,39 @@ end;
 procedure TUniscope.KeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
     case Key of
-        VK_F12:  Transmit;
+      VK_F11:
+      begin
+        MsgWait;
+      end;
+      VK_F12:
+      begin
+        if (not FKbdLocked) then
+          Transmit;
+      end;
     end;
+end;
+
+procedure TUniscope.MsgWait;
+var
+    bfr: AnsiString;
+begin
+    bfr := AnsiChar(BEL) + AnsiChar(ETX);
+    FTelnet.SendString(bfr);
+end;
+
+procedure TUniscope.Print;
+begin
+    { TODO : Implement print functions }
+end;
+
+procedure TUniscope.PrintTransparent;
+begin
+    { TODO : Implement print functions }
 end;
 
 procedure TUniscope.Repaint;
 begin
-    inherited;
+    inherited Repaint;
     Refresh;
 end;
 
@@ -476,6 +569,7 @@ begin
             col := 0;
         end;
     end;
+    DrawStatus;
 end;
 
 procedure TUniscope.SetArrayLengths;
@@ -574,6 +668,10 @@ var
               CursorPosition(y - Ord(' '), x - Ord(' '));
               Inc(i, 2);
           end;
+          DC2:
+          begin
+            PrintTransparent;
+          end;
           Ord('e'):
           begin
             CursorHome;
@@ -589,10 +687,42 @@ var
             Clear;
             Inc(i);
           end;
+          else
+          begin
+            ShowMessageFmt('Unimplemented escape code %2.2x-%s', [Ord(b), b]);
+          end;
+        end;
+    end;
+
+    procedure TraceBuffer;
+    var
+        word: UInt32;
+        hex: AnsiString;
+        i: Integer;
+    begin
+        FTraceFile.Write(#13#10#13#10, 4);
+        word := 0;
+        for i := Low(Buffer) to High(Buffer) do
+        begin
+            if ((i <> 0) and ((i mod 4) = 0)) then
+            begin
+                hex := AnsiString(Format('%8.8x ', [word]));
+                FTraceFile.Write(PAnsiChar(hex)^, 9);
+                word := 0;
+            end;
+            word := (word shl 8) or Buffer[i];
+        end;
+        if (word <> 0) then
+        begin
+            hex := AnsiString(Format('%8.8x ', [word]));
+            FTraceFile.Write(PAnsiChar(hex)^, 9);
         end;
     end;
 
 begin
+    if (Assigned(FTraceFile)) then
+        TraceBuffer;
+
     FHostControl := True;
     HideCursor;
     try
@@ -611,6 +741,18 @@ begin
                 Inc(FRow);
                 if (FRow >= FMaxRow) then
                     FRow := 0;
+                DrawStatus;
+              end;
+              STX:
+              begin
+                FKbdLocked := True;
+                FLockKbd := False;
+              end;
+              ETX:
+              begin
+                FKbdLocked := FLockKbd;
+                FLockKbd := False;
+                DrawStatus;
               end;
               SO:
               begin
@@ -635,6 +777,14 @@ begin
               RS:
               begin
                 CharOut(SOE_CHAR);
+              end;
+              DC2:
+              begin
+                Print;
+              end;
+              DC4:
+              begin
+                FLockKbd := True;
               end;
               $fe:
               begin
@@ -735,6 +885,8 @@ begin
     end;
     bfr := Chr(STX) + bfr + Chr(ETX);
     FTelnet.SendString(bfr);
+    FKbdLocked := True;
 end;
+
 
 end.

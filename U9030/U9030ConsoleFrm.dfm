@@ -15,6 +15,7 @@ object U9030ConsoleForm: TU9030ConsoleForm
   OnDestroy = FormDestroy
   OnKeyPress = FormKeyPress
   OnKeyUp = FormKeyUp
+  OnPaint = FormPaint
   OnShow = FormShow
   PixelsPerInch = 96
   TextHeight = 16

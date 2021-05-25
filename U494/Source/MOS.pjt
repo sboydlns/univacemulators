@@ -27,14 +27,14 @@ C:\DEVELOPMENT\EMULATORS\U494\PROCS\Tasks.proc
 SysSetCwd='C:\Development\Emulators\U9030\Source'
 SrchSetFlags=0x4410600b
 FileSortMode=0x0
-StateWindowFrame=23,12,1056,1068,0x63097f08
-_StateWindow=26,26,575,542,0x00100010,'C:\Development\Emulators\U9030\Source\OS3.asm',208,31,212,4,20,12,46,26,126,176,8,4294967295,4294967295,1,10,'',12,255,48,72,10,467,0,0,721,252,249,9,21,400,0,212,214,210,220,721,721,720,729,217,80,0,223,224,14,1,1,208,1,6
-_StateBuffer='C:\Development\Emulators\U9030\Source\OS3.asm',0x0400048a,9,21,25,'8 20 30 50','',0x1,'',1,72,1
-_StateHistory=FILELIST,'C:\tmp\$Y$MAC\LOCAL.txt','C:\tmp\$Y$MAC\P$LOAD.txt','C:\tmp\$Y$MAC\P$EM202.txt','C:\tmp\$Y$MAC\XDSECTS.txt','C:\tmp\$Y$MAC\P$GENTRN.txt','C:\Development\Emulators\U9030\Source\os3.dis','C:\Development\Emulators\U9030\Source\boot2.asm','C:\Development\Emulators\U9030\Source\sl$int.asm','C:\Development\Emulators\U9030\Source\OS3.asm'
-_StateHistory=SEARCH,'DIAG','4570:',',64','X\'01C\'*,64','X\'01C\'*,2','X\'01C\'','X\'01C\'[.]+,2','X\'01C\'[0-Z]+,2','X\'01C\'.*,2','X\'01C\'.*,64'
+StateWindowFrame=-33,5,1056,1068,0x63097f08
+_StateWindow=26,26,575,542,0x00100010,'C:\Development\Emulators\U9030\Source\OS3.asm',208,31,212,4,20,12,46,26,126,176,8,4294967295,4294967295,1,10,'',12,255,48,72,10,467,0,0,721,252,249,4281,64,400,0,212,214,210,220,721,721,720,729,217,80,0,223,224,14,4248,1,208,1,6
+_StateBuffer='C:\Development\Emulators\U9030\Source\OS3.asm',0x0400048a,4281,64,25,'8 20 30 50','',0x1,'',1,72,1
+_StateHistory=FILELIST,'C:\tmp\$Y$MAC\P$LOAD.txt','C:\tmp\$Y$MAC\P$EM202.txt','C:\tmp\$Y$MAC\XDSECTS.txt','C:\tmp\$Y$MAC\P$GENTRN.txt','C:\Development\Emulators\U9030\Source\os3.dis','C:\Development\Emulators\U9030\Source\OS3.asm','C:\Development\Emulators\U9030\Source\jl$sch.asm','C:\Development\Emulators\U9030\Source\sl$int.asm','C:\Development\Emulators\U9030\Source\boot2.asm'
+_StateHistory=SEARCH,'2f30:diag14','diag14','hp4','hpr','7f2','80a','2f86:','47DE','2CF0','4802:'
 _StateHistory=REPLACE,'.'
 _StateHistory=XSYMBOL,'OUTPUT','ERROR','INPUT','FILE'
-_StateHistory=EDITFILE,'C:\Development\Emulators\U9030\Source\OS3.asm','C:\Development\Emulators\U9030\Source\boot2.asm','C:\Development\Emulators\U9030\Disks\boot2.dis','C:\Development\Emulators\U9030\Source\OS3.asm','C:\Development\Emulators\U9030\Source\boot2.asm','C:\Development\Emulators\U9030\Source\os3.dis','C:\Development\Emulators\U9030\Source\boot2.asm','C:\Development\Emulators\U9030\Source\os3.dis','C:\Development\Emulators\U9030\Source\boot2.asm','C:\Development\Emulators\U9030\Source\OS3.asm'
+_StateHistory=EDITFILE,'C:\Development\Emulators\U9030\Source\os3.dis','C:\Development\Emulators\U9030\Source\boot2.asm','C:\Development\Emulators\U9030\Source\os3.dis','C:\Development\Emulators\U9030\Source\boot2.asm','C:\Development\Emulators\U9030\Source\OS3.asm','C:\Development\Emulators\U9030\Source\sl$int.asm','C:\Development\Emulators\U9030\Source\OS3.asm','C:\Development\Emulators\U9030\Source\jl$sch.asm','C:\Development\Emulators\U9030\Source\sl$int.asm','C:\Development\Emulators\U9030\Source\boot2.asm'
 _StateHistory=DIRECTORY,'c:\tmp\$Y$MAC','C:\tmp\$Y$SRC','C:\tmp\$Y$GEN','C:\TMP','C:\tmp\$Y$MAC'
 _StateHistory=GOTOMARK,'1','2','1'
 

@@ -5,16 +5,6 @@ interface
 uses SysUtils, Classes,
      U9030Types, Globals, Channels;
 
-const
-  // IPC status bits
-  IPC_ATTENTION = $80;
-  IPC_DEVICE_END = $04;
-  IPC_UNIT_CHECK = $02;
-  // IPC channel status bits
-  IPC_INVALID_ADDRESS = $10;
-  IPC_DATA_CHECK = $08;
-  IPC_CONTROL_CHECK = $02;
-
 type
   // Unlike the IDA the IPC needs to be able to update the BCW in
   // real time in order for everything to work. This will slow things
@@ -206,6 +196,8 @@ begin
             Result := inherited SIO(addr);
             Exit;
         end;
+
+        TraceSIO(dvcNum);
 
         if (dvc.Busy) then                                      // Device busy
         begin

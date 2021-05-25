@@ -20,6 +20,7 @@ type
     procedure ReadSector(cyl, head, rec: Integer; bfr: PByte); overload;
     procedure ReadSector(track, rec: Integer; bfr: PByte); overload;
     procedure SeekSector(cyl, head, rec: Integer);
+    procedure WriteSector(cyl, head, rec: Integer; bfr: PByte); overload;
     property MaxCylinder: Integer read FMaxCylinder;
     property MaxTrack: Integer read FMaxTrack;
     property MaxSector: Integer read FMaxSector;
@@ -95,6 +96,13 @@ procedure T8418Disk.SeekSector(cyl, head, rec: Integer);
 begin
     CheckAddr(cyl, head, rec);
     Position := ((((cyl * FMaxTrack) + head) * FMaxSector) + rec - 1) * FSectorSize;
+end;
+
+procedure T8418Disk.WriteSector(cyl, head, rec: Integer; bfr: PByte);
+begin
+    SeekSector(cyl, head, rec);
+    if (Write(bfr^, FSectorSize) <> FSectorSize) then
+        raise Exception.CreateFmt('Error writing %d %d %s', [cyl, head, rec]);
 end;
 
 { T8416File }

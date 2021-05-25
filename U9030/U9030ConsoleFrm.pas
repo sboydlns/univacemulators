@@ -21,10 +21,9 @@ type
     procedure FormKeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure TimerTimer(Sender: TObject);
     procedure FormKeyPress(Sender: TObject; var Key: Char);
+    procedure FormPaint(Sender: TObject);
   private
     FDestroying: Boolean;
-    FCharacters: array of Char;
-    FAttributes: array of Byte;
     FDisplay: TUniscope;
     procedure StartMsg(var Message: TMessage); message START_MSG;
   public
@@ -48,8 +47,6 @@ begin
     FDisplay.Font.Name := 'Courier New';
     FDisplay.Font.Size := 12;
     FDisplay.Telnet := Telnet;
-    SetLength(FCharacters, FDisplay.RowCount * FDisplay.ColCount);
-    SetLength(FAttributes, FDisplay.RowCount * FDisplay.ColCount);
     ClientHeight := FDisplay.DisplaySize.cy;
     ClientWidth := FDisplay.DisplaySize.cx;
 end;
@@ -67,6 +64,11 @@ end;
 procedure TU9030ConsoleForm.FormKeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
     FDisplay.KeyUp(Sender, Key, Shift);
+end;
+
+procedure TU9030ConsoleForm.FormPaint(Sender: TObject);
+begin
+    FDisplay.Repaint;
 end;
 
 procedure TU9030ConsoleForm.FormShow(Sender: TObject);

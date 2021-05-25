@@ -173,6 +173,9 @@ end;
 constructor TU9030Form.Create(AOwner: TComponent);
 begin
     inherited;
+
+    IOTraceEnabled := True;
+
     Opcodes := TOpcodeList.Create;
     Core := TMemory.Create;
     Processor := TCpu.Create;

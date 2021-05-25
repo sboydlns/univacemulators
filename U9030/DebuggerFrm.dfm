@@ -134,7 +134,6 @@ object DebuggerForm: TDebuggerForm
     ScrollBars = ssVertical
     TabOrder = 0
     WordWrap = False
-    ExplicitHeight = 511
   end
   object RegGrid: TStringGrid
     Left = 7
@@ -164,7 +163,6 @@ object DebuggerForm: TDebuggerForm
     Anchors = [akLeft, akBottom]
     TabOrder = 7
     OnKeyPress = CommandEdtKeyPress
-    ExplicitTop = 499
   end
   object Pages: TPageControl
     Left = 7
@@ -176,7 +174,6 @@ object DebuggerForm: TDebuggerForm
     TabOrder = 8
     object TracePage: TTabSheet
       Caption = 'Trace'
-      ExplicitHeight = 267
       object TraceGrid: TStringGrid
         Left = 0
         Top = 0
@@ -188,7 +185,6 @@ object DebuggerForm: TDebuggerForm
         RowCount = 101
         Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goColSizing]
         TabOrder = 0
-        ExplicitHeight = 267
         ColWidths = (
           45
           327)
@@ -197,6 +193,9 @@ object DebuggerForm: TDebuggerForm
     object BrkptPage: TTabSheet
       Caption = 'Brkpts'
       ImageIndex = 1
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
       ExplicitHeight = 263
       object BrkptGrid: TStringGrid
         Left = 0

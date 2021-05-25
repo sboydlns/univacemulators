@@ -79,6 +79,7 @@ type
     FInputBfrLock: TCriticalSection;
     procedure ClearSense;
     procedure DeviceEnd;
+    procedure DoAttention;
     procedure DoRead;
     procedure DoSense;
     procedure DoWrite;
@@ -90,6 +91,8 @@ type
     procedure TelnetDisconnect(AContext: TIdContext);
     procedure TelnetExecute(AContext: TIdContext);
     procedure TelnetListenException(AThread: TIdListenerThread; AException: Exception);
+  protected
+    procedure DoTimer; override;
   public
     constructor Create(num: Byte); override;
     destructor Destroy; override;
@@ -145,7 +148,12 @@ end;
 
 procedure TConsole.DeviceEnd;
 begin
-    FChannel.QueueStatus(MakeStatus(IPC_DEVICE_END, 0));
+    FChannel.QueueStatus(MakeStatus(DEVICE_END, 0));
+end;
+
+procedure TConsole.DoAttention;
+begin
+    FChannel.QueueStatus(MakeStatus(ATTENTION, 0));
 end;
 
 procedure TConsole.DoRead;
@@ -187,6 +195,25 @@ begin
         DeviceEnd;
 end;
 
+procedure TConsole.DoTimer;
+var
+    msgWait: AnsiString;
+begin
+    FInputBfrLock.Acquire;
+    try
+        if (FInputBfr.Count > 0) then
+        begin
+            if (FInputBfr[0] = Chr(BEL)) then
+            begin
+                FInputBfr.Delete(0);
+                DoAttention;
+            end;
+        end;
+    finally
+        FInputBfrLock.Release;
+    end;
+end;
+
 procedure TConsole.DoWrite;
 var
     addr: TMemoryAddress;
@@ -215,7 +242,7 @@ begin
             b := Core.FetchByte(FBCW.ActvKey, addr);
         except
             b := 0;
-            FChannel.QueueStatus(MakeStatus(IPC_DEVICE_END or IPC_UNIT_CHECK, IPC_INVALID_ADDRESS));
+            FChannel.QueueStatus(MakeStatus(DEVICE_END or UNIT_CHECK, INVALID_ADDRESS));
             Exit;
         end;
         if (translate) then
@@ -228,6 +255,9 @@ begin
     FBCW.ActvAddress := addr;
     FBCW.ActvCount := count;
     FBCW.ActvTerm := True;
+    if ((FBCW.Command and CONS_LOCK_KBD) = 0) then
+        s := s + AnsiChar(DC4);
+    s := AnsiChar(STX) + s + AnsiChar(ETX);
     if (Assigned(FConsole)) then
         FConsole.Connection.IOHandler.Write(TIdBytes(s));
     DeviceEnd;
@@ -238,14 +268,11 @@ begin
     ClearSense;
     FSense[0] := CONS_INTERVENTION;
     FSense[1] := CONS_POWER_OFF;
-    FChannel.QueueStatus(MakeStatus(IPC_UNIT_CHECK, 0));
+    FChannel.QueueStatus(MakeStatus(UNIT_CHECK, 0));
 end;
 
 procedure TConsole.ProcessCommand;
 begin
-    { TODO :
-We need something here to recognize Msg Wait key presses and
-post an Attention status. }
     case FCommand and $3 of
       CONS_READ:    DoRead;
       CONS_WRITE:   DoWrite;
@@ -285,7 +312,7 @@ begin
             Dec(len);
         except
             Result := False;
-            FChannel.QueueStatus(MakeStatus(IPC_DEVICE_END or IPC_UNIT_CHECK, IPC_INVALID_ADDRESS));
+            FChannel.QueueStatus(MakeStatus(DEVICE_END or UNIT_CHECK, INVALID_ADDRESS));
         end;
     end;
 end;
@@ -327,7 +354,9 @@ begin
     i := Low(bfr);
     while ((not FStxSeen) and (i <= High(bfr))) do
     begin
-        FStxSeen := (bfr[i] = STX);
+        FStxSeen := ((bfr[i] = STX) or (bfr[i] = BEL));
+        if (bfr[i] = BEL) then
+            FBuffer := Chr(BEL);
         Inc(i);
     end;
     if (FStxSeen) then

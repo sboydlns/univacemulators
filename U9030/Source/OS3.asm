@@ -125,27 +125,27 @@
 0596:         BCR   R15,R15
      *
 0598:         BALR  R3,R0
-059A:         NI    X'02B6',247
+059A:         NI    SB$ERFLG,247                 CLEAR ALL BUT TRANSIENT IN CONTROL
 059E:         SR    R2,R2
-05A0:         L     5,X'02F4'
+05A0:         L     5,SB$SOI                     GET SUPERVISOR INDICATOR WORD
 05A4:         LTR   R5,R5
-05A6:         BC    7,X'014'(,R3)
-05AA:         SVC   R0,R4
+05A6:         BNZ   X'05AE'
+05AA:         SVC   4                            YIELD
 05AC:         BCR   R15,R3
      *
-05AE:         BC    5,X'022'(,R3)
-05B2:         LA    2,X'0001'(R2)
-05B6:         AR    R5,R5
-05B8:         BC    15,X'014'(,R3)
-05BC:         XR    R1,R1
-05BE:         LA    2,X'100'(R2,R2)
+05AE:         BM    X'05BC'                      WHEN R5 GOES NEGATIVE
+05B2:         LA    2,X'0001'(R2)                BUMP R2
+05B6:         AR    R5,R5                        R5 = R5 * 2
+05B8:         BC    15,X'05AE'
+05BC:         XR    R1,R1                        CLEAR R1
+05BE:         LA    2,X'100'(R2,R2)              R2 = R2 * 2 + 265
 05C2:         LA    5,X'0002'
-05C6:         LM    R8,R11,X'02CC'
+05C6:         LM    R8,R11,SB$PBA                LOAD SUPER REGISTERS
 05CA:         BALR  R3,R0
-05CC:         NI    X'02B6',247
-05D0:         L     7,X'02D0'
+05CC:         NI    X'02B6',247                  CLEAR ALL BUT TRANSIENT IN CONTROL
+05D0:         L     7,SB$SOS                     GET ADDR OF SOS TCB
 05D4:         LA    7,X'0074'(R7)
-05D8:         BC    15,X'077C'
+05D8:         BC    15,X'077C'                   
 05DC:         DC    XL4'00000000'
      *
 05E0:         BALR  R3,R0
@@ -292,13 +292,13 @@
 078A:         BH    X'08DA'                      YES
 078E:         CH    2,X'0BF8'                    SVC ID < 256?
 0792:         BL    X'O8BC'                      YES
-0796:         STH   5,X'006'(,R7)
-079A:         SLL   R5,X'0008'
+0796:         STH   5,X'006'(,R7)                SAVE RECORD COUNT TO BCW
+079A:         SLL   R5,X'0008'                   * 256
 079E:         STH   5,X'004'(,R7)
 07A2:         LA    6,X'0288'
 07A6:         LR    R5,R2
-07A8:         SH    5,X'17A'(,R3)
-07AC:         SR    R4,R4
+07A8:         SH    5,X'08F8'                    R5 = R5 - 256
+07AC:         SR    R4,R4                        R5 = R5 / RECS PER TRACK
 07AE:         D     4,X'0294'
 07B2:         LA    4,X'0001'(R4)                BUMP DISK REC # BY 1
 07B6:         STC   4,IB$RECRD                   SAVE REC # TO BCW
@@ -323,10 +323,12 @@
 07FE:         BC    15,X'0F2'(,R3)
 0802:         BAL   5,X'104'(,R3)
 0806:         BC    15,X'0F2'(,R3)
-080A:         TM    X'013'(R7),128
-080E:         BC    14,X'09E'(,R3)
-0812:         MVC   X'00C'(2,R7),X'224'(R15)
-0818:         BC    15,X'074'(,R3)
+     *
+080A:         TM    X'013'(R7),BC$OWN            OWN ERROR CODE SET IN CCB?
+080E:         BNO   X'081C'                      NO
+0812:         MVC   X'00C'(2,R7),X'224'(R15)     SET CYL # IN BCW TO X'9D'
+0818:         BC    15,X'07F2'
+     *
 081C:         LR    R0,R2
 081E:         SLL   R0,X'0010'
 0822:         IC    0,X'180'(,R3)
@@ -1117,22 +1119,23 @@
               USING JT$TCB,R14
 1990:         OI    JT$WAIT+1,BT$YIELD
 1994:         BCR   R15,R15 
-     *
+     * SVC #1 - WAIT
 1996:         LA    0,X'0027'
 199A:         AR    R1,R12
-199C:         OI    X'02B6',192
-19A0:         TM    X'002'(R1),128
-19A4:         BCR   R1,R15
-19A6:         TM    X'000'(R1),128
-19AA:         BC    1,X'034'(,R2)
-19AE:         L     3,X'004'(,R1)
+199C:         OI    SB$ERFLG,BB$IO+BB$CCB?       PIOCS IN CONTROL, CCB QUESTIONABLE
+19A0:         TM    IC$T(R1),BC$TRAFF            CCB PROCESSED?
+19A4:         BOR   R15                          YES
+19A6:         TM    IC$CTL(R1),BC$LKSCT          LINK IS TO SCT?
+19AA:         BO    X'19CA'                      YES
+19AE:         L     3,IC$BCW(,R1)                GET PTR TO TCB
 19B2:         LA    3,X'0000'(R3)
-19B6:         CR    R14,R3
-19B8:         BC    7,X'048'(,R2)
-19BC:         OI    X'000'(R1),4
+19B6:         CR    R14,R3                       = TO CURRENT TCB?
+19B8:         BNE   X'19DE'                      NO
+19BC:         OI    IC$CTL(R1),BC$WAIT           SET WAIT FLAG IN CCB
 19C0:         XI    X'004'(R1),4
-19C4:         OI    X'005'(R14),4
-19C8:         BCR   R15,R15
+19C4:         OI    JT$WAIT+1(R14),BT$WAIT       SET WAIT FLAG IN TCB
+19C8:         BCR   R15,R15                      RETURN SWITCHER
+     *
 19CA:         TM    X'000'(R1),4
 19CE:         BC    1,X'04A'(,R2)
 19D2:         LR    R3,R14
@@ -1147,71 +1150,79 @@
 19EE:         OI    X'005'(R14),2
 19F2:         BCR   R15,R15
 19F4:         DC    XL4'00000000'
-19F8:         L     3,X'014'(,R14)
-19FC:         LTR   R3,R3
-19FE:         BC    8,X'028'(,R2)
-1A02:         TM    X'0CC'(R3),4
-1A06:         BC    1,X'028'(,R2)
-1A0A:         TM    X'0CC'(R3),16
-1A0E:         BC    14,X'028'(,R2)
+
+     * SVC 8 - LOCK SYSTEM TABLE
+     *
+     * R1 BITS:
+     *    X'08000000' - USE JT$LOCK IF SET, OTHERWISE JT$USER
+     *    X'80000000' - USE SB$USER IF SET, OTHERWISE SB$LOCK
+     
+19F8:         L     3,JT$PRE(,R14)               GET TCB PREAMBLE ADDR
+19FC:         LTR   R3,R3                        IS IT ZERO?
+19FE:         BZ    X'1A20'                      YES
+1A02:         TM    JP$IDLTR(R3),4               CHECK SVC OF IDLE TRANSIENT??
+1A06:         BO    X'1A20'
+1A0A:         TM    JP$IDLTR(R3),16
+1A0E:         BNO   X'1A20'
 1A12:         L     3,X'024'(,R14)
 1A16:         SH    3,X'17C'(,R2)
 1A1A:         ST    3,X'024'(,R14)
 1A1E:         BCR   R15,R15
-1A20:         TM    X'02C'(R14),1
-1A24:         BC    14,X'03C'(,R2)
+     *
+1A20:         TM    JT$SA+4(R14),1               CHECK USER R1
+1A24:         BNO   X'1A34'
 1A28:         LH    12,X'10A'(,R11)
 1A2C:         LTR   R12,R12
 1A2E:         BCR   R8,R15
 1A30:         BALR  R13,R12
 1A32:         BCR   R15,R15
-1A34:         TM    X'035'(R11),64
-1A38:         BC    1,X'048'(,R2)
+1A34:         TM    CB$CHR+1(R11),BB$ULCK        USER FILES LOCKED?
+1A38:         BO    X'1A40'                      YES
 1A3C:         N     0,X'1E4'(,R2)
-1A40:         LR    R3,R1
-1A42:         SLL   R3,X'0004'
-1A46:         SRL   R3,X'001D'
-1A4A:         LR    R4,R1
-1A4C:         SRL   R4,X'001D'
-1A50:         LA    1,X'000'(,R1)
-1A54:         LTR   R1,R1
-1A56:         BC    7,X'068'(,R2)
-1A5A:         LR    R1,R14
-1A5C:         BC    15,X'06A'(,R2)
-1A60:         AR    R1,R12
-1A62:         LR    R8,R0
-1A64:         L     7,X'06C'(R4,R1)
-1A68:         NR    R7,R8
-1A6A:         EX    0,X'144'(R3,R2)
+1A40:         LR    R3,R1                        R3 = USER'S R1
+1A42:         SLL   R3,X'0004'                   LEFT 4
+1A46:         SRL   R3,X'001D'                   RIGHT 29
+1A4A:         LR    R4,R1                        R4 = USER'S R1
+1A4C:         SRL   R4,X'001D'                   RIGHT 29
+1A50:         LA    1,X'000'(,R1)                CLEAR R1 UPPER
+1A54:         LTR   R1,R1                        R1 = 0?
+1A56:         BNZ   X'1A60'                      NO
+1A5A:         LR    R1,R14                       R1 = PTR TO CURRENT TCB
+1A5C:         BC    15,X'1A62'
+1A60:         AR    R1,R12                       
+1A62:         LR    R8,R0                        R8 = USER'S R0
+1A64:         L     7,X'06C'(R4,R1)              GET USER OR LOCK FLAGS??
+1A68:         NR    R7,R8                        GET MATCHING BITS BETWEEN FLAGS & USER R0
+1A6A:         EX    0,X'144'(R3,R2)              EITHER GOTO X'1A76' OR RETURN
 1A6E:         EX    0,X'164'(R3,R2)
 1A72:         EX    0,X'14A'(R3,R2)
-1A76:         EX    0,X'152'(R4,R2)
-1A7A:         NR    R7,R8
-1A7C:         BC    7,X'180'(,R2)
-1A80:         L     10,X'06C'(,R1)
-1A84:         LTR   R9,R4
-1A86:         BC    7,X'096'(,R2)
-1A8A:         EX    0,X'15A'(R3,R2)
-1A8E:         L     7,X'0A0'(R9,R11)
+1A76:         EX    0,X'152'(R4,R2)              LOAD EITHER SB$LOCK OR SB$USER TO R7
+1A7A:         NR    R7,R8                        GET BITS IN COMMON BETWEEN R7 & R8
+1A7C:         BNZ   X'1B78'
+1A80:         L     10,JT$USER(,R1)              GET USER FLAGS 
+1A84:         LTR   R9,R4                        GET USER / LOCK INDICATOR
+1A86:         BC    7,X'1A8E'                    INDICATOR <> 0
+1A8A:         EX    0,X'15A'(R3,R2)              
+1A8E:         L     7,X'0A0'(R9,R11)             
 1A92:         EX    0,X'162'(R3,R2)
-1A96:         ST    7,X'0A0'(R9,R11)
-1A9A:         L     7,X'06C'(R9,R1)
+1A96:         ST    7,SB$USER(R9,R11)            SET THE APPROPRIATE FLAG IN SIB
+1A9A:         L     7,X'06C'(R9,R1)              SET APPROPRIATE FLAG IN TCB
 1A9E:         EX    0,X'162'(R3,R2)
 1AA2:         ST    7,X'06C'(R9,R1)
-1AA6:         LTR   R9,R9
-1AA8:         BC    8,X'0BA'(,R2)
-1AAC:         SR    R9,R9
+1AA6:         LTR   R9,R9                        CHECK USER / LOCK INDICATOR
+1AA8:         BZ    X'1AB2'                      ZERO
+1AAC:         SR    R9,R9                        CLEAR R9
 1AAE:         EX    0,X'15A'(R3,R2)
-1AB2:         NR    R10,R0
+1AB2:         NR    R10,R0                       CLEAR FLAG IN R10
 1AB4:         LTR   R9,R0
 1AB6:         EX    0,X'17A'(R3,R2)
-1ABA:         BCR   R8,R15
+1ABA:         BCR   R8,R15                       RETURN TO SWITCHER IF RESULT ZERO
 1ABC:         LA    8,X'1B6'(,R2)
 1AC0:         BALR  R8,R8
 1AC2:         LR    R10,R5
-1AC4:         AH    10,X'08C'(,R11)
-1AC8:         EX    0,X'16A'(R3,R2)
-1ACC:         EX    0,X'172'(R3,R2)
+1AC4:         AH    10,SB$LKTAB(,R11)            ADDR. OF LOCK COUNTER TABLE
+1AC8:         EX    0,X'16A'(R3,R2)              ADD 1 OR -1 TO LOCK ENTRY
+1ACC:         EX    0,X'172'(R3,R2)              B OR BNE
 1AD0:         L     13,X'0A0'(,R11)
 1AD4:         XR    R13,R12
 1AD6:         ST    13,X'0A0'(,R11)
@@ -1241,57 +1252,65 @@
 1B2E:         XC    X'000'(2,R10),X'000'(R10)
 1B34:         L     1,X'1EC'(,R2)
 1B38:         BC    15,X'0C8'(,R2)
-1B3C:         BC    8,X'07E'(,R2)
-1B40:         BCR   R8,R15
+     * EXECUTED @ 1A6A
+1B3C:         BZ    X'1A76'
+1B40:         BZR   R15
+     * EXECUTED @ 1A72
 1B42:         BCR   R8,R15
 1B44:         BCR   R0,R9
 1B46:         BC    15,X'088'(,R2)
-1B4A:         L     7,X'0A4'(,R11)
-1B4E:         L     7,X'0A0'(,R11)
+     * EXECUTED @ 1A76
+1B4A:         L     7,SB$LOCK(,R11)
+1B4E:         L     7,SB$USER(,R11)
+     * EXECUTED @ 1A8A & 1AAE
 1B52:         BC    15,X'096'(,R2)
 1B56:         BC    15,X'0A2'(,R2)
+     * EXECUTED AT 1A92 & 1A9E
 1B5A:         OR    R7,R0
+     * EXECUTED @ 1A6E
 1B5C:         XR    R0,R7
 1B5E:         XR    R7,R0
 1B60:         LR    R0,R7
+     *
 1B62:         AI    X'002'(R10),1
 1B66:         AI    X'002'(R10),255
 1B6A:         BC    15,X'0C8'(,R2)
 1B6E:         BC    7,X'0C8'(,R2)
+     * EXECUTED @ 1AB6
 1B72:         XR    R9,R10
 1B74:         DC    XL2'0002'
 1B76:         BCR   R0,R9
-1B78:         CR    R1,R14
-1B7A:         BC    8,X'18A'(,R2)
+1B78:         CR    R1,R14                       R1 = R14?
+1B7A:         BE    X'1B82'                      YES
 1B7E:         ST    7,X'028'(,R14)
-1B82:         OI    X'004'(R1),1
-1B86:         L     3,X'024'(,R1)
-1B8A:         SH    3,X'17C'(,R2)
-1B8E:         ST    3,X'024'(,R1)
-1B92:         LR    R0,R7
-1B94:         LR    R9,R7
-1B96:         L     12,X'1E8'(,R2)
-1B9A:         LH    5,X'08C'(,R11)
-1B9E:         BAL   7,X'1CC'(,R2)
-1BA2:         AI    X'000'(R5),1
-1BA6:         NR    R0,R12
-1BA8:         ST    0,X'068'(,R1)
-1BAC:         BCR   R15,R15
-1BAE:         SR    R5,R5
-1BB0:         L     12,X'1E8'(,R2)
-1BB4:         LA    7,X'1CC'(,R2)
+1B82:         OI    JT$WAIT(R1),BT$LOCK          SET WAIT FOR LOCKED FILE OR TABLE
+1B86:         L     3,JT$PSW+4(,R1)              GET NEXT INST ADDR FROM TCB
+1B8A:         SH    3,X'1B74'                    SUBTRACT 2
+1B8E:         ST    3,JT$PSW+4(,R1)              PUT BACK INTO PSW
+1B92:         LR    R0,R7                        R0 = R7
+1B94:         LR    R9,R7                        R9 = R7
+1B96:         L     12,X'1BE0'
+1B9A:         LH    5,SB$LKTAB(,R11)             GET ADDR OF LOCK TABLE
+1B9E:         BAL   7,X'1BC4'
+1BA2:         AI    X'000'(R5),1                 BUMP LOCK TABLE ENTRY
+1BA6:         NR    R0,R12                       GET BITS IN COMMON BETWEEN R0 & R12
+1BA8:         ST    0,JT$WTLCK(,R1)              SET REASON FOR WAIT LOCK
+1BAC:         BCR   R15,R15                      RETURN TO SWITCHER
+1BAE:         SR    R5,R5                        CLEAR R5
+1BB0:         L     12,X'1BE0'                   
+1BB4:         LA    7,X'1BC4'
 1BB8:         BALR  R7,R7
-1BBA:         BALR  R8,R8
-1BBC:         LTR   R9,R9
-1BBE:         BC    7,X'1C0'(,R2)
-1BC2:         BCR   R15,R15
+1BBA:         BALR  R8,R8                        RETURN
+1BBC:         LTR   R9,R9                        R9 = 0?
+1BBE:         BNZ   X'1C0'(,R2)                  NO
+1BC2:         BCR   R15,R15                      YES, RERTURN TO SWITCHER
 1BC4:         LTR   R9,R9
-1BC6:         SLL   R9,X'0001'
-1BCA:         BC    11,X'1D8'(,R2)
-1BCE:         BALR  R7,R7
-1BD0:         SRL   R12,X'0001'
-1BD4:         LA    5,X'004'(,R5)
-1BD8:         BC    15,X'1CC'(,R2)
+1BC6:         SLL   R9,X'0001'                   LEFT 1
+1BCA:         BC    11,X'1BD0'                   R9 >= 0
+1BCE:         BALR  R7,R7                        RETURN
+1BD0:         SRL   R12,X'0001'                  RIGHT 1             
+1BD4:         LA    5,X'004'(,R5)                BUMP LOCK TABLE PTR
+1BD8:         BC    15,X'1BC4'
 1BDC:         DC    XL4'FFFF0000'
 1BE0:         SSM   X'0000',0
 1BE4:         DC    XL4'00000000'\
@@ -2434,56 +2453,59 @@
 2CE2:         ALR   R13,R14
 2CE4:         AWR   R12,R14
 2CE6:         DC    XL10'EEFE0000000000000000'
-2CF0:         STM   R2,R5,X'00F0'
-2CF4:         LH    9,X'012'(,R8)
-2CF8:         SLL   R5,X'0001'
+     * THE SEEMS TO BE MOSTLY CONCERNED WITH COMPUTING THE SEEK DIFFERENT
+     * MAGNITUDE BUT ALSO A FEW OTHER THINGS.
+     *
+2CF0:         STM   R2,R5,X'00F0'                SET SET BCW
+2CF4:         LH    9,IP$TRL(,R8)                GET PUB TRAILER ADDR.
+2CF8:         SLL   R5,X'0001'                   ISOLATE CYLINDER #
 2CFC:         SRL   R5,X'0011'
-2D00:         LR    R6,R5
-2D02:         LH    4,X'012'(,R9)
-2D06:         CLI   X'00F0',1
-2D0A:         BC    7,X'02A'(,R12)
+2D00:         LR    R6,R5                        R6 = R5
+2D02:         LH    4,X'012'(,R9)                GET PRIOR CYLINDER #?
+2D06:         CLI   X'00F0',1                    IDA CMD = FORMAT WRITE?
+2D0A:         BNE   X'2D1A'                      NO
 2D0E:         LA    0,X'001A'
 2D12:         TM    X'003'(R1),2
 2D16:         BC    8,X'2CA'(,R11)
-2D1A:         TM    X'01C'(R8),7
-2D1E:         BC    8,X'03E'(,R12)
-2D22:         BC    4,X'046'(,R12)
+2D1A:         TM    IP$CONT2(R8),7               CHECK IOC BITS
+2D1E:         BZ    X'03E'(,R12)                 THEY'RE ALL ZERO
+2D22:         BM    X'2D36'                      SOME ARE SET
 2D26:         LH    5,X'010'(,R9)
 2D2A:         BC    15,X'048'(,R12)
 2D2E:         TM    X'00FB',192
 2D32:         BC    8,X'048'(,R12)
-2D36:         LR    R5,R4
-2D38:         NI    X'00F6',223
-2D3C:         CLR   R5,R4
-2D3E:         BC    11,X'05C'(,R12)
+2D36:         LR    R5,R4                        R5 = R4
+2D38:         NI    X'00F6',223                  CLEAR DIRECTION BIT IN BCW
+2D3C:         CLR   R5,R4                        OLD CYL <= NEW CYL?
+2D3E:         BNH   X'2D4C'                      YES
 2D42:         XR    R5,R4
 2D44:         XR    R4,R5
 2D46:         XR    R5,R4
 2D48:         OI    X'00F6',32
-2D4C:         SR    R5,R4
-2D4E:         TM    X'003'(R1),16
-2D52:         BC    1,X'08C'(,R12)
-2D56:         LA    3,X'019A'
-2D5A:         TM    X'00F'(R8),4
-2D5E:         BC    8,X'076'(,R12)
-2D62:         LA    3,X'032E'
-2D66:         CR    R6,R3
+2D4C:         SR    R5,R4                        GET DIFF BETWEEN OLD AND NEW
+2D4E:         TM    IC$T+1(R1),BC$DIAG           DIAGNOSTIC CCB?
+2D52:         BO    X'08C'(,R12)                 YES
+2D56:         LA    3,X'019A'                    R3 = 410
+2D5A:         TM    IP$FEA+1(R8),BP$DUB18        DOUBLE DENSITY 8418?
+2D5E:         BZ    X'076'(,R12)                 NO
+2D62:         LA    3,X'032E'                    R3 = 814
+2D66:         CR    R6,R3                        COMPARE CYL # TO 814
 2D68:         LA    0,X'0018'
-2D6C:         BC    2,X'2CA'(,R11)
-2D70:         CLI   X'00FA',6
+2D6C:         BH    X'2CA'(,R11)                 CYL # > MAX FOR DEVICE?
+2D70:         CLI   X'00FA',6                    COMPARE HEAD # TO 6
 2D74:         LA    0,X'0019'
-2D78:         BC    2,X'2CA'(,R11)
-2D7C:         TM    X'01C'(R8),7
-2D80:         BC    7,X'0AA'(,R12)
+2D78:         BH    X'2CA'(,R11)                 HEAD # > 6
+2D7C:         TM    IP$CONT2(R8),7               CHECK IOC BITS
+2D80:         BNZ   X'2D9A'                      SOME ARE SET
 2D84:         TM    X'00FC',128
 2D88:         BC    8,X'0AA'(,R12)
 2D8C:         TM    X'003'(R1),16
 2D90:         BC    1,X'0A8'(,R12)
 2D94:         MVI   X'00F0',8
 2D98:         SR    R6,R6
-2D9A:         STH   5,X'00F8'
-2D9E:         TM    X'01C'(R8),7
-2DA2:         BC    7,X'0EA'(,R12)
+2D9A:         STH   5,X'00F8'                    SET SEEK DIFF MAGNITUDE
+2D9E:         TM    IP$CONT2(R8),7               CHECK IOC BITS
+2DA2:         BNZ   X'2DDA'                      SOME ARE SET
 2DA6:         TM    X'003'(R1),16
 2DAA:         BC    1,X'0EA'(,R12)
 2DAE:         TM    X'003'(R1),2
@@ -2498,44 +2520,46 @@
 2DD0:         BC    7,X'0EA'(,R12)
 2DD4:         MVI   X'00F0',8
 2DD8:         BCR   R15,R13
-2DDA:         OI    X'018'(R8),2
-2DDE:         MVN   X'00FF'(1),X'001'(R1)
-2DE4:         TM    X'00F0',10
-2DE8:         BCR   R7,R13
-2DEA:         MVI   X'00FF',0
-2DEE:         BCR   R15,R13
+2DDA:         OI    IP$CONT3(R8),BP$SKSEP        SET SEEK SEPARATED
+2DDE:         MVN   X'00FF'(1),IC$EC(R1)         SET PROG OFFSET IN BCW
+2DE4:         TM    X'00F0',10                   BCW CMD IS READ OR SEEK OR A SEARCH?
+2DE8:         BNZR  R13                          YES, RETURN
+2DEA:         MVI   X'00FF',0                    CLEAR PROG OFFSET
+2DEE:         BCR   R15,R13                      RETURN
+     * INTERRUPT HANDLER FOR CHANNEL 3
+     
 2DF0:         BC    0,X'004'(,R12)
-2DF4:         LH    9,X'012'(,R8)
-2DF8:         TM    X'006'(R8),128
-2DFC:         BC    8,X'016'(,R12)
+2DF4:         LH    9,IP$TRL(,R8)                GET PUB TRAILER ADDRESS
+2DF8:         TM    IP$CONT1(R8),BP$ATTN         ATTENTION?                
+2DFC:         BZ    X'2E06'                      NO
 2E00:         XC    X'012'(2,R9),X'012'(R9)
-2E06:         LTR   R1,R1
-2E08:         BC    8,X'5C6'(,R11)
-2E0C:         L     4,X'00C'(,R1)
-2E10:         AR    R4,R7
-2E12:         MVC   X'363'(1,R12),X'01C'(R8)
-2E18:         NI    X'363'(R12),7
-2E1C:         NI    X'01C'(R8),248
-2E20:         TM    X'006'(R8),4
-2E24:         BC    8,X'06E'(,R12)
-2E28:         TM    X'363'(R12),7
-2E2C:         BC    4,X'06E'(,R12)
-2E30:         TM    X'00B'(R4),192
-2E34:         BC    7,X'06E'(,R12)
-2E38:         CLI   X'363'(R12),7
-2E3C:         BC    7,X'05A'(,R12)
+2E06:         LTR   R1,R1                        CCB ADDR = 0?
+2E08:         BZ    X'5C6'(,R11)                 YES
+2E0C:         L     4,IC$CCW(,R1)                GET BCW ADDRESS
+2E10:         AR    R4,R7                        ADD RELOC.
+2E12:         MVC   X'3153'(1),IP$CONT2(R8)      SAVE IP$CONT2
+2E18:         NI    X'3153',7                    CLEAR NON-IOC BITS
+2E1C:         NI    IP$CONT2(R8),248             CLEAR IOC BITS
+2E20:         TM    IP$CONT1(R8),BP$DVEND        DEVICE END?
+2E24:         BZ    X'06E'(,R12)                 NO
+2E28:         TM    X'3153',7                    SAVE IOC BITS SET?
+2E2C:         BM    X'06E'(,R12)                 YES
+2E30:         TM    IP$TRACK(R4),192             CHECK TRACK CONDITION
+2E34:         BNZ   X'06E'(,R12)                 NOT ZERO
+2E38:         CLI   X'3153',7                    SAVED IOC BITS = 7?
+2E3C:         BNE   X'2E4A'                      NO
 2E40:         MVC   X'012'(2,R9),X'010'(R9)
 2E46:         BC    15,X'06E'(,R12)
-2E4A:         MVC   X'012'(2,R9),X'00C'(R4)
-2E50:         TM    X'012'(R9),128
-2E54:         BC    8,X'06E'(,R12)
+2E4A:         MVC   X'012'(2,R9),IB$CYL(R4)      COPY CYLINDER ADDR TO PUB  TRAILER
+2E50:         TM    X'012'(R9),128               CYL HAS X'80' SET?
+2E54:         BZ    X'2E5E'
 2E58:         XC    X'012'(2,R9),X'012'(R9)
-2E5E:         TM    X'007'(R8),255
-2E62:         BC    7,X'152'(,R12)
-2E66:         TM    X'006'(R8),2
-2E6A:         BC    1,X'0FC'(,R12)
-2E6E:         TM    X'003'(R1),16
-2E72:         BC    14,X'0BC'(,R12)
+2E5E:         TM    IP$CONT5(R8),255             ANY CHANNEL STATUS?
+2E62:         BNZ   X'2F42'                      YES
+2E66:         TM    IP$CONT1(R8),BP$DVERR        UNIT CHECK?
+2E6A:         BO    X'0FC'(,R12)                 YES
+2E6E:         TM    IC$T+1(R1),BC$DIAG           DIAGNOSTIC CCB?
+2E72:         BNO   X'2EAC'                      NO
 2E76:         TM    X'006'(R8),7
 2E7A:         BC    8,X'0BC'(,R12)
 2E7E:         TM    X'363'(R12),2
@@ -2550,23 +2574,24 @@
 2EA0:         LA    3,X'0006'
 2EA4:         OI    X'01C'(R8),2
 2EA8:         BC    15,X'14A'(,R12)
-2EAC:         TM    X'006'(R8),16
-2EB0:         BC    8,X'16A'(,R12)
+2EAC:         TM    IP$CONT1(R8),BP$BUSY         BUSY?
+2EB0:         BZ    X'2F5A'                      NO
 2EB4:         CLI   X'363'(R12),7
 2EB8:         BC    8,X'334'(,R12)
 2EBC:         TM    X'003'(R1),2
 2EC0:         BC    1,X'0D8'(,R12)
 2EC4:         OI    X'00C'(R4),128
 2EC8:         LM    R2,R5,X'000'(,R4)
-2ECC:         TM    X'003'(R1),16
-2ED0:         BC    14,X'0F4'(,R12)
+2ECC:         TM    IC$T+1(R1),BC$DIAG           DIAGNOSTIC CCB?
+2ED0:         BNO   X'2EE4'                      NO
 2ED4:         LA    0,X'0014'
 2ED8:         MVI   X'004'(R1),0
      * DIAG14
 2EDC:         DIAG  X'0000',14
 2EE0:         STC   0,X'004'(,R1)
-2EE4:         LH    11,X'038C'
+2EE4:         LH    11,SB$ECOV                   GET PTR TO EXCP RTN.
 2EE8:         BC    15,X'1AC'(,R11)
+     *
 2EEC:         TM    X'003'(R1),16
 2EF0:         BC    8,X'136'(,R12)
 2EF4:         TM    X'363'(R12),2
@@ -2584,35 +2609,37 @@
 2F22:         BC    15,X'0DC'(,R12)
 2F26:         MVC   X'370'(16,R12),X'00F0'
 2F2C:         OI    X'01C'(R8),2
-2F30:         L     2,X'390'(,R12)
-2F34:         AR    R2,R1
+2F30:         L     2,X'390'(,R12)               R2 = 04000014 (SENSE CMD + OFFSET TO SENSE BYTES)
+2F34:         AR    R2,R1                        ADDR TO CCB ADDR (PTR TO SENSE BYTES)
 2F36:         SR    R3,R3
-2F38:         SR    R2,R7
-2F3A:         LM    R4,R5,X'008'(,R4)
-2F3E:         BC    15,X'0DC'(,R12)
+2F38:         SR    R2,R7                        SUBTRACT RELOC.
+2F3A:         LM    R4,R5,X'008'(,R4)            GET LAST 2 WORDS OF BCW
+2F3E:         BC    15,X'2ECC'
+     *
 2F42:         TM    X'003'(R1),16
 2F46:         BC    1,X'0FC'(,R12)
 2F4A:         MVC   X'37A'(1,R12),X'017'(R1)
 2F50:         LA    9,X'39C'(,R12)
 2F54:         LH    13,X'3A0'(,R12)
 2F58:         BCR   R15,R13
-2F5A:         TM    X'363'(R12),6
-2F5E:         BC    1,X'34C'(,R12)
-2F62:         L     2,X'368'(,R12)
+2F5A:         TM    X'3153',6                    CHECK SAVED IOC BITS
+2F5E:         BO    X'313C'                      THEY'RE SET
+2F62:         L     2,X'3158'
 2F66:         LR    R5,R2
-2F68:         TM    X'363'(R12),3
-2F6C:         BC    7,X'1AE'(,R12)
-2F70:         TM    X'00C'(R4),128
-2F74:         MVZ   X'00C'(1,R4),X'384'(R12)
-2F7A:         BC    1,X'28C'(,R12)
-2F7E:         TM    X'018'(R8),1
-2F82:         BC    1,X'212'(,R12)
-2F86:         TM    X'000'(R4),9
-2F8A:         BC    14,X'26C'(,R12)
-2F8E:         TM    X'018'(R8),2
-2F92:         BC    8,X'274'(,R12)
-2F96:         OI    X'01C'(R8),1
-2F9A:         BC    15,X'140'(,R12)
+2F68:         TM    X'3153',3                    CHECK SAVED IOC BITS
+2F6C:         BNZ   X'2F9E'                      SOME ARE SET
+2F70:         TM    IB$CYL(R4),128               CHECK BIT
+2F74:         MVZ   IB$CYL(1,R4),X'3174'         CLEAR UPPER 4 BITS 
+2F7A:         BO    X'307C'                      BIT WAS SET
+2F7E:         TM    IP$CONT3(R8),BP$ECC          ECC RECOVERY ACTIVE?
+2F82:         BO    X'3002'                      YES
+2F86:         TM    IB$COM(R4),X'09'             BCW CMD = SEARCH?
+2F8A:         BNO   X'305C'                      NO
+2F8E:         TM    IP$CONT3(R8),BK$SKSEP        SEEK SEPARATED?
+2F92:         BZ    X'3064'                      NO
+2F96:         OI    IP$CONT2(R8),BP$IO1          SET BIT
+2F9A:         BC    15,X'2F30'
+     *
 2F9E:         CLI   X'363'(R12),1
 2FA2:         BC    7,X'1C2'(,R12)
 2FA6:         TM    X'015'(R1),128
@@ -2665,7 +2692,7 @@
 3058:         NI    X'018'(R8),251
 305C:         TM    X'018'(R8),2
 3060:         BC    1,X'29E'(,R12)
-3064:         OI    X'018'(R8),2
+3064:         OI    IP$CONT3(R8),BP$SKSEP        SET SEEK SEPARATED
 3068:         CLI   X'00F0',8
 306C:         BC    8,X'0D8'(,R12)
 3070:         LH    9,X'010'(,R8)
@@ -3776,7 +3803,7 @@
               
 4188:         XC    X'060'(12,R12),X'060'(R12)   CLEAR IOSTIW BUFFER
 418E:         CLI   X'001B',0                    ANY IOST ERRORS?
-4192:         BC    8,X'014'(,R12)               NO
+4192:         BC    8,X'419C'                    NO
 4196:         LH    12,X'04C'(,R12)
 419A:         BALR  R13,R12
 419C:         LM    R1,R4,X'050'(,R12)
@@ -3786,7 +3813,7 @@
      * R4 POINTS TO END OF IOSTIW TABLE
 41A2:         TM    X'000'(R2),128               IOSTIW EMPTY?
 41A6:         BCR   R7,R13                       YES
-41A8:         MVC   X'000'(4,R1),X'000'(R2)
+41A8:         MVC   X'000'(4,R1),X'000'(R2)      COPY 1ST WORD OF STATUS TO 41E8
 41AE:         OI    X'000'(R2),128               RESET IOSTIW IN USE FLAG
 41B2:         LA    2,X'0004'(R2)                BUMP TO NEXT IOSTIW
 41B6:         CLR   R2,R4                        END OF TABLE
@@ -3895,12 +3922,13 @@
 4338:         OR    R12,R12
 433A:         LH    12,X'02EA'
 433E:         BALR  R13,R12
+     *
 4340:         BALR  R12,R0
-4342:         STH   8,X'048'(,R12)
-4346:         MVC   X'00F'(1,R12),X'002'(R8)
-434C:         LH    8,X'02A8'                    SB$RES?
-4350:         CLI   X'002'(R8),0
-4354:         BC    7,X'036'(,R12)
+4342:         STH   8,X'438A'                    SAVE PUB ADDR.
+4346:         MVC   X'4351'(1),X'002'(R8)        MODIFY INST @ 435 WITH CHAN #
+434C:         LH    8,X'02A8'                    GET PTR TO SYSRES PUB
+4350:         CLI   IP$CA(R8),0                  SYSRES ON CURRENT CHANNEL?
+4354:         BNE   X'4378'                      NO
 4358:         NC    X'008'(4,R8),X'008'(R8)
 435E:         BCR   R7,R15
 4360:         LH    13,X'010'(,R8)
@@ -3909,8 +3937,8 @@
 436E:         BC    8,X'2B2'(,R11)
 4372:         CH    8,X'048'(,R12)
 4376:         BCR   R8,R15
-4378:         LH    8,X'048'(,R12)
-437C:         LH    11,X'038C'
+4378:         LH    8,X'438A'                    RESTORE PUB ADDR
+437C:         LH    11,X'038C'                   GET EXCP ADDR.
 4380:         BC    15,X'1A2'(,R11)
 4384:         SUR   R8,R0
 4386:         DC    XL10'00000000000000000000'
@@ -4098,7 +4126,7 @@
 45EE:         LA    6,X'004'(,R6)                BUMP TO NEXT QUEUE
 45F2:         BC    15,X'4556'                   & LOOP
      *
-45F6:         NI    X'018'(R8),252
+45F6:         NI    X'018'(R8),252               CLEAR SEEK SEPARATED & ECC RECOVERY ACTOVE
 45FA:         L     4,X'00C'(,R1)
 45FE:         AR    R4,R7
 4600:         TM    X'002'(R8),4
@@ -4239,18 +4267,18 @@
 480A:         XC    IP$CCB(4,R8),IP$CCB(R8)      CLEAR CCB ADDR
 4810:         LH    9,IP$CA(,R8)                 GET CHANNEL AND DEVICE ADDR
 4814:         SIO   X'000'(R9),0
-4818:         BALR  R13,R0
-481A:         SRL   R13,X'0004'
-481E:         ST    13,X'152'(,R11)
-4822:         TM    X'003'(R1),16
-4826:         BC    8,X'20E'(,R11)
+4818:         BALR  R13,R0                       GET ADDR NEXT INST.
+481A:         SRL   R13,X'0004'                  R13 = R3 / 16
+481E:         ST    13,X'4784'                   SAVE IT
+4822:         TM    IC$T+1(R1),BC$DIAG           DIAGNOSTIC CCB?
+4826:         BC    8,X'4840'                    NO
 482A:         TM    X'01C'(R8),2
 482E:         BC    8,X'204'(,R11)
 4832:         BC    15,X'20E'(,R11)
 4836:         MVC   X'01E'(1,R1),X'152'(R11)
 483C:         NI    X'01E'(R1),3
-4840:         L     13,X'152'(,R11)
-4844:         SLL   R13,X'0004'
+4840:         L     13,X'4784'                   RESTORE R13
+4844:         SLL   R13,X'0004'                  R13 = R13 * 16
 4848:         SPM   R13,R0
 484A:         BALR  R0,R0
 484C:         BC    8,X'222'(,R11)
@@ -4318,7 +4346,7 @@
 492E:         DC    XL2'0000'
      * IOST INTERRUPT HANDLER                    
 4930:         MVC   X'024'(4,R14),X'0024'        SAVE WORD 1 OF OLD PSW TO TCB
-4936:         OI    X'02B6',160
+4936:         OI    SB$ERFLG,BB$IO+BB$TCB?
 493A:         BALR  R11,R0
 
               USING *,R11
@@ -4330,10 +4358,10 @@
 4948:         LH    15,X'4FD0'
 494C:         L     12,SB$CHINT                  MCP CPIOCS ENTRY ADDR
 4950:         LTR   R12,R12                      IS IT ZERO?
-4952:         BC    8,X'4958'                    YES
+4952:         BZ    X'4958'                      YES
 4956:         BALR  R13,R12
 4958:         LTR   R0,R0                        GET ADDR OF IOSTIW BUFFER
-495A:         BCR   R8,R15                       ZERO, QUIT
+495A:         BZR   R15                          ZERO, QUIT
 495C:         LR    R1,R0
 495E:         LH    2,X'000'(,R1)                GET CHANNEL & DEVICE #S
 4962:         LH    12,SB$PCOV                   GET ADDR PUB CONTROL COVER
@@ -4345,7 +4373,7 @@
 496E:         CLI   X'002'(R8),3                 CHANNEL # = 3?
 4972:         BC    7,X'4986'                    NO
 4976:         TM    X'002'(R1),12                DEVICE END/CHANNEL END?
-497A:         BC    11,X'4986'                   NO
+497A:         BC    11,X'4986'                   ALL ZERO OR ALL ONE
 497E:         CLI   X'00F0',8
 4982:         BC    7,X'06E'(,R11)
 4986:         TM    IP$TYP(R8),16                CHECK DEVICE TYPE
@@ -4529,7 +4557,7 @@
 4C26:         TM    IC$T+1(R1),BC$DIAG           DIAGNOSTIC CCB?
 4C2A:         BO    X'4C3E'                      YES
 4C2E:         TM    X'4FC0',255
-4C32:         BZ    X4C3E'
+4C32:         BZ    X'4C3E'
 4C36:         LA    12,X'302'(,R11)
 4C3A:         BC    15,X'63E'(,R11)
 4C3E:         NI    IP$CCB(R8),127               CLEAR BIT
@@ -4550,16 +4578,16 @@
 4C76:         LH    R12,IP$EPI(,R8)              GET ADDR OF CHANNEL INTERRUPT               
 4C7A:         BMR   R12
 4C7C:         LR    R2,R0
-4C7E:         MVC   X'01A'(1,R1),X'002'(R2)
-4C84:         OC    X'01B'(1,R1),X'003'(R2)
-4C8A:         TM    X'00C'(R8),16
-4C8E:         BC    8,X'366'(,R11)
+4C7E:         MVC   IP$SF(1,R1),X'002'(R2)       COPY DVC STATUS TO CCB
+4C84:         OC    IP$SF+1(1,R1),X'003'(R2)     ADD CHAN STATUS TO CCB
+4C8A:         TM    X'00C'(R8),16                CHECK DEVICE TYPE
+4C8E:         BZ    X'4CA2'
 4C92:         LH    12,X'037C'
 4C96:         TM    X'02B5',1
 4C9A:         BC    8,X'366'(,R11)
 4C9E:         SR    R13,R13
 4CA0:         BALR  R13,R12
-4CA2:         LH    12,X'016'(,R8)
+4CA2:         LH    12,IP$EPI(,R8)               GET ENTRY FOR CHANNEL INTERRUPT
 4CA6:         BCR   R15,R12
 4CA8:         STC   6,X'002'(,R1)
 4CAC:         CH    0,X'560'(,R11)
@@ -4711,15 +4739,17 @@
 4EDC:         EX    0,X'3E2'(,R11)
 4EE0:         BC    15,X'294'(,R11)
 4EE4:         DC    XL2'0003'
-4EE6:         TM    X'002'(R8),3
-4EEA:         BC    1,X'33A'(,R11)
-4EEE:         NI    X'01D'(R8),191
-4EF2:         TM    X'684'(R11),255
-4EF6:         BC    8,X'5C6'(,R11)
+     * STATUS PRESENTED FOR PUB WITH NO ACTIVE CCB
+     
+4EE6:         TM    IP$CA(R8),3                  CHANNEL 3?
+4EEA:         BO    X'4C76'                      YES
+4EEE:         NI    IP$CONT4(R8),191             CLEAR FLAGS
+4EF2:         TM    X'4FC0',255
+4EF6:         BZ    X'4F02'
 4EFA:         LA    12,X'5C6'(,R11)
 4EFE:         BC    15,X'63E'(,R11)
-4F02:         TM    X'006'(R8),2
-4F06:         BC    8,X'5FC'(,R11)
+4F02:         TM    IP$CONT1(R8),BP$DVERR        UNIT CHECK?
+4F06:         BZ    X'4F38'                      NO
 4F0A:         TM    X'002'(R8),4
 4F0E:         BC    8,X'5FC'(,R11)
 4F12:         MVC   X'00A0'(4),X'5EC'(R11)
@@ -4732,21 +4762,24 @@
 4F30:         SPM   R0,R0
 4F32:         CVB   2,X'000'(R4,R2)
 4F36:         DC    XL2'0002'
-4F38:         TM    X'006'(R8),32
-4F3C:         BC    1,X'294'(,R11)
-4F40:         TM    X'006'(R8),128
-4F44:         BC    14,X'294'(,R11)
-4F48:         CLI   X'00C'(R8),0
-4F4C:         BC    8,X'2E6'(,R11)
-4F50:         TM    X'02B8',4
-4F54:         BCR   R1,R15
-4F56:         AI    X'002'(R8),0
-4F5A:         BC    7,X'636'(,R11)
-4F5E:         OI    X'02F4',128
-4F62:         L     12,X'02D0'
-4F66:         NI    X'005'(R12),247
-4F6A:         LH    12,X'0390'
+4F38:         TM    IP$CONT1(R8),BP$CUEND        CONTROL UNIT END?
+4F3C:         BO    X'4BD0'                      YES
+4F40:         TM    IP$CONT1(R8),BP$ATTN         ATTENTION?
+4F44:         BNO   X'4BD0'                      NO
+     * PROCESS ATTENTION INTERRUPTS
+     
+4F48:         CLI   IP$TYP(R8),0                 DEVICE TYPE = 0?
+4F4C:         BE    X'4C50'                      YES  
+4F50:         TM    SB$FLG,BB$NOATN              ATTENTION NOT ALLOWED?
+4F54:         BOR   R15                          YES
+4F56:         AI    X'002'(R8),0                 CONSOLE?
+4F5A:         BC    7,X'636'(,R11)               NO
+4F5E:         OI    SB$SOI1,BB$SOCAI             SET CONSOLE ATTN RECVD FLAG
+4F62:         L     12,SB$SOS                    GET ADDR OF SOS TCB
+4F66:         NI    JT$WAIT+1(R12),247           CLEAR THE YIELD BIT
+4F6A:         LH    12,SB$MCOV                   COMMON ERROR PROCESSOR ADDR
 4F6E:         BC    15,X'140'(,R12)
+     *
 4F72:         OI    X'02F4',2
 4F76:         BC    15,X'626'(,R11)
 4F7A:         LA    2,X'0FF0'

@@ -138,11 +138,12 @@ end;
 
 procedure TU92CPU.BAL(fal: Byte; fad1, fad2: Smallint);
 var
-    reg: Smallint;
+    reg, addr: Smallint;
 begin
     reg := GetRegister(fal);
-    FMemory.R[FState, reg] := FMemory.FAP[FState];
+    addr := FMemory.FAP[FState];
     FMemory.FAP[FState] := GetAddress(fad1);
+    FMemory.R[FState, reg] := addr;
 end;
 
 procedure TU92CPU.BC(fal: Byte; fad1, fad2: Smallint);

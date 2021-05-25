@@ -95,6 +95,8 @@ type
     procedure DoSearchEQ;
     procedure DoSeek;
     procedure DoSense;
+    procedure DoWrite;
+    function FetchBuffer(bfr: PByte; len: Integer): Boolean;
     function MakeStatus(dstat, cstat: Byte): TStatus;
     procedure NotImplemented;
     procedure ProcessCommand; override;
@@ -111,7 +113,6 @@ type
     procedure DeviceBusy(dvc: Byte);
     procedure DoSense(dvc: Byte);
     procedure CommandReject(dvc: Byte);
-    procedure IllegalDevice(dvc: Byte);
   public
     constructor Create(chan: Byte); override;
     destructor Destroy; override;
@@ -121,7 +122,7 @@ type
 
 implementation
 
-uses Memory, Globals;
+uses Math, Memory, Globals;
 
 { TIDA }
 
@@ -192,19 +193,6 @@ begin
     Exit;
 end;
 
-procedure TIDA.IllegalDevice(dvc: Byte);
-var
-    stat: TStatus;
-begin
-    stat := TStatus.Create;
-    stat.Device := dvc;
-    stat.Length := 1;
-    stat.ChannelNum := FChannelNum;
-    stat.DeviceNum := dvc;
-    stat.DeviceStatus := IDA_CHANNEL_END or IDA_UNIT_CHECK;
-    QueueStatus(stat);
-end;
-
 procedure TIDA.QueueStatus(stat: TStatus);
 begin
     if ((stat.DeviceStatus and IDA_CHANNEL_END) <> 0) then
@@ -233,6 +221,8 @@ begin
         Result := inherited SIO(addr);
         Exit;
     end;
+
+    TraceSIO(dvcNum);
 
     if (dvc.Busy and (FBCW.Command <> IDA_SENSE) and (FBCW.Command <> IDA_DIAG)) then
     begin
@@ -270,6 +260,8 @@ end;
 procedure TIDADisk.ClearSense;
 begin
     FillChar(FSense, SizeOf(FSense), 0);
+    if (FDiskType = it8418) then
+        FSense[1] := IDA_SENSE_HIGH_DENSITY;
 end;
 
 constructor TIDADisk.Create(num: Byte; typ: TIDAType; fname: String);
@@ -322,16 +314,19 @@ begin
             if (not StoreBuffer(@bfr, 256)) then
                 Exit;
         Dec(FBCW.Count);
-        Inc(FRecord);
-        if (FRecord > 40) then
+        if (FBCW.Count > 0) then
         begin
-            FRecord := 1;
-            Inc(Fhead);
-            if (Fhead > 6) then
+            Inc(FRecord);
+            if (FRecord > 40) then
             begin
-                FSense[1] := IDA_SENSE_CYLINDER_END;
-                FChannel.QueueStatus(MakeStatus(IDA_CHANNEL_END or IDA_UNIT_CHECK, 0));
-                Exit;
+                FRecord := 1;
+                Inc(Fhead);
+                if (Fhead > 6) then
+                begin
+                    FSense[1] := IDA_SENSE_CYLINDER_END;
+                    FChannel.QueueStatus(MakeStatus(IDA_CHANNEL_END or IDA_UNIT_CHECK, 0));
+                    Exit;
+                end;
             end;
         end;
         FSense[3] := FHead;
@@ -446,8 +441,82 @@ end;
 
 procedure TIDADisk.DoSense;
 begin
-    if (StoreBuffer(@FSense, 4)) then
+    if (StoreBuffer(@FSense, 5)) then
         FChannel.QueueStatus(MakeStatus(IDA_DEVICE_END or IDA_CHANNEL_END, 0));
+end;
+
+procedure TIDADisk.DoWrite;
+var
+    bfr: array [0..255] of Byte;
+begin
+    ClearSense;
+    FCylinder := FBCW.Cylinder;
+    FHead := FBCW.Head;
+    FRecord := FBCW.RecordNum;
+    FSense[3] := FHead;
+    FSense[4] := FRecord;
+    while (FBCW.Count > 0) do
+    begin
+        if (not FetchBuffer(@bfr, 256)) then
+            Exit;
+        try
+            FDisk.SeekSector(FCylinder, FHead, FRecord);
+        except
+            FSense[0] := IDA_SENSE_CMD_REJECT;
+            FSense[1] := IDA_SENSE_NOT_FOUND;
+            FChannel.QueueStatus(MakeStatus(IDA_CHANNEL_END or IDA_UNIT_CHECK, 0));
+            Exit;
+        end;
+        try
+            FDisk.WriteSector(FCylinder, FHead, FRecord, @bfr);
+        except
+            FSense[0] := IDA_SENSE_DATA_CHECK;
+            FSense[1] := IDA_SENSE_DATA_FIELD_CHECK;
+            FChannel.QueueStatus(MakeStatus(IDA_CHANNEL_END or IDA_UNIT_CHECK, 0));
+            Exit;
+        end;
+        Dec(FBCW.Count);
+        if (FBCW.Count > 0) then
+        begin
+            Inc(FRecord);
+            if (FRecord > 40) then
+            begin
+                FRecord := 1;
+                Inc(Fhead);
+                if (Fhead > 6) then
+                begin
+                    FSense[1] := IDA_SENSE_CYLINDER_END;
+                    FChannel.QueueStatus(MakeStatus(IDA_CHANNEL_END or IDA_UNIT_CHECK, 0));
+                    Exit;
+                end;
+            end;
+        end;
+        FSense[3] := FHead;
+        FSense[4] := FRecord;
+    end;
+    FChannel.QueueStatus(MakeStatus(IDA_CHANNEL_END or IDA_DEVICE_END, 0));
+end;
+
+function TIDADisk.FetchBuffer(bfr: PByte; len: Integer): Boolean;
+var
+    i: Integer;
+    addr: TMemoryAddress;
+begin
+    Result := True;
+    addr := FBCW.Address;
+    for i := 0 to len - 1 do
+    begin
+        try
+            (bfr + i)^ := Core.FetchByte(FBCW.Key, addr);
+        except
+            Result := False;
+            Inc(FBCW.Address, i);
+            FChannel.QueueStatus(MakeStatus(IDA_CHANNEL_END or IDA_UNIT_CHECK, IDA_INVALID_ADDRESS));
+            Exit;
+        end;
+        Inc(addr);
+    end;
+    Inc(FBCW.Address, len);
 end;
 
 function TIDADisk.MakeStatus(dstat, cstat: Byte): TStatus;
@@ -472,7 +541,7 @@ begin
         FCylinder := 0;
     case FBCW.Command of
       IDA_FORMAT_WRITE:     NotImplemented;
-      IDA_WRITE:            NotImplemented;
+      IDA_WRITE:            DoWrite;
       IDA_SEARCH_EQ:        DoSearchEQ;
       IDA_SEARCH_GE:        NotImplemented;
       IDA_READ_ID:          NotImplemented;
@@ -510,7 +579,7 @@ begin
     for i := 0 to len - 1 do
     begin
         try
-            Core.StoreByte(0, addr, (bfr + i)^);
+            Core.StoreByte(FBCW.Key, addr, (bfr + i)^);
         except
             Result := False;
             Inc(FBCW.Address, i);
