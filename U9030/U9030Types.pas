@@ -3,7 +3,8 @@ unit U9030Types;
 interface
 
 uses Windows, WinApi.SHFolder, Messages, SysUtils, Classes, Generics.Collections,
-     Generics.Defaults, Forms;
+     Generics.Defaults, Forms,
+     EmulatorTypes;
 
 type
   EMachineCheck = class(Exception)
@@ -114,6 +115,7 @@ type
     property Opcodes[op: Byte]: TOpcode read GetOpcode; default;
   end;
 
+  function DataDir: String;
   function Opcode(op, length: Byte;
                   proc: TOpcodeProc;
                   code: String = '';
@@ -122,6 +124,13 @@ type
   function WinError: String;
 
 implementation
+
+function DataDir: String;
+begin
+    Result := UserDataDir + '\U9030';
+    if (not DirectoryExists(Result)) then
+        ForceDirectories(Result);
+end;
 
 function Opcode(op, length: Byte;
                 proc: TOpcodeProc;

@@ -323,6 +323,21 @@ object U9030Form: TU9030Form
       Height = 14
       Caption = 'REL'
     end
+    object Bevel1: TBevel
+      Left = 12
+      Top = 114
+      Width = 307
+      Height = 49
+      Shape = bsFrame
+    end
+    object Label39: TLabel
+      Left = 18
+      Top = 106
+      Width = 49
+      Height = 14
+      Caption = 'PRINTER'
+      Transparent = False
+    end
     object PSWEdt: TEdit
       Left = 46
       Top = 22
@@ -568,18 +583,41 @@ object U9030Form: TU9030Form
       Height = 22
       TabOrder = 34
     end
+    object PrtBrkptBtn: TButton
+      Left = 18
+      Top = 130
+      Width = 75
+      Height = 25
+      Caption = 'Brkpt'
+      TabOrder = 35
+    end
+    object PrtFileNameEdt: TEdit
+      Left = 95
+      Top = 131
+      Width = 187
+      Height = 22
+      TabOrder = 36
+    end
+    object PrtBrowseBtn: TButton
+      Left = 284
+      Top = 130
+      Width = 26
+      Height = 25
+      Caption = '...'
+      TabOrder = 37
+    end
   end
-  object Button1: TButton
-    Left = 468
-    Top = 462
+  object CpuTestBtn: TButton
+    Left = 421
+    Top = 501
     Width = 75
     Height = 25
-    Caption = 'Test'
+    Caption = 'CPU Test'
     TabOrder = 0
-    OnClick = Button1Click
+    OnClick = CpuTestBtnClick
   end
   object BootBtn: TButton
-    Left = 2
+    Left = 0
     Top = 501
     Width = 75
     Height = 25

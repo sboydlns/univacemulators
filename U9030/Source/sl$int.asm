@@ -293,6 +293,7 @@
 04B0:         MVC   X'BB6'(8,R14),X'0038'
 04B6:         MVC   X'0038'(8),X'BBE'(R14)
      * LOOPING THROUGH PUB TABLE ISSUING SENSE COMMAND TO EACH DEVICE
+     
 04BC:         STH   10,X'BB2'(,R14)              SAVE PUB ADDRESS
 04C0:         TM    IP$ALC(R10),BP$JOB0          PUB ALLOC TO SUPERVISOR?
 04C4:         BZ    X'84CC'                      NO
@@ -366,8 +367,8 @@
 05CC:         MVI   X'00D'(R10),2
 05D0:         NI    X'00F'(R10),251
 05D4:         BC    15,X'A9A'(,R14)
-05D8:         OI    X'01C'(R10),64
-05DC:         NI    X'006'(R10),127
+05D8:         OI    IP$CONT2(R10),BP$NOAVL       SET DEVICE NOT AVAILABLE
+05DC:         NI    IP$CONT1(R10),127            CLEAR BP$ATTN
 05E0:         NI    X'B13'(R14),127
 05E4:         CLI   IP$TYP(R10),4                CHECK DEVICE TYPE
 05E8:         BNZ   X'8654'

@@ -141,9 +141,9 @@ begin
     if (key <> 0) then
     begin
         skey := FetchStorageKey(addr);
-        readProtect := (skey and $10) <> 0;
-        skey := skey shr 5;
-        if ((key <> skey) or readProtect) then
+        readProtect := (skey and $08) <> 0;
+        skey := skey shr 4;
+        if ((key <> skey) and readProtect) then
             raise EProtectionException.Create('Read protection exception');
     end;
 end;
@@ -158,7 +158,7 @@ begin
         raise EAddressException.Create('Memory address exceeds installed memory');
     if (key <> 0) then
     begin
-        skey := FetchStorageKey(addr) shr 5;
+        skey := FetchStorageKey(addr) shr 4;
         if (key <> skey) then
             raise EProtectionException.Create('Write protection exception');
     end;
@@ -244,6 +244,8 @@ begin
         if (i = len) then
         begin
             Result.Fraction[i] := b and $F0;
+            if (b <= 9) then
+                raise EDataException.Create('Invalid decimal sign');
             if (PackedSign(b) < 0) then
                 Result.SignSpecialPlaces := Result.SignSpecialPlaces or $80;
             if ((b and $F0) > $90) then

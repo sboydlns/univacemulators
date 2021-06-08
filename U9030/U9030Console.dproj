@@ -85,6 +85,7 @@
 				<FormType>dfm</FormType>
 			</DCCReference>
 			<DCCReference Include="..\Uniscope\Uniscope.pas"/>
+			<DCCReference Include="..\Common\EmulatorTypes.pas"/>
 			<BuildConfiguration Include="Release">
 				<Key>Cfg_2</Key>
 				<CfgParent>Base</CfgParent>

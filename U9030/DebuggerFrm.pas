@@ -37,6 +37,7 @@ type
     Label4: TLabel;
     Label5: TLabel;
     CondCodeLbl: TLabel;
+    RelRegLbl: TLabel;
     procedure FormShow(Sender: TObject);
     procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
     procedure CommandEdtKeyPress(Sender: TObject; var Key: Char);
@@ -76,6 +77,7 @@ var
     cmd: String;
     addr, addr2: Integer;
     i: Integer;
+    absAddr: TMemoryAddress;
 begin
     Key := UpCase(Key);
     case Key of
@@ -113,21 +115,28 @@ begin
         begin
             if (addr <> -1) then
             begin
-                i := FBreakPoints.IndexOf(addr);
+                absAddr := addr + Processor.RelocateReg;
+                if ((addr2 >= 0) and (addr2 <= 15)) then
+                    absAddr := absAddr + Processor.Registers[PSW.RegisterSet, addr2];
+                i := FBreakPoints.IndexOf(absAddr);
                 if (i = -1) then
-                    FBreakPoints.Add(TMemoryAddress(addr))
+                    FBreakPoints.Add(TMemoryAddress(absAddr))
                 else
                     FBreakPoints.Delete(i);
                 CommandEdt.Clear;
-            end;
+            end else
+                raise Exception.Create('Command invalid');
         end else if (cmd = 'D') then
         begin
             if (addr <> -1) then
             begin
-                FDumpAddr := TMemoryAddress(addr);
+                FDumpAddr := addr + Processor.RelocateReg;
+                if ((addr2 >= 0) and (addr2 <= 15)) then
+                    FDumpAddr := FDumpAddr + Processor.Registers[PSW.RegisterSet, addr2];
                 Dump(FDumpAddr);
                 CommandEdt.Clear;
-            end;
+            end else
+                raise Exception.Create('Command invalid');
         end else if (cmd = 'SD') then
         begin
             SysDump(TMemoryAddress(addr), TMemoryAddress(addr2));
@@ -268,6 +277,7 @@ begin
     TimerBox.Checked := PSW.TimerIntEnabled;
     IOBox.Checked := PSW.IOSTIntEnabled;
     CondCodeLbl.Caption := Format('Cond. Code = %d', [PSW.CondCode]);
+    RelRegLbl.Caption := Format('Rel. Reg = %6.6x', [Processor.RelocateReg]);
 
     for i := 1 to TraceGrid.RowCount - 1 do
     begin

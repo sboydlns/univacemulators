@@ -69,7 +69,7 @@ end;
 
 function TIPCBCW.GetActvAddress: TMemoryAddress;
 begin
-    Result := Core.FetchWord(0, FBCWAddress) and $3ffff;
+    Result := Core.FetchWord(0, FBCWAddress) and $7ffff;
 end;
 
 function TIPCBCW.GetActvChain: Boolean;
@@ -80,8 +80,6 @@ end;
 function TIPCBCW.GetActvCount: THalfWord;
 begin
     Result := Core.FetchHalfWord(0, FBCWAddress + 6) and $3ff;
-    if (Result = 0) then
-        Result := 1024;
 end;
 
 function TIPCBCW.GetActvKey: Byte;
@@ -106,7 +104,7 @@ end;
 
 function TIPCBCW.GetReplAddress: TMemoryAddress;
 begin
-    Result := Core.FetchWord(0, FBCWAddress + 8) and $3ffff;
+    Result := Core.FetchWord(0, FBCWAddress + 8) and $7ffff;
 end;
 
 function TIPCBCW.GetReplChain: Boolean;
@@ -134,7 +132,7 @@ var
     w: TWord;
 begin
     w := Core.FetchWord(0, FBCWAddress);
-    Core.StoreWord(0, FBCWAddress, (w and (not $3ffff)) or (TWord(Value) and $3ffff));
+    Core.StoreWord(0, FBCWAddress, (w and (not $7ffff)) or (TWord(Value) and $7ffff));
 end;
 
 procedure TIPCBCW.SetActvCount(const Value: THalfWord);
@@ -162,7 +160,7 @@ var
     w: TWord;
 begin
     w := Core.FetchWord(0, FBCWAddress + 8);
-    Core.StoreWord(0, FBCWAddress + 8, (w and (not $3ffff)) or (TWord(Value) and $3ffff));
+    Core.StoreWord(0, FBCWAddress + 8, (w and (not $7ffff)) or (TWord(Value) and $7ffff));
 end;
 
 procedure TIPCBCW.SetReplCount(const Value: THalfWord);

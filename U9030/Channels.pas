@@ -32,15 +32,6 @@ const
   CONTROL_CHECK = $02;
 
 type
-  TIOTraceFile = class(TFileStream)
-  private
-    FLock: TCriticalSection;
-  public
-    constructor Create(const AFileName: string; Mode: Word); reintroduce;
-    destructor Destroy; override;
-    function Write(const Buffer; Count: Longint): Longint; override;
-  end;
-
   TChannel = class;
 
   TBCW = class
@@ -133,13 +124,9 @@ type
     property Channel[chan: Integer]: TChannel read GetChannel write SetChannel;
   end;
 
-var
-  IOTraceFile: TIOTraceFile;
-  IOTraceEnabled: Boolean;
-
 implementation
 
-uses Dialogs, Globals, Memory, EmulatorTypes;
+uses Dialogs, Globals, Memory, EmulatorTypes, Trace;
 { TChannelList }
 
 constructor TChannelList.Create;
@@ -311,7 +298,7 @@ function TChannel.SIO(addr: TWord): Byte;
 // This default SIO method is only invoked for channels or devices that don't
 // have an implementation. It checks the command code in the BCW. If it
 // is a sense command we post reply with CHANNEL_END / DEVICE_END with
-// sense bytes of CMD_REJECT.
+// channel status of $ff and sense byte 0 of $ff.
 //
 // Otherwise we set the condition code to 3 and post CHANNEL_END / UNIT_CHECK.
 var
@@ -340,7 +327,7 @@ begin
         begin
             // If sense command, return CMD_REJECT
             bfr := bcw.Address;
-            Core.StoreByte(bcw.Key, bfr, SENSE_CMD_REJECT);
+            Core.StoreByte(bcw.Key, bfr, $ff);
             Inc(bfr, 1);
             count := bcw.Count - 1;
             while (count > 0) do
@@ -350,6 +337,7 @@ begin
                 Dec(count);
             end;
             stat.DeviceStatus := CHANNEL_END or DEVICE_END;
+            stat.ChannelStatus := $ff;
             QueueStatus(stat);
             Result := 0;
         end else
@@ -394,9 +382,9 @@ begin
                         bfr := AnsiString(Format('%s%2.2x', [bfr, b]));
                         text := text + TCodeTranslator.EbcdicToAscii(b);
                     end;
-                    bfr := bfr + #13#10;
+                    bfr := bfr + AnsiString(#13#10);
                     IOTraceFile.Write(PAnsiChar(bfr)^, Length(bfr));
-                    text := text + #13#10;
+                    text := text + AnsiString(#13#10);
                     IOTraceFile.Write(PAnsiChar(text)^, Length(text));
                 end;
             end;
@@ -517,41 +505,5 @@ begin
     Cylinder := (w shr 16) and $fff;
     RecordNum := (w shr 8) and $ff;
 end;
-
-{ TIOTraceFile }
-
-constructor TIOTraceFile.Create(const AFileName: string; Mode: Word);
-begin
-    inherited;
-    FLock := TCriticalSection.Create;
-end;
-
-destructor TIOTraceFile.Destroy;
-begin
-    FreeAndNil(FLock);
-    inherited;
-end;
-
-function TIOTraceFile.Write(const Buffer; Count: Integer): Longint;
-begin
-    if (IOTraceEnabled) then
-    begin
-        FLock.Acquire;
-        try
-            Result := inherited;
-        finally
-            FLock.Release;
-        end;
-    end;
-end;
-
-initialization
-
-    IOTraceFile := TIOTraceFile.Create(UserDataDir + '\U9030IO.trc', fmCreate);
-    IOTraceEnabled := False;
-
-finalization
-
-    FreeAndNil(IOTraceFile);
 
 end.

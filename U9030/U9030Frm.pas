@@ -8,7 +8,7 @@ uses
 
 type
   TU9030Form = class(TForm)
-    Button1: TButton;
+    CpuTestBtn: TButton;
     Panel: TPanel;
     Label1: TLabel;
     PSWEdt: TEdit;
@@ -92,7 +92,11 @@ type
     RelRegEdt: TEdit;
     DebugBtn: TButton;
     DisableTimerBox: TCheckBox;
-    procedure Button1Click(Sender: TObject);
+    Bevel1: TBevel;
+    Label39: TLabel;
+    PrtBrkptBtn: TButton;
+    PrtFileNameEdt: TEdit;
+    PrtBrowseBtn: TButton;
     procedure TimerTimer(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure StopBtnClick(Sender: TObject);
@@ -102,14 +106,10 @@ type
     procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
     procedure DebugBtnClick(Sender: TObject);
     procedure DisableTimerBoxClick(Sender: TObject);
+    procedure CpuTestBtnClick(Sender: TObject);
   private
     FConsoleStarted: Boolean;
     function Hex(s: String): Integer;
-    procedure IDATest;
-    procedure InstTest;
-    procedure IOSTTest;
-    procedure MemTest;
-    procedure PSWTest;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -122,7 +122,8 @@ implementation
 
 {$R *.dfm}
 
-uses DebuggerFrm, U9030Types, Globals, Channels, Cpu, Memory, IDA, IPC, Console;
+uses DebuggerFrm, U9030Types, Globals, Channels, Cpu, Memory, IDA, IPC, Console, Trace,
+     U0773, CpuTestFrm;
 
 var
     Cons: TConsole;
@@ -161,13 +162,9 @@ begin
     Processor.Run;                                  // GO 4 IT!!!!!
 end;
 
-procedure TU9030Form.Button1Click(Sender: TObject);
+procedure TU9030Form.CpuTestBtnClick(Sender: TObject);
 begin
-    IDATest;
-//    InstTest;
-//    IOSTTest;
-//    MemTest;
-//    PSWTest;
+    CpuTestForm.ShowModal;
 end;
 
 constructor TU9030Form.Create(AOwner: TComponent);
@@ -175,6 +172,7 @@ begin
     inherited;
 
     IOTraceEnabled := True;
+    SvcTraceEnabled := True;
 
     Opcodes := TOpcodeList.Create;
     Core := TMemory.Create;
@@ -186,6 +184,7 @@ begin
     Adapters.Channel[0] := TIPC.Create(0);
     Cons := TConsole.Create(0);
     Adapters.Channel[0].AddDevice(Cons);
+    Adapters.Channel[0].AddDevice(T0773.Create(2));
 
     Adapters.Channel[1] := TChannel.Create(1);
 
@@ -254,124 +253,6 @@ begin
         else
             raise Exception.Create('Invalid hex digit in device address');
     end;
-end;
-
-procedure TU9030Form.IDATest;
-// Test ability to boot from IDA disk
-const
-// BCW to read first 2 sectors to address zero
-    bcw: array [0..15] of Byte = (
-      2, 0, 0, 0,
-      0, 0, 0, 2,
-      0, 0, 0, 0,
-      0, 0, 1, 0
-    );
-begin
-    Core.Copy(@bcw, $f0, 16);                       // copy BCW to low mem
-    Adapters.Channel[3].SIO($300);                  // Issue read to dev 300
-    while (not Adapters.Channel[3].IntPending) do   // wait for I/O to complete
-        Sleep(100);
-    PSW.IOSTIntEnabled := True;                     // enabled IOST interrupts
-    Processor.Run;                                  // GO 4 IT!!!!!
-end;
-
-procedure TU9030Form.InstTest;
-begin
-    Core.StoreByte(0, 0, $47);                      // set up uncondition branch @ $00;
-    Core.StoreByte(0, 1, $F0);
-    Core.StoreByte(0, 2, $12);
-    Core.StoreByte(0, 3, $34);
-    Processor.Run;
-end;
-
-procedure TU9030Form.IOSTTest;
-var
-    chan: TChannel;
-    stat: TStatus;
-    i: Integer;
-begin
-    if (not Assigned(Adapters.Channel[0])) then
-        Adapters.Channel[0] := TChannel.Create(0);
-    chan := Adapters.Channel[0];
-    stat := TStatus.Create;
-    for i := 0 to 15 do
-        stat.Status[i] := i;
-    stat.Length := 4;
-    chan.QueueStatus(stat);
-    // Test IOST suspend when status table full (not initialized)
-    Processor.Run;
-    Processor.Run;
-    Processor.IOST.Resume;
-    // Test IOST with valid status table
-    TIOSTCW.Key := 0;
-    TIOSTCW.Address := 0;
-    TIOSTCW.ActiveCount := 4;
-    TIOSTCW.ReplCount := 4;
-    TIOSTCW.ReplAddr := 0;
-    Core.StoreByte(0, 0, $80);
-    Core.StoreByte(0, 4, $80);
-    Core.StoreByte(0, 8, $80);
-    Core.StoreByte(0, 12, $80);
-    Processor.IOST.Resume;
-end;
-
-procedure TU9030Form.MemTest;
-var
-    b1, b2: Byte;
-    hw1, hw2: THalfWord;
-    w1, w2: TWord;
-    dw1, dw2: TDblWord;
-begin
-    b1 := $12;
-    hw1 := $1234;
-    w1 := $12345678;
-    dw1 := $123456789abcdef0;
-    Core.StoreByte(0, 0, $12);
-    Core.StoreByte(0, 2, $12);
-    Core.StoreByte(0, 3, $34);
-    Core.StoreByte(0, 4, $12);
-    Core.StoreByte(0, 5, $34);
-    Core.StoreByte(0, 6, $56);
-    Core.StoreByte(0, 7, $78);
-    Core.StoreByte(0, 8, $12);
-    Core.StoreByte(0, 9, $34);
-    Core.StoreByte(0, 10, $56);
-    Core.StoreByte(0, 11, $78);
-    Core.StoreByte(0, 12, $9a);
-    Core.StoreByte(0, 13, $bc);
-    Core.StoreByte(0, 14, $de);
-    Core.StoreByte(0, 15, $f0);
-    b2 := Core.FetchByte(0, 0);
-    hw2 := Core.FetchHalfWord(0, 2);
-    w2 := Core.FetchWord(0, 4);
-    dw2 := Core.FetchDblWord(0, 8);
-end;
-
-procedure TU9030Form.PSWTest;
-var
-    psw1, psw2: TDblWord;
-begin
-    PSW.TimerIntEnabled := True;
-    PSW.IOSTIntEnabled := True;
-    PSW.Key := 7;
-    PSW.Ascii := True;
-    PSW.RegisterSet := rsProgram;
-    PSW.Mode := pmProgram;
-    PSW.Emulation := emNative;
-    PSW.MonitorMode := False;
-    PSW.IntCode := $12;
-    PSW.InstLength := 2;
-    PSW.CondCode := 3;
-    PSW.FixedOvflExcp := True;
-    PSW.DecOvflExcp := True;
-    PSW.CharacteristicOvflExcp := True;
-    PSW.SignificantExcp := True;
-    PSW.InstAddr := $1234;
-    psw1 := PSW.AsDblWord;
-    ShowMessageFmt('%16.16x', [psw1]);
-    PSW.AsDblWord := psw1;
-    psw2 := PSW.AsDblWord;
-    ShowMessageFmt('%16.16x', [psw2]);
 end;
 
 procedure TU9030Form.RunBtnClick(Sender: TObject);

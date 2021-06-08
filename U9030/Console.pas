@@ -15,13 +15,6 @@ const
   CONS_DIAG = $80;
   CONS_LOCK_KBD = $40;
   CONS_PRINT = $20;
-  // Console sense byte 0
-  CONS_CMD_REJECT = $80;
-  CONS_INTERVENTION = $40;
-  CONS_BUS_OUT_CHECK = $20;
-  CONS_EQUIP_CHECK = $10;
-  CONS_DATA_CHECK = $08;
-  CONS_OVERRUN = $04;
   // Console sense byte 1
   CONS_POWER_OFF = $80;
   CONS_COP_NO_RESP = $40;
@@ -170,6 +163,9 @@ begin
 
     if (FBCW.ActvChain) then
         raise Exception.Create('Data chaining not supported');
+    if (FBCW.ActvCount = 0) then
+        FBCW.ActvCount := 1024;
+
     translate := (FCommand and CONS_TRANSLATE) = 0;
     // Wait for any input from the console process
     while ((not Terminated) and (FInputBfr.Count = 0)) do
@@ -196,8 +192,6 @@ begin
 end;
 
 procedure TConsole.DoTimer;
-var
-    msgWait: AnsiString;
 begin
     FInputBfrLock.Acquire;
     try
@@ -231,6 +225,9 @@ begin
 
     if (FBCW.ActvChain) then
         raise Exception.Create('Data chaining not supported');
+    if (FBCW.ActvCount = 0) then
+        FBCW.ActvCount := 1024;
+
     translate := (FCommand and CONS_TRANSLATE) = 0;
     addr := FBCW.ActvAddress;
     count := FBCW.ActvCount;
@@ -266,7 +263,7 @@ end;
 procedure TConsole.NotConnected;
 begin
     ClearSense;
-    FSense[0] := CONS_INTERVENTION;
+    FSense[0] := SENSE_INTERVENTION;
     FSense[1] := CONS_POWER_OFF;
     FChannel.QueueStatus(MakeStatus(UNIT_CHECK, 0));
 end;
@@ -302,7 +299,7 @@ end;
 function TConsole.StoreBuffer(bfr: PByte; len: Integer): Boolean;
 begin
     Result := True;
-    while ((len > 0) and (FBCW.ActvCount > 0)) do
+    while ((len > 0) and (FBCW.ActvCount <> 0)) do
     begin
         try
             Core.StoreByte(FBCW.ActvKey, FBCW.ActvAddress, bfr^);

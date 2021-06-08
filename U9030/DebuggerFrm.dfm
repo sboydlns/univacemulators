@@ -87,6 +87,13 @@ object DebuggerForm: TDebuggerForm
     Height = 13
     Caption = 'Cond. Code'
   end
+  object RelRegLbl: TLabel
+    Left = 99
+    Top = 109
+    Width = 41
+    Height = 13
+    Caption = 'Rel. Reg'
+  end
   object SuperBox: TCheckBox
     Left = 11
     Top = 34
@@ -112,7 +119,7 @@ object DebuggerForm: TDebuggerForm
     TabOrder = 3
   end
   object HaltBox: TCheckBox
-    Left = 197
+    Left = 294
     Top = 108
     Width = 97
     Height = 17
@@ -193,10 +200,6 @@ object DebuggerForm: TDebuggerForm
     object BrkptPage: TTabSheet
       Caption = 'Brkpts'
       ImageIndex = 1
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 263
       object BrkptGrid: TStringGrid
         Left = 0
         Top = 0
@@ -208,7 +211,6 @@ object DebuggerForm: TDebuggerForm
         RowCount = 2
         Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goColSizing]
         TabOrder = 0
-        ExplicitHeight = 263
         ColWidths = (
           10
           58)

@@ -1003,16 +1003,16 @@
      *
 17D2:         DC    XL6'000000000000'
      *
-17D8:         TM    X'00E'(R14),64
-17DC:         BC    14,X'0BC'(,R15)              -> 1804
-17E0:         TM    X'00F'(R14),1
-17E4:         BC    14,X'0B4'(,R15)              -> 17FC
-17E8:         TM    X'025'(R14),128
-17EC:         BC    14,X'0B4'(,R15)              -> 17FC
-17F0:         TM    X'006'(R14),128
-17F4:         BCR   R14,R5
-17F6:         NI    X'006'(R14),127
-17FA:         BCR   R15,R15
+17D8:         TM    JT$FLGS(R14),BT$OPACT        OPR WORKING ON THIS TCB?
+17DC:         BNO   X'1804'                      NO
+17E0:         TM    JT$FLGS+1(R14),BT$MCBSY      MEMCON DID SETSVC ON TCB?
+17E4:         BNO   X'17FC'                      NO
+17E8:         TM    JT$PSW+5(R14),128
+17EC:         BNO   X'17FC'
+17F0:         TM    JT$WAIT+2(R14),BT$ICOR       ISLAND CODE OVERRIDE?
+17F4:         BNOR  R5                           NO, RETURN
+17F6:         NI    JT$WAIT+2(R14),127           CLEAR BT$ICOR
+17FA:         BCR   R15,R15                      RETURN
 17FC:         LA    2,X'0A54'
 1800:         BC    15,X'0C4'(,R15)              -> 180C
 1804:         NI    X'00E'(R14),127
@@ -1028,27 +1028,30 @@
 182C:         STM   R2,R3,X'020'(,R14)
 1830:         BCR   R15,R5
 1832:         DC    XL6'000000000000'
+
      * PROGRAM EXCEPTION INTERRUPT HANDLER
+     
 1838:         BALR  R2,R0
               USING *,R2
               
 183A:         LA    0,X'002E'
-183E:         LH    12,X'0CE'(,R2)
-1842:         TM    X'02B6',136
-1846:         BCR   R7,R12
-1848:         TM    X'0041',4
-184C:         BC    7,X'022'(,R2)
+183E:         LH    12,X'1908'
+1842:         TM    SB$ERFLG,BB$IO+BB$TIO        I/O OR TRANSIENT IN CONTROL?
+1846:         BNZR  R12                          YES
+1848:         TM    X'0041',4                    PROGRAM REGISTERS IN USE?
+184C:         BNZ   X'185C'                      YES
 1850:         TM    X'02B6',16
 1854:         BC    1,X'02C'(,R2)
 1858:         BC    15,X'066'(,R2)
-185C:         MVC   X'023'(5,R14),X'0043'
-1862:         IC    0,X'0043'
+185C:         MVC   JT$PSW+3(5,R14),X'0043'      COPY SALIENT BITS OF PSW TO TCB
+1862:         IC    0,X'0043'                    GET THE INTERRUPT CODE
+     *
 1866:         BALR  R2,R0
-1868:         STM   R6,R12,X'0A4'(,R2)
-186C:         LH    4,X'09C'(,R2)
-1870:         BAL   3,X'004'(,R4)
-1874:         LTR   R13,R13
-1876:         BC    7,X'03C'(,R2)
+1868:         STM   R6,R12,X'190C'               SAVE REGISTERS
+186C:         LH    4,X'1904'
+1870:         BAL   3,X'004'(,R4)                
+1874:         LTR   R13,R13                      R13 = 0?
+1876:         BC    7,X'18A4'                    NO
 187A:         TM    X'02FE',32
 187E:         BC    1,X'038'(,R2)
 1882:         CLI   X'008'(R14),12
@@ -1059,17 +1062,17 @@
 1898:         STM   R0,R1,X'028'(,R14)
 189C:         BC    15,X'096'(,R2)
 18A0:         HPR   X'0800',8
-18A4:         CH    0,X'120'(,R2)
-18A8:         BC    2,X'082'(,R2)
-18AC:         L     1,X'018'(,R14)
-18B0:         LA    4,X'074'(,R14)
-18B4:         LTR   R0,R0
-18B6:         BC    7,X'056'(,R2)
+18A4:         CH    0,X'1988'                    INTERRUPT CODE > 15?
+18A8:         BC    2,X'18EA'                    YES
+18AC:         L     1,JT$ECB(,R14)               GET TRANSIENT ID / ECB ADDR
+18B0:         LA    4,JT$PCIC(,R14)              GET ISLAND CODE PARAMS
+18B4:         LTR   R0,R0                        INTERRUPT CODE = 0?
+18B6:         BC    7,X'18BE'                    NO
 18BA:         LA    4,X'07C'(,R14)
-18BE:         LA    6,X'0020'
-18C2:         L     3,X'0000'(R4)
-18C6:         AR    R3,R12
-18C8:         BC    11,X'080'(,R2)
+18BE:         LA    6,X'0020'                    
+18C2:         L     3,X'0000'(R4)                GET ISLAND CODE ADDR
+18C6:         AR    R3,R12                       ADD RELOC. REG.
+18C8:         BNM   X'18E8'                      RESULT POSITIVE
 18CC:         LA    6,X'0028'
 18D0:         TM    X'000'(R4),96
 18D4:         BC    7,X'080'(,R2)
@@ -1077,14 +1080,15 @@
 18DC:         STM   R0,R1,X'008'(,R3)
 18E0:         OI    X'00E'(R14),128
 18E4:         BC    15,X'092'(,R2)
-18E8:         LR    R0,R6
-18EA:         STH   0,X'086'(,R14)
-18EE:         ST    1,X'088'(,R14)
-18F2:         OI    X'00E'(R14),64
-18F6:         OI    X'0A4'(R14),128
-18FA:         OI    X'006'(R14),128
-18FE:         LM    R6,R12,X'0A4'(,R2)
-1902:         BCR   R15,R15
+18E8:         LR    R0,R6                        R6 = R0
+18EA:         STH   0,JT$ERCOD(,R14)             SAVE R6 (ERROR CODE) TO TCB
+18EE:         ST    1,JT$ERADD(,R14)             SAVE TRANS ID / ECB ADDR
+18F2:         OI    JT$FLGS(R14),BT$SETSV        SET TERMINATION SVC BIT.
+18F6:         OI    JT$SVFLG(R14),BT$SVCAN       SET SVC CANCEL BIT.
+18FA:         OI    JT$WAIT+2(R14),BT$ICOR       SET ISLAND CODE OVERRIDE BIT.
+18FE:         LM    R6,R12,X'190C'               RESTORE REGISTERS
+1902:         BCR   R15,R15                      RETURN TO SWITCHER
+     *
 1904:         XR    R2,R12
 1906:         SSK   R3,R4
 1908:         BAS   8,X'0000'(R4)

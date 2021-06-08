@@ -9,9 +9,13 @@ type
   private
     function GetNibble(idx: Integer): Byte;
     procedure SetNibble(idx: Integer; const Value: Byte);
+    function GetScale: Integer;
+    procedure SetScale(const Value: Integer);
   public
     procedure Clear;
+    function SignifDigits: Integer;
     property Nibble[idx: Integer]: Byte read GetNibble write SetNibble;
+    property Scale: Integer read GetScale write SetScale;
   end;
 
 function PackedSign(b: Byte): Smallint;
@@ -50,6 +54,11 @@ begin
         Result := Result and $0F;
 end;
 
+function TBcdHelper.GetScale: Integer;
+begin
+    Result := SignSpecialPlaces and $3f;
+end;
+
 procedure TBcdHelper.SetNibble(idx: Integer; const Value: Byte);
 var
     i: Integer;
@@ -61,6 +70,24 @@ begin
         Fraction[i] := (b and $0F) or (Value shl 4)
     else
         Fraction[i] := (b and $F0) or (Value and $0F);
+end;
+
+procedure TBcdHelper.SetScale(const Value: Integer);
+begin
+    SignSpecialPlaces := (SignSpecialPlaces and $c0) or (Value and $3f);
+end;
+
+function TBcdHelper.SignifDigits: Integer;
+var
+    i, intDigits: Integer;
+begin
+    intDigits := Precision - Scale;
+    Result := intDigits;
+    for i := 0 to intDigits - 1 do
+    begin
+        if (Nibble[i] = 0) then
+            Dec(Result);
+    end;
 end;
 
 end.

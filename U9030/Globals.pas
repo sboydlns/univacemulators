@@ -2,7 +2,7 @@ unit Globals;
 
 interface
 
-uses U9030Types, Channels, Cpu, Memory;
+uses EmulatorTypes, U9030Types, Channels, Cpu, Memory;
 
 var
   Adapters: TChannelList;
@@ -13,5 +13,6 @@ var
   Opcodes: TOpcodeList;
 
 implementation
+
 
 end.

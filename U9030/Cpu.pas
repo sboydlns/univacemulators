@@ -141,6 +141,7 @@ type
     FMSInterval: Int64;
     FInstCount: Int64;
     FOnDebug: TDebugEvent;
+    procedure CheckRegEven(r: Byte); inline;
     function Compare(op1, op2: TWord): Byte;
     function CompareLogical(op1, op2: UInt32): Byte; overload;
     function CompareLogical(op1, op2: Byte): Byte; overload;
@@ -150,6 +151,7 @@ type
     procedure Fetch;
     function GetAbsAddress(b: Byte; off: UInt16): TMemoryAddress; overload; inline;
     function GetAbsAddress(b, x: Byte; off: UInt16): TMemoryAddress; overload; inline;
+    function GetDblRegister(r: Integer): TDblWord;
     function GetRegisters(i: TRegisterSet; j: Integer): TWord;
     function GetRelAddress(b: Byte; off: UInt16): TMemoryAddress; overload; inline;
     function GetRelAddress(b, x: Byte; off: UInt16): TMemoryAddress; overload; inline;
@@ -160,13 +162,17 @@ type
     procedure InitTimer;
     procedure GetPackedOperands(var bcd1, bcd2: TBcd);
     function PackedCC(value: TBcd; len: Integer): Byte;
+    procedure SumLogicalCondCode(op1, op2: UInt32; var sum: UInt64) overload;
     procedure SumSetCondCode(op1, op2: THalfWord; var sum: THalfWord) overload;
     procedure SumSetCondCode(op1, op2: TWord; var sum: TWord) overload;
     procedure SumSetCondCode(op1, op2: TDblWord; var sum: TDblWord); overload;
+    procedure TraceSvc;
     // Instruction implementations
     procedure A;
     procedure AH;
     procedure AI;
+    procedure AL;
+    procedure ALR;
     procedure AP;
     procedure AR;
     procedure BAL;
@@ -176,32 +182,43 @@ type
     procedure BCTR;
     procedure BCR;
     procedure C;
+    procedure CL;
     procedure CLC;
     procedure CLR;
     procedure CLI;
     procedure CH;
+    procedure CP;
     procedure CR;
     procedure CVB;
     procedure CVD;
     procedure D;
     procedure DIAG;
+    procedure DP;
+    procedure DR;
+    procedure ED;
+    procedure EDMK;
     procedure EX;
     procedure HPR;
     procedure IC;
     procedure ISK;
     procedure L;
     procedure LA;
+    procedure LCR;
     procedure LCS;
     procedure LH;
     procedure LM;
+    procedure LPR;
     procedure LPSW;
     procedure LR;
     procedure LTR;
     procedure M;
+    procedure MH;
     procedure MP;
+    procedure MR;
     procedure MVC;
     procedure MVI;
     procedure MVN;
+    procedure MVO;
     procedure MVZ;
     procedure N;
     procedure NC;
@@ -215,10 +232,15 @@ type
     procedure S;
     procedure SH;
     procedure SIO;
+    procedure SLA;
+    procedure SLDA;
     procedure SLL;
     procedure SLM;
+    procedure SP;
     procedure SPM;
     procedure SR;
+    procedure SRA;
+    procedure SRDA;
     procedure SRL;
     procedure SSK;
     procedure SSM;
@@ -231,10 +253,14 @@ type
     procedure SVC;
     procedure TM;
     procedure TR;
+    procedure TRT;
     procedure UNPK;
+    procedure X;
     procedure XC;
     procedure XI;
     procedure XR;
+    procedure ZAP;
+    procedure SetRegisters(i: TRegisterSet; j: Integer; const Value: TWord);
   public
     constructor Create;
     destructor Destroy; override;
@@ -242,30 +268,32 @@ type
     procedure Run;
     procedure Step(enable: Boolean);
     procedure Stop;
+    procedure Test;
     property InhibitTimer: Boolean read FInhibitTimer write FInhibitTimer;
     property IOST: TIOST read FIOST;
     property OnDebug: TDebugEvent read FOnDebug write FOnDebug;
-    property Registers[i: TRegisterSet; j: Integer]: TWord read GetRegisters;
+    property Registers[i: TRegisterSet; j: Integer]: TWord read GetRegisters write SetRegisters;
     property RelocateReg: TMemoryAddress read FRelocateReg;
     property State: TProcessorState read FState;
   end;
 
 implementation
 
-uses Globals, Channels, Memory;
+uses Math, Globals, Channels, Memory, Trace, EmulatorTypes;
 
 { TCpu }
 
 procedure TCpu.A;
 var
     r: Integer;
-    op1, op2, sum: TWord;
+    op1, op2: TWord;
 begin
     r := CurInst.R1;
     op1 := FRegisters[PSW.RegisterSet, r];
     op2 := Core.FetchWord(PSW.Key, GetAbsAddress(CurInst.B1, CurInst.X1, CurInst.Off1));
-    SumSetCondCode(op1, op2, sum);
-    FRegisters[PSW.RegisterSet, r] := sum;
+    SumSetCondCode(op1, op2, FRegisters[PSW.RegisterSet, r]);
+    if ((PSW.CondCode = 3) and PSW.FixedOvflExcp) then
+        raise EFixedOverflow.Create('A caused overflow');
 end;
 
 procedure TCpu.AH;
@@ -278,6 +306,8 @@ begin
     op2 := Core.FetchHalfWord(PSW.Key, GetAbsAddress(CurInst.B1, CurInst.X1, CurInst.Off1));
     SumSetCondCode(op1, op2, sum);
     FRegisters[PSW.RegisterSet, r] := sum;
+    if ((PSW.CondCode = 3) and PSW.FixedOvflExcp) then
+        raise EFixedOverflow.Create('AH caused overflow');
 end;
 
 procedure TCpu.AI;
@@ -293,6 +323,36 @@ begin
     op2 := Core.FetchHalfWord(PSW.Key, addr);
     SumSetCondCode(op1, op2, sum);
     Core.StoreHalfWord(PSW.Key, addr, sum);
+    if ((PSW.CondCode = 3) and PSW.FixedOvflExcp) then
+        raise EFixedOverflow.Create('AI caused overflow');
+end;
+
+procedure TCpu.AL;
+var
+    r: Integer;
+    op1, op2: UInt32;
+    rslt: UInt64;
+    carry: Boolean;
+begin
+    r := CurInst.R1;
+    op1 := FRegisters[PSW.RegisterSet, r];
+    op2 := Core.FetchWord(PSW.Key, GetAbsAddress(CurInst.B1, CurInst.X1, CurInst.Off1));
+    SumLogicalCondCode(op1, op2, rslt);
+    FRegisters[PSW.RegisterSet, r] := UInt32(rslt);
+end;
+
+procedure TCpu.ALR;
+var
+    r: Integer;
+    op1, op2: UInt32;
+    rslt: UInt64;
+    carry: Boolean;
+begin
+    r := CurInst.R1;
+    op1 := FRegisters[PSW.RegisterSet, r];
+    op2 := FRegisters[PSW.RegisterSet, CurInst.R2];
+    SumLogicalCondCode(op1, op2, rslt);
+    FRegisters[PSW.RegisterSet, r] := UInt32(rslt);
 end;
 
 procedure TCpu.AP;
@@ -313,6 +373,8 @@ var
 begin
     SumSetCondCode(FRegisters[PSW.RegisterSet, CurInst.R1], FRegisters[PSW.RegisterSet, CurInst.R2], sum);
     FRegisters[PSW.RegisterSet, CurInst.R1] := sum;
+    if ((PSW.CondCode = 3) and PSW.FixedOvflExcp) then
+        raise EFixedOverflow.Create('AR caused overflow');
 end;
 
 procedure TCpu.BAL;
@@ -422,6 +484,21 @@ begin
     PSW.CondCode := Compare(op1, op2);
 end;
 
+procedure TCpu.CheckRegEven(r: Byte);
+begin
+    if ((r and $01) <> 0) then
+        raise ESpecificationException.Create('Register not even');
+end;
+
+procedure TCpu.CL;
+var
+    op1, op2: UInt32;
+begin
+    op1 := FRegisters[PSW.RegisterSet, CurInst.R1];
+    op2 := Core.FetchWord(PSW.Key, GetAbsAddress(CurInst.B1, CurInst.X1, CurInst.Off1));
+    PSW.CondCode := CompareLogical(op1, op2);
+end;
+
 procedure TCpu.CLC;
 var
     len: Integer;
@@ -492,6 +569,21 @@ begin
         Result := 2;
 end;
 
+procedure TCpu.CP;
+var
+    bcd1, bcd2: TBcd;
+    rslt: Integer;
+begin
+    GetPackedOperands(bcd1, bcd2);
+    rslt := BCDCompare(bcd1, bcd2);
+    if (rslt = 0) then
+        PSW.CondCode := 0
+    else if (rslt < 0) then
+        PSW.CondCode := 1
+    else
+        PSW.CondCode := 2;
+end;
+
 function TCpu.CompareLogical(op1, op2: UInt32): Byte;
 begin
     if (op1 = op2) then
@@ -517,6 +609,8 @@ begin
     Opcodes.FindOpcode('A').Proc := A;
     Opcodes.FindOpcode('AH').Proc := AH;
     Opcodes.FindOpcode('AI').Proc := AI;
+    Opcodes.FindOpcode('AL').Proc := AL;
+    Opcodes.FindOpcode('ALR').Proc := ALR;
     Opcodes.FindOpcode('AP').Proc := AP;
     Opcodes.FindOpcode('AR').Proc := AR;
     Opcodes.FindOpcode('BAL').Proc := BAL;
@@ -526,32 +620,43 @@ begin
     Opcodes.FindOpcode('BCT').Proc := BCT;
     Opcodes.FindOpcode('BCTR').Proc := BCTR;
     Opcodes.FindOpcode('C').Proc := C;
+    Opcodes.FindOpcode('CL').Proc := CL;
     Opcodes.FindOpcode('CLC').Proc := CLC;
     Opcodes.FindOpcode('CLR').Proc := CLR;
     Opcodes.FindOpcode('CLI').Proc := CLI;
     Opcodes.FindOpcode('CH').Proc := CH;
+    Opcodes.FindOpcode('CP').Proc := CP;
     Opcodes.FindOpcode('CR').Proc := CR;
     Opcodes.FindOpcode('CVB').Proc := CVB;
     Opcodes.FindOpcode('CVD').Proc := CVD;
     Opcodes.FindOpcode('D').Proc := D;
     Opcodes.FindOpcode('DIAG').Proc := DIAG;
+    Opcodes.FindOpcode('DP').Proc := DP;
+    Opcodes.FindOpcode('DR').Proc := DR;
+    Opcodes.FindOpcode('ED').Proc := ED;
+    Opcodes.FindOpcode('EDMK').Proc := EDMK;
     Opcodes.FindOpcode('EX').Proc := EX;
     Opcodes.FindOpcode('HPR').Proc := HPR;
     Opcodes.FindOpcode('IC').Proc := IC;
     Opcodes.FindOpcode('ISK').Proc := ISK;
     Opcodes.FindOpcode('L').Proc := L;
     Opcodes.FindOpcode('LA').Proc := LA;
+    Opcodes.FindOpcode('LCR').Proc := LCR;
     Opcodes.FindOpcode('LCS').Proc := LCS;
     Opcodes.FindOpcode('LH').Proc := LH;
     Opcodes.FindOpcode('LM').Proc := LM;
+    Opcodes.FindOpcode('LPR').Proc := LPR;
     Opcodes.FindOpcode('LPSW').Proc := LPSW;
     Opcodes.FindOpcode('LR').Proc := LR;
     Opcodes.FindOpcode('LTR').Proc := LTR;
     Opcodes.FindOpcode('M').Proc := M;
+    Opcodes.FindOpcode('MH').Proc := MH;
     Opcodes.FindOpcode('MP').Proc := MP;
+    Opcodes.FindOpcode('MR').Proc := MR;
     Opcodes.FindOpcode('MVC').Proc := MVC;
     Opcodes.FindOpcode('MVI').Proc := MVI;
     Opcodes.FindOpcode('MVN').Proc := MVN;
+    Opcodes.FindOpcode('MVO').Proc := MVO;
     Opcodes.FindOpcode('MVZ').Proc := MVZ;
     Opcodes.FindOpcode('N').Proc := N;
     Opcodes.FindOpcode('NC').Proc := NC;
@@ -565,10 +670,15 @@ begin
     Opcodes.FindOpcode('S').Proc := S;
     Opcodes.FindOpcode('SH').Proc := SH;
     Opcodes.FindOpcode('SIO').Proc := SIO;
+    Opcodes.FindOpcode('SLA').Proc := SLA;
+    Opcodes.FindOpcode('SLDA').Proc := SLDA;
     Opcodes.FindOpcode('SLL').Proc := SLL;
     Opcodes.FindOpcode('SLM').Proc := SLM;
+    Opcodes.FindOpcode('SP').Proc := SP;
     Opcodes.FindOpcode('SPM').Proc := SPM;
     Opcodes.FindOpcode('SR').Proc := SR;
+    Opcodes.FindOpcode('SRDA').Proc := SRDA;
+    Opcodes.FindOpcode('SRA').Proc := SRA;
     Opcodes.FindOpcode('SRL').Proc := SRL;
     Opcodes.FindOpcode('SSK').Proc := SSK;
     Opcodes.FindOpcode('SSM').Proc := SSM;
@@ -581,17 +691,24 @@ begin
     Opcodes.FindOpcode('SVC').Proc := SVC;
     Opcodes.FindOpcode('TM').Proc := TM;
     Opcodes.FindOpcode('TR').Proc := TR;
+    Opcodes.FindOpcode('TRT').Proc := TRT;
     Opcodes.FindOpcode('UNPK').Proc := UNPK;
+    Opcodes.FindOpcode('X').Proc := X;
     Opcodes.FindOpcode('XC').Proc := XC;
     Opcodes.FindOpcode('XI').Proc := XI;
     Opcodes.FindOpcode('XR').Proc := XR;
+    Opcodes.FindOpcode('ZAP').Proc := ZAP;
 end;
 
 procedure TCpu.CVB;
 var
     bcd: TBcd;
+    op1: TMemoryAddress;
 begin
-    bcd := Core.FetchPacked(PSW.Key, GetAbsAddress(CurInst.B1, CurInst.X1, CurInst.Off1), 7);
+    op1 := GetAbsAddress(CurInst.B1, CurInst.X1, CurInst.Off1);
+    if ((op1 and $07) <> 0) then
+        raise ESpecificationException.Create('Alignment error');
+    bcd := Core.FetchPacked(PSW.Key, op1, 7);
     FRegisters[PSW.RegisterSet, CurInst.R1] := Integer(bcd);
     if (Int64(bcd) > MaxInt) then
         raise EDecimalDivideException.Create('CVB overflow');
@@ -600,9 +717,13 @@ end;
 procedure TCpu.CVD;
 var
     bcd: TBcd;
+    op1: TMemoryAddress;
 begin
+    op1 := GetAbsAddress(CurInst.B1, CurInst.X1, CurInst.Off1);
+    if ((op1 and $07) <> 0) then
+        raise ESpecificationException.Create('Alignment error');
     bcd := FRegisters[PSW.RegisterSet, CurInst.R1];
-    Core.StorePacked(PSW.Key, GetAbsAddress(CurInst.B1, CurInst.X1, CurInst.Off1), 7, bcd);
+    Core.StorePacked(PSW.Key, op1, 7, bcd);
 end;
 
 procedure TCpu.D;
@@ -612,10 +733,7 @@ var
     divisor: TWord;
 begin
     r := CurInst.R1;
-    if ((r mod 2) <> 0) then
-        raise ESpecificationException.Create('Register not even for divide');
-    dividend := (TDblWord(FRegisters[PSW.RegisterSet, r]) shl 32) or
-                FRegisters[PSW.RegisterSet, r + 1];
+    dividend := GetDblRegister(r);
     divisor := Core.FetchWord(PSW.Key, GetAbsAddress(CurInst.B1, CurInst.X1, CurInst.Off1));
     DivideTestOverflow(dividend, divisor, FRegisters[PSW.RegisterSet, r + 1], FRegisters[PSW.RegisterSet, r]);
 end;
@@ -646,7 +764,9 @@ var
     begin
         if (offset = 0) then
         begin
-            Result := Core.FetchWord(PSW.Key, tcb + 4) = 0;
+            // Having the island code override bit ($8000) set does not prevent a TCB
+            // from being scheduled for execution.
+            Result := (Core.FetchWord(PSW.Key, tcb + 4) and (not $8000)) = 0;
         end else
         begin
             Result := (Core.FetchByte(PSW.Key, tcb + offset) and match) <> 0;
@@ -672,12 +792,8 @@ var
         // Start scanning the switch list
         r := CurInst.B1;
         switchList := (FRegisters[PSW.RegisterSet, r] and $ffff) + FRelocateReg;
-//        if (switchList <> $408) then
-//            raise Exception.Create('DIAG 15 for other than address $408');
         offset := FRegisters[PSW.RegisterSet, r] shr 16;
         match := CurInst.Off1;
-        if (match = $104) then
-            raise Exception.Create('Match = $104');
         firstTcb := TMemoryAddress(Core.FetchWord(PSW.Key, switchList));
         skipUntil := FRegisters[PSW.RegisterSet, r + 1];
         if (skipUntil <> 0) then
@@ -742,6 +858,174 @@ begin
         raise EFixedDivideException.Create('Divide overflow');
     quotient := q;
     remainder := dividend mod divisor;
+end;
+
+procedure TCpu.DP;
+var
+    l1, l2: Integer;
+    op1: TMemoryAddress;
+    op1Sign: Byte;
+    rsltLen: Integer;
+    bcd1, bcd2, rslt: TBcd;
+begin
+    GetPackedOperands(bcd1, bcd2);
+    l1 := CurInst.Length1;
+    l2 := CurInst.Length2;
+    op1 := GetAbsAddress(CurInst.B1, CurInst.Off1);
+    if ((l2 > 7) or (l2 >= l1)) then
+        raise ESpecificationException.Create('Length error in DP');
+    if (bcd2 = NullBcd) then
+        raise EDecimalDivideException.Create('Divide by zero in DP');
+    // Calculate and save the quotient
+    op1Sign := bcd1.SignSpecialPlaces and $80;
+    rslt := bcd1 / bcd2;
+    rsltLen := l1 - l2 - 1;
+    if ((rslt.SignifDigits > (rsltLen * 2) + 1)) then
+        raise EDecimalDivideException.Create('Decimal divide overflow');
+    Core.StorePacked(PSW.Key, op1, rsltLen, rslt);
+    // Calculate and save the remainder.
+    // First get rid of the fractional part of the result by setting
+    // the precision of the result to be the number of places left of
+    // the decimal and setting the scale to zero by clearing the rightmost
+    // 6 bits of SignSpecialPlaces.
+    rslt.Precision := BcdPrecision(rslt);
+    rslt.Scale := 0;
+    rslt := bcd1 - (bcd2 * rslt);
+    if (op1Sign = 0) then
+        rslt.SignSpecialPlaces := rslt.SignSpecialPlaces and $7F
+    else
+        rslt.SignSpecialPlaces := rslt.SignSpecialPlaces or $80;
+    Core.StorePacked(PSW.Key, op1 + rsltLen + 1, l2, rslt);
+end;
+
+procedure TCpu.DR;
+var
+    r: Integer;
+    dividend: TDblWord;
+    divisor: TWord;
+begin
+    r := CurInst.R1;
+    dividend := GetDblRegister(r);
+    divisor := FRegisters[PSW.RegisterSet, CurInst.R2];
+    DivideTestOverflow(dividend, divisor, FRegisters[PSW.RegisterSet, r + 1], FRegisters[PSW.RegisterSet, r]);
+end;
+
+procedure TCpu.ED;
+var
+    holdR1: TWord;
+begin
+    holdR1 := FRegisters[PSW.RegisterSet, 1];
+    try
+        EDMK;
+    finally
+        FRegisters[PSW.RegisterSet, 1] := holdR1;
+    end;
+end;
+
+procedure TCpu.EDMK;
+const
+    DSB = $20;
+    SSB = $21;
+    FSB = $22;
+var
+    l1: Integer;
+    op1, op2: TMemoryAddress;
+    digit: Byte;
+    fill, zone: Byte;
+    sIndicator: Boolean;
+    mask: Byte;
+    shift: Byte;
+    b: Byte;
+    CC: Byte;
+    allZero: Boolean;
+begin
+    CC := 0;
+    allZero := True;
+    l1 := CurInst.Length;
+    op1 := GetAbsAddress(CurInst.B1, CurInst.Off1);
+    op2 := GetAbsAddress(CurInst.B2, CurInst.Off2);
+    if (PSW.Ascii) then
+        zone := $50 // ASCII mode
+    else
+        zone := $F0; // EBCDIC
+    fill := Core.FetchByte(PSW.Key, op1);
+    Inc(op1);
+    Dec(l1);
+    sIndicator := False;
+    mask := $F0;
+    shift := 4;
+    while (l1 >= 0) do
+    begin
+        // Fetch the next nibble
+        digit := (Core.FetchByte(PSW.Key, op2) and mask) shr shift;
+        if (mask = $0f) then
+        begin
+            if ((digit = $0A) or (digit = $0C) or (digit = $0E) or (digit = $0F)) then
+            begin
+                // OP2 is positive, turn sIndicator off and set condition to 2
+                sIndicator := False;
+                CC := 2;
+                Inc(op2);
+                mask := $F0;
+                shift := 4;
+                Continue;
+            end else if (digit > $09) then
+            begin
+                // OP2 is negative, set condition to 1
+                CC := 1;
+                Inc(op2);
+                mask := $F0;
+                shift := 4;
+                Continue;
+            end;
+        end else if (digit > 9) then
+            raise EDataException.Create('Invalid decimal digit')
+        else if (digit <> 0) then
+            allZero := False;
+        b := Core.FetchByte(PSW.Key, op1);
+        case b of
+          DSB,
+          SSB:
+          begin
+            if (digit <= 9) then
+            begin
+                if ((not sIndicator) and (digit > 0)) then
+                    FRegisters[PSW.RegisterSet, 1] := (op1 - FRelocateReg) and $ffffff;
+                if (digit <> 0) then
+                    sIndicator := True;
+                if (sIndicator) then
+                    Core.StoreByte(PSW.Key, op1, digit or zone)
+                else if (digit = 0) then
+                    Core.StoreByte(PSW.Key, op1, fill)
+                else
+                    Core.StoreByte(PSW.Key, op1, digit or zone);
+                if (b = SSB) then
+                    sIndicator := True;
+            end;
+            mask := mask xor $FF;
+            shift := shift xor 4;
+            if (mask = $F0) then
+                Inc(op2);
+          end;
+          FSB:
+          begin
+            sIndicator := False;
+            CC := 0;
+            allZero := True;
+            Core.StoreByte(PSW.Key, op1, fill);
+          end
+          else
+          begin
+            if (not sIndicator) then
+                Core.StoreByte(PSW.Key, op1, fill);
+          end;
+        end;
+        Inc(op1);
+        Dec(l1);
+    end;
+    if (allZero) then
+        CC := 0;
+    PSW.CondCode := CC;
 end;
 
 procedure TCpu.EX;
@@ -839,6 +1123,13 @@ begin
         Result := UInt32(FRegisters[PSW.RegisterSet, b]) + Result;
     if (x <> 0) then
         Result := UInt32(FRegisters[PSW.RegisterSet, x]) + Result;
+end;
+
+function TCpu.GetDblRegister(r: Integer): TDblWord;
+begin
+    CheckRegEven(r);
+    Result := TDblWord((Uint64(FRegisters[PSW.RegisterSet, r]) shl 32) or
+                        UInt32(FRegisters[PSW.RegisterSet, r + 1]));
 end;
 
 procedure TCpu.GetPackedOperands(var bcd1, bcd2: TBcd);
@@ -974,6 +1265,25 @@ begin
     FRegisters[PSW.RegisterSet, CurInst.R1] := GetRelAddress(CurInst.B1, CurInst.X1, CurInst.Off1) and $ffffff;
 end;
 
+procedure TCpu.LCR;
+var
+    w: TWord;
+begin
+    w := FRegisters[PSW.RegisterSet, CurInst.R2];
+    if (w = TWord($80000000)) then
+    begin
+        PSW.CondCode := 3;
+        if (PSW.FixedOvflExcp) then
+            raise EFixedOverflow.Create('LCR caused overflow');
+    end else if (w = 0) then
+        PSW.CondCode := 0
+    else if (w < 0) then
+        PSW.CondCode := 2
+    else
+        PSW.CondCode := 1;
+    FRegisters[PSW.RegisterSet, CurInst.R1] := -w;
+end;
+
 procedure TCpu.LCS;
 // Load control storage. I have no real idea of what this instruction
 // is supposed to do. I just know that I need to set the condition
@@ -1010,6 +1320,31 @@ begin
     end;
 end;
 
+procedure TCpu.LPR;
+var
+    w: TWord;
+    ovfl: Boolean;
+begin
+    ovfl := False;
+    w := FRegisters[PSW.RegisterSet, CurInst.R2];
+    if (w < 0) then
+    begin
+        if (w = TWord($80000000)) then
+            ovfl := True
+        else
+            FRegisters[PSW.RegisterSet, CurInst.R1] := -w;
+    end;
+    if (ovfl) then
+    begin
+        PSW.CondCode := 3;
+        if (PSW.FixedOvflExcp) then
+            raise EFixedOverflow.Create('Overflow in LPR');
+    end else if (w = 0) then
+        PSW.CondCode := 0
+    else
+        PSW.CondCode := 2;
+end;
+
 procedure TCpu.LPSW;
 // On the 90/30 the LPSW instructions takes an undocumented immediate operand.
 // The immediate operand seems to specify which register set to use.
@@ -1020,6 +1355,8 @@ begin
         PSW.RegisterSet := rsProgram;
     PSW.AsDblWord := Core.FetchDblWord(PSW.Key, GetAbsAddress(CurInst.B1, CurInst.Off1));
     PSW.IntCode := 0;
+    FRelocateReg := Core.FetchRelReg(PSW.Key);
+    PSW.InstAddr := PSW.InstAddr + FRelocateReg;
     if (FMachineCheckMasked) then
         FMachineCheckMasked := False
     else
@@ -1047,17 +1384,25 @@ end;
 
 procedure TCpu.M;
 var
-    r: Integer;
+    r: Byte;
     multiplicand, multiplier, rslt: TDblWord;
 begin
     r := CurInst.R1;
-    if ((r mod 2) <> 0) then
-        raise ESpecificationException.Create('Register not even for multiply');
+    CheckRegEven(r);
     multiplicand := FRegisters[PSW.RegisterSet, r + 1];
     multiplier := Core.FetchWord(PSW.Key, GetAbsAddress(CurInst.B1, CurInst.X1, CurInst.Off1));
     rslt := multiplicand * multiplier;
     FRegisters[PSW.RegisterSet, r] := rslt shr 32;
     FRegisters[PSW.RegisterSet, r + 1] := rslt and $ffffffff;
+end;
+
+procedure TCpu.MH;
+var
+    op1, op2: TWord;
+begin
+    op1 := FRegisters[PSW.RegisterSet, CurInst.R1];
+    op2 := Core.FetchHalfWord(PSW.Key, GetAbsAddress(CurInst.B1, CurInst.X1, CurInst.Off1));
+    FRegisters[PSW.RegisterSet, CurInst.R1] := op1 * op2;
 end;
 
 procedure TCpu.MP;
@@ -1080,6 +1425,20 @@ begin
     end;
     rslt := bcd1 * bcd2;
     Core.StorePacked(PSW.Key, GetAbsAddress(CurInst.B1, CurInst.Off1), l1, rslt);
+end;
+
+procedure TCpu.MR;
+var
+    r: Byte;
+    multiplicand, multiplier, rslt: TDblWord;
+begin
+    r := CurInst.R1;
+    CheckRegEven(r);
+    multiplicand := FRegisters[PSW.RegisterSet, r + 1];
+    multiplier := FRegisters[PSW.RegisterSet, CurInst.R2];
+    rslt := multiplicand * multiplier;
+    FRegisters[PSW.RegisterSet, r] := rslt shr 32;
+    FRegisters[PSW.RegisterSet, r + 1] := rslt and $ffffffff;
 end;
 
 procedure TCpu.MVC;
@@ -1123,6 +1482,58 @@ begin
         Inc(src);
         Inc(dest);
         Dec(len);
+    end;
+end;
+
+procedure TCpu.MVO;
+var
+    dlen, slen: Integer;
+    dest, src: TMemoryAddress;
+    db, sb: Byte;
+    dcount, scount: Byte;
+begin
+    dlen := CurInst.Length1;
+    slen := CurInst.Length2;
+    dest := GetAbsAddress(CurInst.B1, CurInst.Off1) + dlen;
+    src := GetAbsAddress(CurINst.B2, CurInst.Off2) + slen;
+    // Initialize current dest by with least significant 4-bits
+    // of LSB of dest and least signifcant 4 bits of src.
+    db := Core.FetchByte(PSW.Key, dest);
+    sb := Core.FetchByte(PSW.Key, src);
+    db := (db and $0f) or ((sb and $0f) shl 4);
+    dcount := 2;                // show destination byte full
+    scount := 1;                // show source byte half full
+    sb := sb shr 4;
+    Dec(src);
+    Dec(slen);
+    while (dlen >= 0) do
+    begin
+        // save completed dest byte
+        if (dcount = 2) then
+        begin
+            Core.StoreByte(PSW.Key, dest, db);
+            Dec(dest);
+            Dec(dlen);
+            db := 0;
+            dcount := 0;
+        end;
+        // fetch the next source byte. Zero if source exhausted
+        if (scount = 0) then
+        begin
+            if (slen >= 0) then
+            begin
+                sb := Core.FetchByte(PSW.Key, src);
+                Dec(src);
+                Dec(slen);
+            end else
+                sb := 0;
+            scount := 2;
+        end;
+        // Shift 4 bits of source into dest
+        db := (db shr 4) or ((sb and $0f) shl 4);
+        Inc(dcount);
+        sb := sb shr 4;
+        Dec(scount);
     end;
 end;
 
@@ -1311,7 +1722,7 @@ var
     test: Integer;
 begin
     test := BCDCompare(value, NullBcd);
-    if (BcdPrecision(value) > (((len + 1) * 2) - 1)) then
+    if (value.SignifDigits > (((len + 1) * 2) - 1)) then
         Result := 3
     else if (test < 0) then
         Result := 1
@@ -1419,6 +1830,13 @@ begin
     op2 := Core.FetchWord(PSW.Key, GetAbsAddress(CurInst.B1, CurInst.X1, CurInst.Off1));
     SumSetCondCode(op1, -op2, sum);
     FRegisters[PSW.RegisterSet, r] := sum;
+    if ((PSW.CondCode = 3) and PSW.FixedOvflExcp) then
+        raise EFixedOverflow.Create('S caused overflow');
+end;
+
+procedure TCpu.SetRegisters(i: TRegisterSet; j: Integer; const Value: TWord);
+begin
+    FRegisters[i, j] := Value;
 end;
 
 procedure TCpu.SH;
@@ -1431,6 +1849,8 @@ begin
     op2 := Core.FetchHalfWord(PSW.Key, GetAbsAddress(CurInst.B1, CurInst.X1, CurInst.Off1));
     SumSetCondCode(op1, -op2, sum);
     FRegisters[PSW.RegisterSet, r] := sum;
+    if ((PSW.CondCode = 3) and PSW.FixedOvflExcp) then
+        raise EFixedOverflow.Create('SH caused overflow');
 end;
 
 procedure TCpu.SIO;
@@ -1452,13 +1872,95 @@ begin
         PSW.CondCode := Adapters.Channel[chan].SIO(addr);
 end;
 
+procedure TCpu.SLA;
+var
+    count, sign: UInt32;
+    w: TWord;
+    ovfl: Boolean;
+begin
+    ovfl := False;
+    count := GetRelAddress(CurInst.B1, CurInst.Off1) and $3f;
+    w := FRegisters[PSW.RegisterSet, CurInst.R1];
+    sign := w and $80000000;
+    while (count > 0) do
+    begin
+        w := w shl 1;
+        if ((w and $80000000) <> sign) then
+            ovfl := True;
+        Dec(count);
+    end;
+    if (ovfl) then
+    begin
+        if (sign = 0) then
+            w := w and $7fffffff
+        else
+            w := w or sign;
+    end;
+    FRegisters[PSW.RegisterSet, CurInst.R1] := w;
+    if (ovfl) then
+        PSW.CondCode := 3
+    else if (w = 0) then
+        PSW.CondCode := 0
+    else if (w < 0) then
+        PSW.CondCode := 1
+    else
+        PSW.CondCode := 2;
+    if (PSW.DecOvflExcp and ovfl) then
+        raise EDecimalOverflow.Create('Overflow in SLA');
+end;
+
+procedure TCpu.SLDA;
+var
+    r: Byte;
+    dw: TDblWord;
+    sign: UInt64;
+    count: UInt32;
+    ovfl: Boolean;
+begin
+    r := CurInst.R1;
+    count := GetRelAddress(CurInst.B1, CurInst.Off1) and $3f;
+    dw := UInt64(GetDblRegister(r));
+    sign := dw and $8000000000000000;
+    ovfl := False;
+    while (count > 0) do
+    begin
+        dw := dw shl 1;
+        if ((dw and $8000000000000000) <> sign) then
+            ovfl := True;
+        Dec(count);
+    end;
+    if (ovfl) then
+    begin
+        if (sign = 0) then
+            dw := dw and $7fffffffffffffff
+        else
+            dw := dw or $8000000000000000;
+    end;
+    FRegisters[PSW.RegisterSet, r] := dw shr 32;
+    FRegisters[PSW.RegisterSet, r + 1] := dw and $ffffffff;
+    if (ovfl) then
+    begin
+        PSW.CondCode := 3;
+        if (PSW.FixedOvflExcp) then
+            raise EFixedOverflow.Create('Overflow in SLDA');
+    end else if (dw = 0) then
+        PSW.CondCode := 0
+    else if (dw < 0) then
+        PSW.CondCode := 1
+    else
+        PSW.CondCOde := 2;
+end;
+
 procedure TCpu.SLL;
 var
     count: UInt32;
 begin
     count := GetRelAddress(CurInst.B1, CurInst.Off1) and $3f;
-    FRegisters[PSW.RegisterSet, CurInst.R1] :=
-        FRegisters[PSW.RegisterSet, CurInst.R1] shl count;
+    if (count > 31) then
+        FRegisters[PSW.RegisterSet, CurInst.R1] := 0
+    else
+        FRegisters[PSW.RegisterSet, CurInst.R1] :=
+            FRegisters[PSW.RegisterSet, CurInst.R1] shl count;
 end;
 
 procedure TCpu.SLM;
@@ -1483,6 +1985,18 @@ begin
     end;
 end;
 
+procedure TCpu.SP;
+var
+    bcd1, bcd2, rslt: TBcd;
+begin
+    GetPackedOperands(bcd1, bcd2);
+    rslt := bcd1 - bcd2;
+    Core.StorePacked(PSW.Key, GetAbsAddress(CurInst.B1, CurInst.Off1), CurInst.Length1, rslt);
+    PSW.CondCode := PackedCC(rslt, CurInst.Length1);
+    if (PSW.DecOvflExcp and (PSW.CondCode = 3)) then
+        raise EDecimalOverflow.Create('AP caused overflow');
+end;
+
 procedure TCpu.SPM;
 var
     val: TWord;
@@ -1504,7 +2018,64 @@ begin
     SumSetCondCode(op1, -op2, FRegisters[PSW.RegisterSet, CurInst.R1]);
     if ((PSW.CondCode = 3) and PSW.FixedOvflExcp) then
         raise EFixedOverflow.Create('SR caused overflow');
-    
+end;
+
+procedure TCpu.SRA;
+var
+    count, sign: UInt32;
+    w: TWord;
+    neg: Boolean;
+begin
+    count := GetRelAddress(CurInst.B1, CurInst.Off1) and $3f;
+    w := FRegisters[PSW.RegisterSet, CurInst.R1];
+    if (count <> 0) then
+    begin
+        neg := (w < 0);
+        if (count > 31) then
+            w := 0
+        else
+            w := w shr count;
+        if (neg) then
+        begin
+            sign := UInt32(-1) shl (32 - Min(count, 32));
+            w := w or sign;
+        end;
+        FRegisters[PSW.RegisterSet, CurInst.R1] := w;
+    end;
+    if (w = 0) then
+        PSW.CondCode := 0
+    else if (w < 0) then
+        PSW.CondCode := 1
+    else
+        PSW.CondCOde := 2;
+end;
+
+procedure TCpu.SRDA;
+var
+    r: Byte;
+    dw, sign: TDblWord;
+    neg: Boolean;
+    count: UInt32;
+begin
+    r := CurInst.R1;
+
+    count := GetRelAddress(CurInst.B1, CurInst.Off1) and $3f;
+    dw := GetDblRegister(r);
+    neg := (dw < 0);
+    dw := dw shr count;
+    if (neg) then
+    begin
+        sign := TDblWord(-1) shl (64 - count);
+        dw := dw or sign;
+    end;
+    FRegisters[PSW.RegisterSet, r] := dw shr 32;
+    FRegisters[PSW.RegisterSet, r + 1] := dw and $ffffffff;
+    if (dw = 0) then
+        PSW.CondCode := 0
+    else if (dw < 0) then
+        PSW.CondCode := 1
+    else
+        PSW.CondCOde := 2;
 end;
 
 procedure TCpu.SRL;
@@ -1512,8 +2083,11 @@ var
     count: UInt32;
 begin
     count := GetRelAddress(CurInst.B1, CurInst.Off1) and $3f;
-    FRegisters[PSW.RegisterSet, CurInst.R1] :=
-        FRegisters[PSW.RegisterSet, CurInst.R1] shr count;
+    if (count > 31) then
+        FRegisters[PSW.RegisterSet, CurInst.R1] := 0
+    else
+        FRegisters[PSW.RegisterSet, CurInst.R1] :=
+            FRegisters[PSW.RegisterSet, CurInst.R1] shr count;
 end;
 
 procedure TCpu.SSK;
@@ -1679,6 +2253,28 @@ begin
         PSW.CondCode := 2;
 end;
 
+procedure TCpu.SumLogicalCondCode(op1, op2: UInt32; var sum: UInt64);
+var
+    carry: Boolean;
+begin
+    sum := UInt64(op1) + UInt64(op2);
+    carry := (sum and $100000000) <> 0;
+    sum := sum and $ffffffff;
+    if (carry) then
+    begin
+        if (sum = 0) then
+            PSW.CondCode := 2
+        else
+            PSW.CondCode := 3;
+    end else
+    begin
+        if (sum = 0) then
+            PSW.CondCode := 0
+        else
+            PSW.CondCode := 1;
+    end;
+end;
+
 procedure TCpu.SumSetCondCode(op1, op2: TDblWord; var sum: TDblWord);
 // Return the sum of two double words, checking for overflow and
 // setting the condition code appropriately.
@@ -1700,12 +2296,22 @@ end;
 
 procedure TCpu.SVC;
 begin
+    if (SvcTraceEnabled) then
+        TraceSvc;
+
     PSW.IntCode := CurInst.ImmedOperand;
     PSW.InstAddr := PSW.InstAddr - FRelocateReg;
     Core.StoreDblWord(0, SVC_OLD, PSW.AsDblWord);
     PSW.AsDblWord := Core.FetchDblWord(0, SVC_NEW);
     FRelocateReg := Core.FetchRelReg(PSW.Key);
     PSW.InstAddr := PSW.InstAddr + FRelocateReg;
+end;
+
+procedure TCpu.Test;
+begin
+    PSW.InstAddr := 0;
+    Fetch;
+    Execute;
 end;
 
 procedure TCpu.TM;
@@ -1739,6 +2345,110 @@ begin
         Inc(data);
         Dec(len);
     end;
+end;
+
+procedure TCpu.TraceSvc;
+const
+    svcs: array [0..104] of AnsiString = (
+        'EXCP', 'WAIT', 'WAITA', 'REXCP', 'YIELD',
+        'OPR', 'STIME', 'GTIME', 'LOCK', 'COMM',
+        'SPM', '6CAVR', 'AWAKE', 'UNUSED', 'UNUSED',
+        'STXIT', 'UNUSED', 'GTPUT', 'ASCKE', 'ATCH',
+        'DTCH', 'GTJOB', 'SWAP', 'EOS', 'LOD',
+        'RELOD', 'EOJ', 'DUMP', 'CANCL', 'SNAP',
+        'GETCS', 'CHKPT', 'RDFCB', 'ALLOC', 'EXTND',
+        'SCRTH', 'RENAM', 'OBTAN', 'OPEN', 'CLOSE',
+        'FEOV', 'SETFL', 'ENDFL', 'SETS', 'UL0',
+        'UL1', 'EXSAT', 'UL2', 'UL3', 'CNTRL',
+        'E2T', 'E2C', 'E2P', 'E2A', 'E9X',
+        'E9U', 'E9T', 'E9A', 'RPGM', 'RSTR2',
+        'ERROR', 'DMSG', 'TAS', 'TCC', 'SETCS',
+        'SIT', 'SYMBQ', 'LODI', 'ICABT', 'RSTRT',
+        'NLOG', 'MMCON', 'ELOGI', 'ISSET', 'ISEND',
+        'LGET', 'ELVFB', 'EMF', 'RLOUT', 'ROLIN',
+        'SYMFB', 'BRKPT', 'CLSPL', 'ACCT', 'STSVC',
+        'TEST', 'BRECN', 'RSTTP', 'DBS', 'RPGOC',
+        'RPGER', 'LODA', 'DELSC', 'NTR', 'LODSC',
+        'E2S', 'ARGHI', 'ARGLO', 'FRSTA', 'TABIL',
+        'RPGP', 'CLOGB', 'SATEX', 'SATX2', 'UNUSED'
+    );
+var
+    i: Integer;
+    addr: TMemoryAddress;
+    svc: Byte;
+    stemp, bfr: AnsiString;
+
+    function PhaseName: AnsiString;
+    var
+        i: Integer;
+    begin
+        addr := FRegisters[PSW.RegisterSet, 1] + FRelocateReg;
+        Result := '';
+        for i := 0 to 7 do
+            Result := Result + AnsiChar(Core.FetchByte(0, addr + i));
+        Result := TCodeTranslator.EbcdicToAscii(Result);
+    end;
+
+begin
+    svc := CurInst.ImmedOperand;
+    if (svc <= High(svcs)) then
+        stemp := svcs[svc]
+    else
+        stemp := '';
+    bfr := AnsiString(Format('Svc = %d - %s @ %6.6x'#13#10, [svc, stemp, PSW.InstAddr - PSW.InstLength]));
+    SvcTraceFile.Write(PAnsiChar(bfr)^, Length(bfr));
+    case svc of
+      5:
+      begin
+//        addr := FRegisters[PSW.RegisterSet, 1] + FRelocateReg;
+//        stemp := '';
+//        for i := 0 to FRegisters[PSW.RegisterSet, 0] - 1 do
+//            stemp := stemp + AnsiChar(Core.FetchByte(0, addr + i));
+//        stemp := TCodeTranslator.EbcdicToAscii(stemp);
+//        bfr := AnsiString(Format('  %s'#13#10, [stemp]));
+//        SvcTraceFile.Write(PAnsiChar(bfr)^, Length(bfr));
+      end;
+      24:
+      begin
+        bfr := AnsiString(Format('  %s @ %6.6x'#13#10, [PhaseName, FRegisters[PSW.RegisterSet, 0]]));
+        SvcTraceFile.Write(PAnsiChar(bfr)^, Length(bfr));
+      end;
+      67:
+      begin
+        bfr := AnsiString(Format('  %s'#13#10, [PhaseName]));
+        SvcTraceFile.Write(PAnsiChar(bfr)^, Length(bfr));
+      end;
+    end;
+end;
+
+procedure TCpu.TRT;
+var
+    len: Integer;
+    data, table, addr: TMemoryAddress;
+    b: Byte;
+begin
+    len := CurInst.Length;
+    data := GetAbsAddress(CurInst.B1, CurInst.Off1);
+    table := GetAbsAddress(CurInst.B2, CurInst.Off2);
+    while (len >= 0) do
+    begin
+        addr := table + Core.FetchByte(PSW.Key, data);
+        b := Core.FetchByte(PSW.Key, addr);
+        if (b <> 0) then
+        begin
+            FRegisters[PSW.RegisterSet, 1] := (FRegisters[PSW.RegisterSet, 1] and $ff000000) or
+                                              ((data - FRelocateReg) and $ffffff);
+            FRegisters[PSW.RegisterSet, 2] := (FRegisters[PSW.RegisterSet, 2] and $ffffff00) or b;
+            if (len = 0) then
+                PSW.CondCode := 2
+            else
+                PSW.CondCode := 1;
+            Exit;
+        end;
+        Inc(data);
+        Dec(len);
+    end;
+    PSW.CondCode := 0;
 end;
 
 procedure TCpu.UNPK;
@@ -1784,6 +2494,19 @@ begin
             Dec(l1);
         end;
     end;
+end;
+
+procedure TCpu.X;
+var
+    w: TWord;
+begin
+    w := FRegisters[PSW.RegisterSet, CurInst.R1] xor
+         Core.FetchWord(PSW.Key, GetAbsAddress(CurInst.B1, CurInst.X1, CurInst.Off1));
+    FRegisters[PSW.RegisterSet, CurInst.R1] := w;
+    if (w = 0) then
+        PSW.CondCode := 0
+    else
+        PSW.CondCode := 1;
 end;
 
 procedure TCpu.XC;
@@ -1833,6 +2556,17 @@ begin
         PSW.CondCode := 0
     else
         PSW.CondCode := 1;
+end;
+
+procedure TCpu.ZAP;
+var
+    bcd2: TBcd;
+begin
+    bcd2 := Core.FetchPacked(PSW.Key, GetAbsAddress(CurInst.B2, CurInst.Off2), CurInst.Length2);
+    Core.StorePacked(PSW.Key, GetAbsAddress(CurInst.B1, CurInst.Off1), CurInst.Length1, bcd2);
+    PSW.CondCode := PackedCC(bcd2, CurInst.Length1);
+    if (PSW.DecOvflExcp and (PSW.CondCode = 3)) then
+        raise EDecimalOverflow.Create('AP caused overflow');
 end;
 
 constructor TIOST.Create;

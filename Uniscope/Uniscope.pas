@@ -11,6 +11,10 @@ type
 
   TUniscopeSize = ( us16x64, us12x80, us24x80 );
 
+  TAttribute = ( tProtected, tTabStop );
+
+  TAttributes = set of TAttribute;
+
   TUniscope = class(TWinControl)
   private
     FCanvas: TControlCanvas;
@@ -24,6 +28,7 @@ type
     FTraceFile: TFileStream;
     FLockKbd: Boolean;
     FKbdLocked: Boolean;
+    FProtected: Boolean;
     function GetCanvas: TCanvas;
     procedure SetBackColour(const Value: TColor);
     procedure SetTextColour(const Value: TColor);
@@ -40,9 +45,10 @@ type
     FMaxRow: Integer;
     FMaxCol: Integer;
     FCharacters: array of Char;
-    FAttributes: array of Byte;
+    FAttributes: array of TAttributes;
     FModel: TUniscopeModel;
     FSize: TUniscopeSize;
+    FPrntrFile: TFileStream;
     procedure BackSpace;
     procedure ClearBuffer;
     procedure CursorHome;
@@ -53,11 +59,13 @@ type
     procedure DrawStatus;
     procedure EndProtected;
     procedure EraseDisplay;
+    procedure FindSOE(var row, col: Integer);
     function GetCharacter: Char;
     procedure HideCursor;
     procedure IncCursor;
     function IsProtected(row, col: Integer): Boolean;
     procedure MsgWait;
+    procedure OpenPrntrFile;
     procedure Print;
     procedure PrintTransparent;
     procedure Refresh;
@@ -95,8 +103,7 @@ procedure Register;
 
 implementation
 
-uses Dialogs;
-
+uses Dialogs, EmulatorTypes;
 
 procedure Register;
 begin
@@ -109,10 +116,6 @@ const
   START_BLINK_CHAR = '«';
   END_BLINK_CHAR = '»';
   CURSOR_CHAR = '█';
-  // Attributes
-  ATTR_START_PROTECT = $80;
-  ATTR_END_PROTECT = $40;
-  ATTR_TAB_STOP = $20;
   // ASCII  control characters
   NUL = 0;
   SOH = 1;
@@ -184,7 +187,7 @@ begin
     for i := Low(FCharacters) to High(FCharacters) do
     begin
         FCharacters[i] := ' ';
-        FAttributes[i] := 0;
+        FAttributes[i] := [];
     end;
 end;
 
@@ -238,16 +241,12 @@ begin
     // Skip until beginning of next unprotected field
     i := (FRow * FMaxCol) + FCol;
     fin := 0;
-    if ((not FHostControl) and ((FAttributes[i] and ATTR_END_PROTECT) <> 0)) then
+    if (not FHostControl) then
     begin
-        repeat
-            if ((FAttributes[i] and ATTR_START_PROTECT) <> 0) then
-                Break;
+        while ((i >= fin) and (tProtected in FAttributes[i])) do
             Dec(i);
-        until (i < fin);
-        if (i > fin) then
+        if (i >= fin) then
         begin
-            Dec(i);
             FRow := i div FMaxCol;
             FCol := i mod FMaxCol;
         end else
@@ -279,7 +278,7 @@ begin
     for count := 1 to FMaxCol do
     begin
         FCharacters[dest] := ' ';
-        FAttributes[dest] := 0;
+        FAttributes[dest] := [];
         Inc(dest);
     end;
     Refresh;
@@ -288,6 +287,7 @@ end;
 destructor TUniscope.Destroy;
 begin
     FreeAndNil(FTraceFile);
+    FreeAndNil(FPrntrFile);
     FreeAndNil(FTimer);
     FreeAndNil(FCanvas);
     inherited;
@@ -360,26 +360,45 @@ begin
 end;
 
 procedure TUniscope.EndProtected;
-var
-    i: Integer;
 begin
-    // set new end protect location
-    i := (FRow * FMaxCol) + FCol - 1;
-    if (i >= Low(FAttributes)) then
-        FAttributes[i] := FAttributes[i] or ATTR_END_PROTECT;
-    // clear any old end protect attributes bewteen here and the next start protect
-    Inc(i);
-    while ((i <= High(FAttributes)) and ((FAttributes[i] and ATTR_START_PROTECT) = 0)) do
-    begin
-        FAttributes[i] := FAttributes[i] and (not ATTR_END_PROTECT);
-        Inc(i);
-    end;
+    FProtected := False;
 end;
 
 procedure TUniscope.EraseDisplay;
 begin
     ClearBuffer;
     Refresh;
+end;
+
+procedure TUniscope.FindSOE(var row, col: Integer);
+// Scan backward to find SOE
+var
+    soeFound: Boolean;
+begin
+    row := FRow;
+    col := FCol;
+    soeFound := False;
+    while (row >= 0) do
+    begin
+        while (col >= 0) do
+        begin
+            if (FCharacters[(row * FMaxCol) + col] = SOE_CHAR) then
+            begin
+                soeFound := True;
+                Break;
+            end;
+            Dec(col);
+        end;
+        if (soeFound) then
+            Break;
+        Dec(row);
+        col := FMaxCol;
+    end;
+    if (not soeFound) then
+    begin
+        col := 0;
+        row := 0;
+    end;
 end;
 
 function TUniscope.GetBackColour: TColor;
@@ -446,16 +465,12 @@ begin
     // Skip until beginning of next unprotected field
     i := (FRow * FMaxCol) + FCol;
     fin := (FMaxRow * FMaxCol) - 1;
-    if ((not FHostControl) and ((FAttributes[i] and ATTR_START_PROTECT) <> 0)) then
+    if (not FHostControl) then
     begin
-        repeat
-            if ((FAttributes[i] and ATTR_END_PROTECT) <> 0) then
-                Break;
+        while ((i <= fin) and (tProtected in FAttributes[i])) do
             Inc(i);
-        until (i > fin);
-        if (i < fin) then
+        if (i <= fin) then
         begin
-            Inc(i);
             FRow := i div FMaxCol;
             FCol := i mod FMaxCol;
         end else
@@ -468,27 +483,10 @@ end;
 
 function TUniscope.IsProtected(row, col: Integer): Boolean;
 var
-    i, test: Integer;
+    i: Integer;
 begin
     i := (row * FMaxCol) + col;
-    // If this character has ATTR_START_PROTECT then this is the start of a protected field.
-    if ((FAttributes[i] and ATTR_START_PROTECT) <> 0) then
-    begin
-        Result := True;
-        Exit;
-    end;
-    // Scan backward until we find a protected attribute.
-    Dec(i);
-    test := 0;
-    while ((i >= 0) and (test = 0)) do
-    begin
-        test := FAttributes[i] and (ATTR_START_PROTECT or ATTR_END_PROTECT);
-        Dec(i);
-    end;
-    if ((i < 0) or ((test and ATTR_END_PROTECT) <> 0)) then
-        Result := False
-    else
-        Result := True;
+    Result := (tProtected in FAttributes[i]);
 end;
 
 procedure TUniscope.KeyPress(var Key: Char);
@@ -537,9 +535,42 @@ begin
     FTelnet.SendString(bfr);
 end;
 
-procedure TUniscope.Print;
+procedure TUniscope.OpenPrntrFile;
+var
+    dir: String;
 begin
-    { TODO : Implement print functions }
+    FreeAndNil(FPrntrFile);
+    dir := UserDataDir + '\U9030';
+    if (not DirectoryExists(dir)) then
+        ForceDirectories(dir);
+    FPrntrFile := TFileStream.Create(dir + '\U9030Cop.txt', fmCreate);
+end;
+
+procedure TUniscope.Print;
+var
+    row, col: Integer;
+    c: AnsiChar;
+    bfr: AnsiString;
+begin
+    FindSOE(row, col);
+    while (row <= FRow) do
+    begin
+        while (col < FMaxCol) do
+        begin
+            c := AnsiChar(FCharacters[(row * FMaxCol) + col]);
+            if ((c = TAB_CHAR) or (c = START_BLINK_CHAR) or (c = END_BLINK_CHAR)) then
+                c := ' ';
+            if ((c >= ' ') and (c <> SOE_CHAR)) then
+                bfr := bfr + c;
+            Inc(col);
+        end;
+        bfr := bfr + AnsiString(#13#10);
+        Inc(row);
+        col := 0;
+    end;
+    if (not Assigned(FPrntrFile)) then
+        OpenPrntrFile;
+    FPrntrFile.Write(PAnsiChar(bfr)^, Length(bfr));
 end;
 
 procedure TUniscope.PrintTransparent;
@@ -589,6 +620,9 @@ var
 begin
     i := (FRow * FMaxCol) + FCol;
     FCharacters[i] := c;
+    if (FHostControl and FProtected) then
+        Include(FAttributes[i], tProtected);
+
 end;
 
 procedure TUniscope.SetSize(const Value: TUniscopeSize);
@@ -632,7 +666,8 @@ var
     i: Integer;
 begin
     i := (FRow * FMaxCol) + FCol;
-    FAttributes[i] := FAttributes[i] or ATTR_START_PROTECT;
+    Include(FAttributes[i], tProtected);
+    FProtected := True;
 end;
 
 procedure TUniscope.TelnetConnected(Sender: TObject);
@@ -700,7 +735,7 @@ var
         hex: AnsiString;
         i: Integer;
     begin
-        FTraceFile.Write(#13#10#13#10, 4);
+        FTraceFile.Write(PAnsiChar(AnsiString(#13#10#13#10))^, 4);
         word := 0;
         for i := Low(Buffer) to High(Buffer) do
         begin
@@ -747,6 +782,7 @@ begin
               begin
                 FKbdLocked := True;
                 FLockKbd := False;
+                FProtected := False;
               end;
               ETX:
               begin
@@ -814,36 +850,34 @@ end;
 procedure TUniscope.Transmit;
 var
     row, col, maxCol, i: Integer;
-    soeFound, inProt: Boolean;
+    inProt: Boolean;
     bfr: String;
+
+    function TrimRight(bfr: String): String;
+    // Override TrimRight so that it just looks at spaces, not all
+    // control characters
+    var
+        i: Integer;
+    begin
+        i := Length(bfr);
+        while ((i >= 1) and (bfr[i] = ' ')) do
+            Dec(i);
+        Result := Copy(bfr, 1, i);
+    end;
+
 begin
-    row := FRow;
-    col := FCol;
-    // Scan backward to find SOE
-    soeFound := False;
-    while (row >= 0) do
-    begin
-        while (col >= 0) do
-        begin
-            if (FCharacters[(row * FMaxCol) + col] = SOE_CHAR) then
-            begin
-                soeFound := True;
-                Break;
-            end;
-            Dec(col);
-        end;
-        if (soeFound) then
-            Break;
-        Dec(row);
-        col := FMaxCol;
-    end;
-    //  Send SOE location
-    if (not soeFound) then
-    begin
-        col := 0;
-        row := 0;
-    end;
+    FindSOE(row, col);
     bfr := Chr(ESC) + Chr(VT) + Chr(row + Ord(' ')) + Chr(col + Ord(' ')) + Chr(0) + Chr(SI);
+    if (FCharacters[(row * FMaxCol) + col] = SOE_CHAR) then
+    begin
+        bfr := bfr + Chr(RS);
+        Inc(col);
+        if (col >= FMaxCol) then
+        begin
+            col := 0;
+            Inc(row);
+        end;
+    end;
     // Send text
     inProt := False;
     while (row <= FRow) do
@@ -851,34 +885,31 @@ begin
         if (row = FRow) then
             maxCol := FCol
         else
-            maxCol := FMaxCol;
+            maxCol := FMaxCol - 1;
         while (col <= maxcol) do
         begin
             i := (row * FMaxCol) + col;
-            if ((FAttributes[i] and ATTR_START_PROTECT) <> 0)  then
+            if ((not inProt) and (tProtected in FAttributes[i])) then
             begin
                 inProt := True;
-                bfr := bfr + Chr(SUB);
+            end else if (inProt and (not (tProtected in FAttributes[i]))) then
+            begin
+                inProt := False;
+                bfr := TrimRight(bfr) + Chr(SUB);
             end;
             if (not inProt) then
             begin
                 case FCharacters[i] of
-                  SOE_CHAR:     bfr := bfr + Chr(RS);
                   TAB_CHAR:     bfr := bfr + Chr(HT);
                   else          bfr := bfr + FCharacters[i];
                 end;
             end;
-            if ((FAttributes[i] and ATTR_END_PROTECT) <> 0) then
-                inProt := False;
             Inc(col);
         end;
         if (row < FRow) then
         begin
             // On all rows but the last, replace trailing spaces with <CR>
-            i := Length(bfr);
-            while ((i > 0) and (bfr[i] = ' ')) do
-                Dec(i);
-            bfr := Copy(bfr, 1 , i) + #13;
+            bfr := TrimRight(bfr) + #13;
         end;
         col := 0;
         Inc(row);

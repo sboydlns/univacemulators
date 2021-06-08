@@ -1,5 +1,7 @@
 program U9030;
 
+
+
 uses
   Vcl.Forms,
   U9030Frm in 'U9030Frm.pas' {U9030Form},
@@ -14,7 +16,10 @@ uses
   Console in 'Console.pas',
   EmulatorTypes in '..\Common\EmulatorTypes.pas',
   DebuggerFrm in 'DebuggerFrm.pas' {DebuggerForm},
-  Bcd in '..\Common\Bcd.pas';
+  Bcd in '..\Common\Bcd.pas',
+  Trace in 'Trace.pas',
+  U0773 in 'U0773.pas',
+  CpuTestFrm in 'CpuTestFrm.pas' {CpuTestForm};
 
 {$R *.res}
 
@@ -23,5 +28,6 @@ begin
   Application.MainFormOnTaskbar := True;
   Application.CreateForm(TU9030Form, U9030Form);
   Application.CreateForm(TDebuggerForm, DebuggerForm);
+  Application.CreateForm(TCpuTestForm, CpuTestForm);
   Application.Run;
 end.
