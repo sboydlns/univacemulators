@@ -127,7 +127,7 @@ implementation
 
 function DataDir: String;
 begin
-    Result := UserDataDir + '\U9030';
+    Result := PublicDataDir + '\Univac 9030 Emulator\Data';
     if (not DirectoryExists(Result)) then
         ForceDirectories(Result);
 end;
@@ -255,6 +255,7 @@ begin
     Add(Opcode($5C, 4, nil, 'M', itRX));
     Add(Opcode($5D, 4, nil, 'D', itRX));
     Add(Opcode($5E, 4, nil, 'AL', itRX));
+    Add(Opcode($5F, 4, nil, 'SL', itRX));
     Add(Opcode($60, 4, nil, 'STD', itRX));
     Add(Opcode($68, 4, nil, 'LD', itRX));
     Add(Opcode($69, 4, nil, 'CD', itRX));

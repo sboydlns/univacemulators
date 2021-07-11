@@ -338,6 +338,21 @@ object U9030Form: TU9030Form
       Caption = 'PRINTER'
       Transparent = False
     end
+    object Bevel2: TBevel
+      Left = 12
+      Top = 177
+      Width = 307
+      Height = 49
+      Shape = bsFrame
+    end
+    object Label40: TLabel
+      Left = 18
+      Top = 169
+      Width = 42
+      Height = 14
+      Caption = 'READER'
+      Transparent = False
+    end
     object PSWEdt: TEdit
       Left = 46
       Top = 22
@@ -583,28 +598,23 @@ object U9030Form: TU9030Form
       Height = 22
       TabOrder = 34
     end
-    object PrtBrkptBtn: TButton
-      Left = 18
-      Top = 130
+    object PrnSaveBtn: TButton
+      Left = 26
+      Top = 127
       Width = 75
       Height = 25
-      Caption = 'Brkpt'
+      Caption = 'Save As'
       TabOrder = 35
+      OnClick = PrnSaveBtnClick
     end
-    object PrtFileNameEdt: TEdit
-      Left = 95
-      Top = 131
-      Width = 187
-      Height = 22
-      TabOrder = 36
-    end
-    object PrtBrowseBtn: TButton
-      Left = 284
-      Top = 130
-      Width = 26
+    object RdrLoadBtn: TButton
+      Left = 26
+      Top = 190
+      Width = 75
       Height = 25
-      Caption = '...'
-      TabOrder = 37
+      Caption = 'Load'
+      TabOrder = 36
+      OnClick = RdrLoadBtnClick
     end
   end
   object CpuTestBtn: TButton
@@ -671,5 +681,16 @@ object U9030Form: TU9030Form
     OnTimer = TimerTimer
     Left = 228
     Top = 48
+  end
+  object OpenDlg: TOpenDialog
+    Options = [ofHideReadOnly, ofPathMustExist, ofEnableSizing]
+    Left = 267
+    Top = 49
+  end
+  object ConfigXml: TXMLDocument
+    Options = [doNodeAutoCreate, doAutoPrefix, doNamespaceDecl]
+    Left = 320
+    Top = 50
+    DOMVendorDesc = 'MSXML'
   end
 end

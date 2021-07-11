@@ -1,0 +1,154 @@
+# L
+
+SET MEM $10W=$123456
+L R1,$10
+TEST R1=$123456
+TEST MEM $10W=$123456
+
+#ST
+
+SET R1=$123456
+SET MEM $10W=0
+ST R1,$10
+TEST R1=$123456
+TEST MEM $10W=$123456
+
+# LR
+
+SET R1=$123456
+LR R2,R1
+TEST R1=$123456
+TEST R2=$123456
+
+# LH
+
+# Positive arguemtn
+SET MEM $10H=1234
+LH R1,$10
+TEST MEM $10H=1234
+TEST R1=1234
+
+# Negative arugment
+SET MEM $10H=-1234
+LH R1,$10
+TEST MEM $10H=-1234
+TEST R1=-1234
+
+#STH
+
+SET R1=$1234
+SET MEM $10H=0
+STH R1,$10
+TEST R1=$1234
+TEST MEM $10H=$1234
+
+# LTR
+
+# Zero argument
+SET R1=0
+LTR R2,R1
+TEST R1=0
+TEST R2=0
+TEST CC=0
+
+# Positive argument
+SET R1=1
+LTR R2,R1
+TEST R1=1
+TEST R2=1
+TEST CC=2
+
+# Negative argument
+SET R1=-1
+LTR R2,R1
+TEST R1=-1
+TEST R2=-1
+TEST CC=1
+
+# LCR
+
+# Positive argument
+SET R1=1
+LCR R1,R1
+TEST R1=-1
+TEST CC=1
+
+# Negative argument
+SET R1=-1
+LCR R1,R1
+TEST R1=1
+TEST CC=2
+
+# Zero argument
+SET R1=0
+LCR R1,R1
+TEST R1=0
+TEST CC=0
+
+# Overflow
+SET R1=$80000000
+LCR R1,R1
+TEST R1=$80000000
+TEST CC=3
+
+# LPR
+
+# Positive argument
+SET R1=1
+LPR R1,R1
+TEST R1=1
+TEST CC=2
+
+# Negative argument
+SET R1=-1
+LPR R1,R1
+TEST R1=1
+TEST CC=2
+
+# Zero argument
+SET R1=0
+LPR R1,R1
+TEST R1=0
+TEST CC=0
+
+# Overflow
+SET R1=$80000000
+LPR R1,R1
+TEST R1=$80000000
+TEST CC=3
+
+# LNR
+
+# Positive argument
+SET R1=1
+LNR R1,R1
+TEST R1=-1
+TEST CC=1
+
+# Negative argument
+SET R1=-1
+LNR R1,R1
+TEST R1=-1
+TEST CC=1
+
+# Zero argument
+SET R1=0
+LNR R1,R1
+TEST R1=0
+TEST CC=0
+
+# IC
+
+SET R1=$1000
+SET MEM $10B=$20
+IC R1,$10
+TEST R1=$1020
+TEST MEM $10B=$20
+
+#STC
+
+SET R1=$1020
+SET MEM $10B=0
+STC R1,$10
+TEST R1=$1020
+TEST MEM $10B=$20

@@ -3,6 +3,7 @@ program U9030;
 
 
 uses
+  SysUtils,
   Vcl.Forms,
   U9030Frm in 'U9030Frm.pas' {U9030Form},
   Memory in 'Memory.pas',
@@ -19,15 +20,25 @@ uses
   Bcd in '..\Common\Bcd.pas',
   Trace in 'Trace.pas',
   U0773 in 'U0773.pas',
-  CpuTestFrm in 'CpuTestFrm.pas' {CpuTestForm};
+  CpuTestFrm in 'CpuTestFrm.pas' {CpuTestForm},
+  U0717 in 'U0717.pas',
+  CardFile in '..\Common\CardFile.pas',
+  Config in 'Config.pas';
 
 {$R *.res}
 
 begin
-  Application.Initialize;
-  Application.MainFormOnTaskbar := True;
-  Application.CreateForm(TU9030Form, U9030Form);
-  Application.CreateForm(TDebuggerForm, DebuggerForm);
-  Application.CreateForm(TCpuTestForm, CpuTestForm);
-  Application.Run;
+  try
+      Application.Initialize;
+      Application.MainFormOnTaskbar := True;
+      Application.CreateForm(TU9030Form, U9030Form);
+      Application.CreateForm(TDebuggerForm, DebuggerForm);
+      Application.CreateForm(TCpuTestForm, CpuTestForm);
+      Application.Run;
+  except
+    on E: Exception do
+    begin
+        ShowException(E, ExceptAddr);
+    end;
+  end;
 end.

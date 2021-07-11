@@ -3,7 +3,7 @@ unit Channels;
 interface
 
 uses SysUtils, Classes, System.Contnrs, SyncObjs, Generics.Collections,
-     U9030Types;
+     CardFile, U9030Types;
 
 const
   MAX_CHANNEL = 7;
@@ -54,14 +54,18 @@ type
     FResetDone: TEvent;
     FReset: Boolean;
     FBusy: Boolean;
+    FFiles: TCardFileList;
+    FLock: TCriticalSection;
     procedure DoReset; virtual;
     procedure ProcessCommand; virtual; abstract;
     procedure DoTimer; virtual;
   public
     constructor Create(num: Byte); virtual;
     destructor Destroy; override;
+    procedure AddFile(fname: String); virtual;
     procedure Execute; override;
     procedure Reset;
+    procedure SaveAs(fname: String); virtual;
     property Busy: Boolean read FBusy;
   end;
 
@@ -92,6 +96,8 @@ type
   end;
 
   TChannel = class
+  private
+    function GetDevice(num: Integer): TDevice;
   protected
     FBusy: Boolean;
     FMaxDevice: Byte;
@@ -113,6 +119,7 @@ type
     procedure Reset;
     function SIO(addr: TWord): Byte; virtual;
     property ChannelNum: Byte read FChannelNum;
+    property Device[num: Integer]: TDevice read GetDevice;
   end;
 
   TChannelList = class(TObjectList)
@@ -267,6 +274,11 @@ begin
     end;
 end;
 
+function TChannel.GetDevice(num: Integer): TDevice;
+begin
+    Result := FDevices[num];
+end;
+
 function TChannel.GetStatus: TStatus;
 begin
     Result := FStatusQueue.Dequeue;
@@ -396,12 +408,29 @@ end;
 
 { TDevice }
 
+procedure TDevice.AddFile(fname: String);
+var
+    cfr: TCardFileRec;
+begin
+    FLock.Acquire;
+    try
+        cfr.FileName := fname;
+        cfr.RPGType := '';
+        cfr.BlankCards := 0;
+        FFiles.Add(cfr);
+    finally
+        FLock.Release;
+    end;
+end;
+
 constructor TDevice.Create(num: Byte);
 begin
     inherited Create(False);
     FDeviceNum := num;
     FCmdRecvd := TEvent.Create(nil, False, False, '');
     FResetDone := TEvent.Create(nil, False, False, '');
+    FLock := TCriticalSection.Create;
+    FFiles := TCardFileList.Create;
 end;
 
 destructor TDevice.Destroy;
@@ -413,6 +442,8 @@ begin
     end;
     FreeAndNil(FCmdRecvd);
     FreeAndNil(FResetDone);
+    FreeAndNil(FLock);
+    FreeAndNil(FFiles);
     inherited Destroy;
 end;
 
@@ -463,6 +494,11 @@ begin
     FReset := True;
     FCmdRecvd.SetEvent;
     FResetDone.WaitFor(100);
+end;
+
+procedure TDevice.SaveAs(fname: String);
+begin
+    ;
 end;
 
 { TStatus }

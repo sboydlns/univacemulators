@@ -540,10 +540,10 @@ var
     dir: String;
 begin
     FreeAndNil(FPrntrFile);
-    dir := UserDataDir + '\U9030';
+    dir := PublicDataDir + '\Univac 9030 Emulator\Data';
     if (not DirectoryExists(dir)) then
         ForceDirectories(dir);
-    FPrntrFile := TFileStream.Create(dir + '\U9030Cop.txt', fmCreate);
+    FPrntrFile := TFileStream.Create(dir + '\U9030Cop.txt', fmCreate or fmShareDenyWrite);
 end;
 
 procedure TUniscope.Print;

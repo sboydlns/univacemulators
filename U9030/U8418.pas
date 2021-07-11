@@ -55,7 +55,7 @@ end;
 constructor T8418Disk.Create(const AFileName: string; Mode: Word);
 begin
     inherited;
-    FMaxCylinder := 808;
+    FMaxCylinder := 815;
     FMaxTrack := MAX_HEADS;
     FMaxSector := MAX_RECORDS;
     FSectorSize := RECORD_SIZE;
@@ -89,7 +89,7 @@ procedure T8418Disk.ReadSector(cyl, head, rec: Integer; bfr: PByte);
 begin
     SeekSector(cyl, head, rec);
     if (Read(bfr^, FSectorSize) <> FSectorSize) then
-        raise Exception.CreateFmt('Error reading %d %d %s', [cyl, head, rec]);
+        raise Exception.CreateFmt('Error reading %d %d %d', [cyl, head, rec]);
 end;
 
 procedure T8418Disk.SeekSector(cyl, head, rec: Integer);
@@ -110,7 +110,7 @@ end;
 constructor T8416Disk.Create(const AFileName: string; Mode: Word);
 begin
     inherited;
-    FMaxCylinder := 404;
+    FMaxCylinder := 411;
 end;
 
 end.

@@ -498,7 +498,7 @@ begin
         begin
             l := (src)^ + 1;                                // length of text
             b := (src + 1)^;                                // # blanks
-            Result := Result + StringOfChar(' ', b);
+            Result := Result + AnsiString(StringOfChar(' ', b));
             Result := Result + TCodeTranslator.EbcdicToAscii(ByteToString(src + 2, l));
             Inc(src, l + 2);
             Dec(rlen, l + 2);

@@ -65,6 +65,11 @@
 			<DCC_RemoteDebug>true</DCC_RemoteDebug>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Cfg_1_Win32)'!=''">
+			<DCC_DebugDCUs>true</DCC_DebugDCUs>
+			<VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
+			<VerInfo_Locale>1033</VerInfo_Locale>
+			<Icon_MainIcon>U9030_Icon.ico</Icon_MainIcon>
+			<Debugger_RunParams>-c REL042.cfg</Debugger_RunParams>
 			<Debugger_CWD>C:\Development\Emulators\U9030\Win32\Debug</Debugger_CWD>
 			<DCC_RemoteDebug>false</DCC_RemoteDebug>
 		</PropertyGroup>
@@ -80,7 +85,6 @@
 			</DelphiCompile>
 			<DCCReference Include="U9030Frm.pas">
 				<Form>U9030Form</Form>
-				<FormType>dfm</FormType>
 			</DCCReference>
 			<DCCReference Include="Memory.pas"/>
 			<DCCReference Include="Cpu.pas"/>
@@ -100,8 +104,10 @@
 			<DCCReference Include="U0773.pas"/>
 			<DCCReference Include="CpuTestFrm.pas">
 				<Form>CpuTestForm</Form>
-				<FormType>dfm</FormType>
 			</DCCReference>
+			<DCCReference Include="U0717.pas"/>
+			<DCCReference Include="..\Common\CardFile.pas"/>
+			<DCCReference Include="Config.pas"/>
 			<BuildConfiguration Include="Release">
 				<Key>Cfg_2</Key>
 				<CfgParent>Base</CfgParent>

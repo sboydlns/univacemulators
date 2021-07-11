@@ -2,7 +2,7 @@ unit U0773;
 
 interface
 
-uses SysUtils, Classes,
+uses Windows, SysUtils, Classes,
      Channels, IPC;
 
 const
@@ -46,6 +46,7 @@ type
     FCommand: Byte;
     FBCW: TIPCBCW;
     FPrintFile: TFileStream;
+    FPrintFileName: String;
     FLcbLoaded: Boolean;
     FVfbLoaded: Boolean;
     FOverflow: Boolean;
@@ -69,6 +70,7 @@ type
     constructor Create(num: Byte); override;
     destructor Destroy; override;
     procedure ProcessCommand; override;
+    procedure SaveAs(fname: String); override;
     procedure SIO; override;
   end;
 
@@ -104,10 +106,11 @@ end;
 constructor T0773.Create(num: Byte);
 begin
     inherited;
-    FCommand := 255;
+    FCommand := 0;
     FLineNum := 1;
     FBCW := TIPCBCW.Create(PRINTER_BCW0);
-    FPrintFile := TFileStream.Create(DataDir + '\U0773.prn', fmCreate);
+    FPrintFileName := DataDir + '\U0773.prn';
+    FPrintFile := TFileStream.Create(FPrintFileName, fmCreate or fmShareDenyWrite);
 end;
 
 destructor T0773.Destroy;
@@ -412,6 +415,23 @@ begin
         FCommand := 0;
     end;
     FBusy := False;
+end;
+
+procedure T0773.SaveAs(fname: String);
+var
+    msg: String;
+begin
+    // Wait until we aren't busy.
+    while (FBusy) do
+        Sleep(1);
+    //
+    FreeAndNil(FPrintFile);
+    if (not CopyFile(PWideChar(FPrintFileName), PWideChar(fname), False)) then
+    begin
+        msg := WinError;
+        raise Exception.CreateFmt('Save failed! %s', [msg]);
+    end;
+    FPrintFile := TFileStream.Create(FPrintFileName, fmCreate);
 end;
 
 procedure T0773.SIO;

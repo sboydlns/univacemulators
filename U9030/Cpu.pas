@@ -162,6 +162,7 @@ type
     procedure InitTimer;
     procedure GetPackedOperands(var bcd1, bcd2: TBcd);
     function PackedCC(value: TBcd; len: Integer): Byte;
+    procedure SetRegisters(i: TRegisterSet; j: Integer; const Value: TWord);
     procedure SumLogicalCondCode(op1, op2: UInt32; var sum: UInt64) overload;
     procedure SumSetCondCode(op1, op2: THalfWord; var sum: THalfWord) overload;
     procedure SumSetCondCode(op1, op2: TWord; var sum: TWord) overload;
@@ -207,6 +208,7 @@ type
     procedure LCS;
     procedure LH;
     procedure LM;
+    procedure LNR;
     procedure LPR;
     procedure LPSW;
     procedure LR;
@@ -232,15 +234,19 @@ type
     procedure S;
     procedure SH;
     procedure SIO;
+    procedure SL;
     procedure SLA;
     procedure SLDA;
+    procedure SLDL;
     procedure SLL;
     procedure SLM;
+    procedure SLR;
     procedure SP;
     procedure SPM;
     procedure SR;
     procedure SRA;
     procedure SRDA;
+    procedure SRDL;
     procedure SRL;
     procedure SSK;
     procedure SSM;
@@ -254,13 +260,13 @@ type
     procedure TM;
     procedure TR;
     procedure TRT;
+    procedure TS;
     procedure UNPK;
     procedure X;
     procedure XC;
     procedure XI;
     procedure XR;
     procedure ZAP;
-    procedure SetRegisters(i: TRegisterSet; j: Integer; const Value: TWord);
   public
     constructor Create;
     destructor Destroy; override;
@@ -620,11 +626,11 @@ begin
     Opcodes.FindOpcode('BCT').Proc := BCT;
     Opcodes.FindOpcode('BCTR').Proc := BCTR;
     Opcodes.FindOpcode('C').Proc := C;
+    Opcodes.FindOpcode('CH').Proc := CH;
     Opcodes.FindOpcode('CL').Proc := CL;
     Opcodes.FindOpcode('CLC').Proc := CLC;
-    Opcodes.FindOpcode('CLR').Proc := CLR;
     Opcodes.FindOpcode('CLI').Proc := CLI;
-    Opcodes.FindOpcode('CH').Proc := CH;
+    Opcodes.FindOpcode('CLR').Proc := CLR;
     Opcodes.FindOpcode('CP').Proc := CP;
     Opcodes.FindOpcode('CR').Proc := CR;
     Opcodes.FindOpcode('CVB').Proc := CVB;
@@ -645,6 +651,7 @@ begin
     Opcodes.FindOpcode('LCS').Proc := LCS;
     Opcodes.FindOpcode('LH').Proc := LH;
     Opcodes.FindOpcode('LM').Proc := LM;
+    Opcodes.FindOpcode('LNR').Proc := LNR;
     Opcodes.FindOpcode('LPR').Proc := LPR;
     Opcodes.FindOpcode('LPSW').Proc := LPSW;
     Opcodes.FindOpcode('LR').Proc := LR;
@@ -670,15 +677,19 @@ begin
     Opcodes.FindOpcode('S').Proc := S;
     Opcodes.FindOpcode('SH').Proc := SH;
     Opcodes.FindOpcode('SIO').Proc := SIO;
+    Opcodes.FindOpcode('SL').Proc := SL;
     Opcodes.FindOpcode('SLA').Proc := SLA;
     Opcodes.FindOpcode('SLDA').Proc := SLDA;
+    Opcodes.FindOpcode('SLDL').Proc := SLDL;
     Opcodes.FindOpcode('SLL').Proc := SLL;
     Opcodes.FindOpcode('SLM').Proc := SLM;
+    Opcodes.FindOpcode('SLR').Proc := SLR;
     Opcodes.FindOpcode('SP').Proc := SP;
     Opcodes.FindOpcode('SPM').Proc := SPM;
     Opcodes.FindOpcode('SR').Proc := SR;
-    Opcodes.FindOpcode('SRDA').Proc := SRDA;
     Opcodes.FindOpcode('SRA').Proc := SRA;
+    Opcodes.FindOpcode('SRDA').Proc := SRDA;
+    Opcodes.FindOpcode('SRDL').Proc := SRDL;
     Opcodes.FindOpcode('SRL').Proc := SRL;
     Opcodes.FindOpcode('SSK').Proc := SSK;
     Opcodes.FindOpcode('SSM').Proc := SSM;
@@ -692,6 +703,7 @@ begin
     Opcodes.FindOpcode('TM').Proc := TM;
     Opcodes.FindOpcode('TR').Proc := TR;
     Opcodes.FindOpcode('TRT').Proc := TRT;
+    Opcodes.FindOpcode('TS').Proc := TS;
     Opcodes.FindOpcode('UNPK').Proc := UNPK;
     Opcodes.FindOpcode('X').Proc := X;
     Opcodes.FindOpcode('XC').Proc := XC;
@@ -758,11 +770,28 @@ var
 
     function TCBMatches(tcb: TMemoryAddress; offset, match: THalfWord): Boolean;
     // Check the content of the TCB to see if it is a match.
-    // If offset = 0 then check JT$WAIT and $JT$WAIT + 1 equal to zero.
+    // If match = $100 then we are looking for match on the job name given in R8 & R9. Otherwise,
+    // if offset = 0 then check JT$WAIT, JT$WAIT+1, JT$WAIT+2 and JT$WAIT+3 equal to zero.      
     // Otherwise check to see if any of the bits given in match are set in
     // the byte at offset.
+    var
+        pre: TMemoryAddress;
+        j1, j2: TWord;
     begin
-        if (offset = 0) then
+        if (match = $100) then
+        begin
+            pre := (Core.FetchWord(PSW.Key, tcb + 20) and $ffffff);
+            if (pre = 0) then
+            begin
+                Result := False;
+            end else
+            begin
+                j1 := Core.FetchWord(PSW.Key, pre);
+                j2 := Core.FetchWord(PSW.Key, pre + 4);
+                Result := (FRegisters[PSW.RegisterSet, 8] = j1) and
+                          (FRegisters[PSW.RegisterSet, 9] = j2);
+            end;
+        end else if (offset = 0) then
         begin
             // Having the island code override bit ($8000) set does not prevent a TCB
             // from being scheduled for execution.
@@ -775,14 +804,14 @@ var
 
     procedure ScanSwitchList;
     // Scan the switch list given by the address in the least significant
-    // half word of B1. Keep scanning until we a pointer with the most
+    // half word of B1. Keep scanning until we see a pointer with the most
     // significant half word = $ffff.
     //
     // If the contents of B1 + 1 <> 0 then do not start matching until after
     // the TCB given by the contents of B1 + 1 is reached.
     //
-    // If the most significant half word of b1 is zero then a TCB matches if JT$WAIT and
-    // JT$WAIT + 1 = 0;
+    // If the most significant half word of b1 is zero then a TCB matches if JT$WAIT,
+    // JT$WAIT+1, JT$WAIT+2 and JT$WAIT+3 = 0.
     var
         r: Integer;
         offset, match: THalfWord;
@@ -1318,6 +1347,21 @@ begin
         if (r > 15) then
             r := 0;
     end;
+end;
+
+procedure TCpu.LNR;
+var
+    w: TWord;
+    ovfl: Boolean;
+begin
+    ovfl := False;
+    w := FRegisters[PSW.RegisterSet, CurInst.R2];
+    if (w > 0) then
+        FRegisters[PSW.RegisterSet, CurInst.R1] := -w;
+    if (w = 0) then
+        PSW.CondCode := 0
+    else
+        PSW.CondCode := 1;
 end;
 
 procedure TCpu.LPR;
@@ -1872,6 +1916,20 @@ begin
         PSW.CondCode := Adapters.Channel[chan].SIO(addr);
 end;
 
+procedure TCpu.SL;
+var
+    r: Integer;
+    op1, op2: UInt32;
+    rslt: UInt64;
+    carry: Boolean;
+begin
+    r := CurInst.R1;
+    op1 := FRegisters[PSW.RegisterSet, r];
+    op2 := Core.FetchWord(PSW.Key, GetAbsAddress(CurInst.B1, CurInst.X1, CurInst.Off1));
+    SumLogicalCondCode(op1, -Integer(op2), rslt);
+    FRegisters[PSW.RegisterSet, r] := UInt32(rslt);
+end;
+
 procedure TCpu.SLA;
 var
     count, sign: UInt32;
@@ -1918,6 +1976,8 @@ var
     ovfl: Boolean;
 begin
     r := CurInst.R1;
+    if ((r mod 2) <> 0) then
+        raise ESpecificationException.Create('Register must be even');
     count := GetRelAddress(CurInst.B1, CurInst.Off1) and $3f;
     dw := UInt64(GetDblRegister(r));
     sign := dw and $8000000000000000;
@@ -1949,6 +2009,24 @@ begin
         PSW.CondCode := 1
     else
         PSW.CondCOde := 2;
+end;
+
+procedure TCpu.SLDL;
+var
+    r: Byte;
+    dw: TDblWord;
+    sign: UInt64;
+    count: UInt32;
+    ovfl: Boolean;
+begin
+    r := CurInst.R1;
+    if ((r mod 2) <> 0) then
+        raise ESpecificationException.Create('Register must be even');
+    count := GetRelAddress(CurInst.B1, CurInst.Off1) and $3f;
+    dw := UInt64(GetDblRegister(r));
+    dw := dw shl count;
+    FRegisters[PSW.RegisterSet, r] := dw shr 32;
+    FRegisters[PSW.RegisterSet, r + 1] := dw and $ffffffff;
 end;
 
 procedure TCpu.SLL;
@@ -1983,6 +2061,20 @@ begin
         if (r > 15) then
             r := 0;
     end;
+end;
+
+procedure TCpu.SLR;
+var
+    r: Integer;
+    op1, op2: UInt32;
+    rslt: UInt64;
+    carry: Boolean;
+begin
+    r := CurInst.R1;
+    op1 := FRegisters[PSW.RegisterSet, r];
+    op2 := FRegisters[PSW.RegisterSet, CurInst.R2];
+    SumLogicalCondCode(op1, -Integer(op2), rslt);
+    FRegisters[PSW.RegisterSet, r] := UInt32(rslt);
 end;
 
 procedure TCpu.SP;
@@ -2060,6 +2152,8 @@ begin
     r := CurInst.R1;
 
     count := GetRelAddress(CurInst.B1, CurInst.Off1) and $3f;
+    if ((r mod 2) <> 0) then
+        raise ESpecificationException.Create('Register must be even');
     dw := GetDblRegister(r);
     neg := (dw < 0);
     dw := dw shr count;
@@ -2076,6 +2170,24 @@ begin
         PSW.CondCode := 1
     else
         PSW.CondCOde := 2;
+end;
+
+procedure TCpu.SRDL;
+var
+    r: Byte;
+    dw: TDblWord;
+    sign: UInt64;
+    count: UInt32;
+    ovfl: Boolean;
+begin
+    r := CurInst.R1;
+    if ((r mod 2) <> 0) then
+        raise ESpecificationException.Create('Register must be even');
+    count := GetRelAddress(CurInst.B1, CurInst.Off1) and $3f;
+    dw := UInt64(GetDblRegister(r));
+    dw := dw shr count;
+    FRegisters[PSW.RegisterSet, r] := dw shr 32;
+    FRegisters[PSW.RegisterSet, r + 1] := dw and $ffffffff;
 end;
 
 procedure TCpu.SRL;
@@ -2395,7 +2507,7 @@ begin
         stemp := svcs[svc]
     else
         stemp := '';
-    bfr := AnsiString(Format('Svc = %d - %s @ %6.6x'#13#10, [svc, stemp, PSW.InstAddr - PSW.InstLength]));
+    bfr := AnsiString(Format('Svc = %d - %s @ %6.6x'#13#10, [svc, stemp, PSW.InstAddr - (PSW.InstLength * 2)]));
     SvcTraceFile.Write(PAnsiChar(bfr)^, Length(bfr));
     case svc of
       5:
@@ -2449,6 +2561,18 @@ begin
         Dec(len);
     end;
     PSW.CondCode := 0;
+end;
+
+procedure TCpu.TS;
+var
+    addr: TMemoryAddress;
+begin
+    addr := GetAbsAddress(CurInst.B1, CurInst.Off1);
+    if ((Core.FetchByte(PSW.Key, addr) and $80) = 0) then
+        PSW.CondCode := 0
+    else
+        PSW.CondCode := 1;
+    Core.StoreByte(PSW.Key, addr, $ff);
 end;
 
 procedure TCpu.UNPK;

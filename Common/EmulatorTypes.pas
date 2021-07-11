@@ -19,6 +19,7 @@ type
     class function FieldataToAscii(b: Byte): AnsiChar; overload;
     class function FieldataToAscii(s: AnsiString): AnsiString; overload;
     class function FieldataToHollerith12(c: AnsiChar): Word; overload;
+    class function Hollerith12ToEbcdic(w: Word): Byte; overload;
     class function Hollerith12ToFieldata(w: Word): Byte; overload;
     class function Hollerith12ToHollerith8(w: Word): Byte; overload;
     class function Hollerith12ToXS3(w: Word): Byte; overload;
@@ -243,6 +244,7 @@ const
   function ByteToString(bfr: PByte; len: Integer): AnsiString; overload;
   function CardFileDir: String;
   function ExeDir: String;
+  function PublicDataDir: String;
   function UserDataDir: String;
 
 implementation
@@ -603,6 +605,297 @@ const
     ( Hollerith: HOLLERITH_0 or HOLLERITH_7 or HOLLERITH_8; Native: FD_LOZENGE),
     ( Hollerith: HOLLERITH_0 or HOLLERITH_2 or HOLLERITH_8; Native: FD_STOP)
    );
+   // 12-bit Hollerith to EBCDIC
+   Hollerith12Ebcdic: array [0..255] of TXS3XlateItem = (
+    ( Hollerith: 0; Native: $40),
+    ( Hollerith: HOLLERITH_12; Native: $50),
+    ( Hollerith: HOLLERITH_11; Native: $60),
+    ( Hollerith: HOLLERITH_0; Native: $f0),
+    ( Hollerith: HOLLERITH_12 or HOLLERITH_11 or HOLLERITH_0; Native: $70),
+    ( Hollerith: HOLLERITH_12 or HOLLERITH_11; Native: $6a),
+    ( Hollerith: HOLLERITH_12 or HOLLERITH_0; Native: $c0),
+    ( Hollerith: HOLLERITH_11 or HOLLERITH_0; Native: $d0),
+
+    ( Hollerith: HOLLERITH_1; Native: $f1),
+    ( Hollerith: HOLLERITH_1 or HOLLERITH_12; Native: $c1),
+    ( Hollerith: HOLLERITH_1 or HOLLERITH_11; Native: $d1),
+    ( Hollerith: HOLLERITH_1 or HOLLERITH_0; Native: $61),
+    ( Hollerith: HOLLERITH_1 or HOLLERITH_12 or HOLLERITH_11 or HOLLERITH_0; Native: $b1),
+    ( Hollerith: HOLLERITH_1 or HOLLERITH_12 or HOLLERITH_11; Native: $91),
+    ( Hollerith: HOLLERITH_1 or HOLLERITH_12 or HOLLERITH_0; Native: $81),
+    ( Hollerith: HOLLERITH_1 or HOLLERITH_11 or HOLLERITH_0; Native: $a1),
+
+    ( Hollerith: HOLLERITH_2; Native: $f2),
+    ( Hollerith: HOLLERITH_2 or HOLLERITH_12; Native: $c2),
+    ( Hollerith: HOLLERITH_2 or HOLLERITH_11; Native: $d2),
+    ( Hollerith: HOLLERITH_2 or HOLLERITH_0; Native: $e2),
+    ( Hollerith: HOLLERITH_2 or HOLLERITH_12 or HOLLERITH_11 or HOLLERITH_0; Native: $b2),
+    ( Hollerith: HOLLERITH_2 or HOLLERITH_12 or HOLLERITH_11; Native: $92),
+    ( Hollerith: HOLLERITH_2 or HOLLERITH_12 or HOLLERITH_0; Native: $82),
+    ( Hollerith: HOLLERITH_2 or HOLLERITH_11 or HOLLERITH_0; Native: $a2),
+
+    ( Hollerith: HOLLERITH_3; Native: $f3),
+    ( Hollerith: HOLLERITH_3 or HOLLERITH_12; Native: $c3),
+    ( Hollerith: HOLLERITH_3 or HOLLERITH_11; Native: $d3),
+    ( Hollerith: HOLLERITH_3 or HOLLERITH_0; Native: $e3),
+    ( Hollerith: HOLLERITH_3 or HOLLERITH_12 or HOLLERITH_11 or HOLLERITH_0; Native: $b3),
+    ( Hollerith: HOLLERITH_3 or HOLLERITH_12 or HOLLERITH_11; Native: $93),
+    ( Hollerith: HOLLERITH_3 or HOLLERITH_12 or HOLLERITH_0; Native: $83),
+    ( Hollerith: HOLLERITH_3 or HOLLERITH_11 or HOLLERITH_0; Native: $a3),
+
+    ( Hollerith: HOLLERITH_4; Native: $f4),
+    ( Hollerith: HOLLERITH_4 or HOLLERITH_12; Native: $c4),
+    ( Hollerith: HOLLERITH_4 or HOLLERITH_11; Native: $d4),
+    ( Hollerith: HOLLERITH_4 or HOLLERITH_0; Native: $e4),
+    ( Hollerith: HOLLERITH_4 or HOLLERITH_12 or HOLLERITH_11 or HOLLERITH_0; Native: $b4),
+    ( Hollerith: HOLLERITH_4 or HOLLERITH_12 or HOLLERITH_11; Native: $94),
+    ( Hollerith: HOLLERITH_4 or HOLLERITH_12 or HOLLERITH_0; Native: $84),
+    ( Hollerith: HOLLERITH_4 or HOLLERITH_11 or HOLLERITH_0; Native: $a4),
+
+    ( Hollerith: HOLLERITH_5; Native: $f5),
+    ( Hollerith: HOLLERITH_5 or HOLLERITH_12; Native: $c5),
+    ( Hollerith: HOLLERITH_5 or HOLLERITH_11; Native: $d5),
+    ( Hollerith: HOLLERITH_5 or HOLLERITH_0; Native: $e5),
+    ( Hollerith: HOLLERITH_5 or HOLLERITH_12 or HOLLERITH_11 or HOLLERITH_0; Native: $b5),
+    ( Hollerith: HOLLERITH_5 or HOLLERITH_12 or HOLLERITH_11; Native: $95),
+    ( Hollerith: HOLLERITH_5 or HOLLERITH_12 or HOLLERITH_0; Native: $85),
+    ( Hollerith: HOLLERITH_5 or HOLLERITH_11 or HOLLERITH_0; Native: $a5),
+
+    ( Hollerith: HOLLERITH_6; Native: $f6),
+    ( Hollerith: HOLLERITH_6 or HOLLERITH_12; Native: $c6),
+    ( Hollerith: HOLLERITH_6 or HOLLERITH_11; Native: $d6),
+    ( Hollerith: HOLLERITH_6 or HOLLERITH_0; Native: $e6),
+    ( Hollerith: HOLLERITH_6 or HOLLERITH_12 or HOLLERITH_11 or HOLLERITH_0; Native: $b6),
+    ( Hollerith: HOLLERITH_6 or HOLLERITH_12 or HOLLERITH_11; Native: $96),
+    ( Hollerith: HOLLERITH_6 or HOLLERITH_12 or HOLLERITH_0; Native: $86),
+    ( Hollerith: HOLLERITH_6 or HOLLERITH_11 or HOLLERITH_0; Native: $a6),
+
+    ( Hollerith: HOLLERITH_7; Native: $f7),
+    ( Hollerith: HOLLERITH_7 or HOLLERITH_12; Native: $c7),
+    ( Hollerith: HOLLERITH_7 or HOLLERITH_11; Native: $d7),
+    ( Hollerith: HOLLERITH_7 or HOLLERITH_0; Native: $e7),
+    ( Hollerith: HOLLERITH_7 or HOLLERITH_12 or HOLLERITH_11 or HOLLERITH_0; Native: $b7),
+    ( Hollerith: HOLLERITH_7 or HOLLERITH_12 or HOLLERITH_11; Native: $97),
+    ( Hollerith: HOLLERITH_7 or HOLLERITH_12 or HOLLERITH_0; Native: $87),
+    ( Hollerith: HOLLERITH_7 or HOLLERITH_11 or HOLLERITH_0; Native: $a7),
+
+    ( Hollerith: HOLLERITH_8; Native: $f8),
+    ( Hollerith: HOLLERITH_8 or HOLLERITH_12; Native: $c8),
+    ( Hollerith: HOLLERITH_8 or HOLLERITH_11; Native: $d8),
+    ( Hollerith: HOLLERITH_8 or HOLLERITH_0; Native: $e8),
+    ( Hollerith: HOLLERITH_8 or HOLLERITH_12 or HOLLERITH_11 or HOLLERITH_0; Native: $b8),
+    ( Hollerith: HOLLERITH_8 or HOLLERITH_12 or HOLLERITH_11; Native: $98),
+    ( Hollerith: HOLLERITH_8 or HOLLERITH_12 or HOLLERITH_0; Native: $88),
+    ( Hollerith: HOLLERITH_8 or HOLLERITH_11 or HOLLERITH_0; Native: $a8),
+
+    ( Hollerith: HOLLERITH_9; Native: $f9),
+    ( Hollerith: HOLLERITH_9 or HOLLERITH_12; Native: $c9),
+    ( Hollerith: HOLLERITH_9 or HOLLERITH_11; Native: $d9),
+    ( Hollerith: HOLLERITH_9 or HOLLERITH_0; Native: $e9),
+    ( Hollerith: HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_11 or HOLLERITH_0; Native: $b9),
+    ( Hollerith: HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_11; Native: $99),
+    ( Hollerith: HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_0; Native: $89),
+    ( Hollerith: HOLLERITH_9 or HOLLERITH_11 or HOLLERITH_0; Native: $a9),
+
+    ( Hollerith: HOLLERITH_1 or HOLLERITH_8; Native: $79),
+    ( Hollerith: HOLLERITH_1 or HOLLERITH_8 or HOLLERITH_12; Native: $49),
+    ( Hollerith: HOLLERITH_1 or HOLLERITH_8 or HOLLERITH_11; Native: $59),
+    ( Hollerith: HOLLERITH_1 or HOLLERITH_8 or HOLLERITH_0; Native: $69),
+    ( Hollerith: HOLLERITH_1 or HOLLERITH_8 or HOLLERITH_12 or HOLLERITH_11 or HOLLERITH_0; Native: $B0),
+    ( Hollerith: HOLLERITH_1 or HOLLERITH_8 or HOLLERITH_12 or HOLLERITH_11; Native: $90),
+    ( Hollerith: HOLLERITH_1 or HOLLERITH_8 or HOLLERITH_12 or HOLLERITH_0; Native: $80),
+    ( Hollerith: HOLLERITH_1 or HOLLERITH_8 or HOLLERITH_11 or HOLLERITH_0; Native: $a0),
+
+    ( Hollerith: HOLLERITH_2 or HOLLERITH_8; Native: $7a),
+    ( Hollerith: HOLLERITH_2 or HOLLERITH_8 or HOLLERITH_12; Native: $4a),
+    ( Hollerith: HOLLERITH_2 or HOLLERITH_8 or HOLLERITH_11; Native: $5a),
+    ( Hollerith: HOLLERITH_2 or HOLLERITH_8 or HOLLERITH_0; Native: $e0),
+    ( Hollerith: HOLLERITH_2 or HOLLERITH_8 or HOLLERITH_12 or HOLLERITH_11 or HOLLERITH_0; Native: $ba),
+    ( Hollerith: HOLLERITH_2 or HOLLERITH_8 or HOLLERITH_12 or HOLLERITH_11; Native: $9a),
+    ( Hollerith: HOLLERITH_2 or HOLLERITH_8 or HOLLERITH_12 or HOLLERITH_0; Native: $8a),
+    ( Hollerith: HOLLERITH_2 or HOLLERITH_8 or HOLLERITH_11 or HOLLERITH_0; Native: $aa),
+
+    ( Hollerith: HOLLERITH_3 or HOLLERITH_8; Native: $7b),
+    ( Hollerith: HOLLERITH_3 or HOLLERITH_8 or HOLLERITH_12; Native: $4b),
+    ( Hollerith: HOLLERITH_3 or HOLLERITH_8 or HOLLERITH_11; Native: $5b),
+    ( Hollerith: HOLLERITH_3 or HOLLERITH_8 or HOLLERITH_0; Native: $6b),
+    ( Hollerith: HOLLERITH_3 or HOLLERITH_8 or HOLLERITH_12 or HOLLERITH_11 or HOLLERITH_0; Native: $bb),
+    ( Hollerith: HOLLERITH_3 or HOLLERITH_8 or HOLLERITH_12 or HOLLERITH_11; Native: $9b),
+    ( Hollerith: HOLLERITH_3 or HOLLERITH_8 or HOLLERITH_12 or HOLLERITH_0; Native: $8b),
+    ( Hollerith: HOLLERITH_3 or HOLLERITH_8 or HOLLERITH_11 or HOLLERITH_0; Native: $ab),
+
+    ( Hollerith: HOLLERITH_4 or HOLLERITH_8; Native: $7c),
+    ( Hollerith: HOLLERITH_4 or HOLLERITH_8 or HOLLERITH_12; Native: $4c),
+    ( Hollerith: HOLLERITH_4 or HOLLERITH_8 or HOLLERITH_11; Native: $5c),
+    ( Hollerith: HOLLERITH_4 or HOLLERITH_8 or HOLLERITH_0; Native: $6c),
+    ( Hollerith: HOLLERITH_4 or HOLLERITH_8 or HOLLERITH_12 or HOLLERITH_11 or HOLLERITH_0; Native: $bc),
+    ( Hollerith: HOLLERITH_4 or HOLLERITH_8 or HOLLERITH_12 or HOLLERITH_11; Native: $9c),
+    ( Hollerith: HOLLERITH_4 or HOLLERITH_8 or HOLLERITH_12 or HOLLERITH_0; Native: $8c),
+    ( Hollerith: HOLLERITH_4 or HOLLERITH_8 or HOLLERITH_11 or HOLLERITH_0; Native: $ac),
+
+    ( Hollerith: HOLLERITH_5 or HOLLERITH_8; Native: $7d),
+    ( Hollerith: HOLLERITH_5 or HOLLERITH_8 or HOLLERITH_12; Native: $4d),
+    ( Hollerith: HOLLERITH_5 or HOLLERITH_8 or HOLLERITH_11; Native: $5d),
+    ( Hollerith: HOLLERITH_5 or HOLLERITH_8 or HOLLERITH_0; Native: $6d),
+    ( Hollerith: HOLLERITH_5 or HOLLERITH_8 or HOLLERITH_12 or HOLLERITH_11 or HOLLERITH_0; Native: $bd),
+    ( Hollerith: HOLLERITH_5 or HOLLERITH_8 or HOLLERITH_12 or HOLLERITH_11; Native: $9d),
+    ( Hollerith: HOLLERITH_5 or HOLLERITH_8 or HOLLERITH_12 or HOLLERITH_0; Native: $8d),
+    ( Hollerith: HOLLERITH_5 or HOLLERITH_8 or HOLLERITH_11 or HOLLERITH_0; Native: $ad),
+
+    ( Hollerith: HOLLERITH_6 or HOLLERITH_8; Native: $7e),
+    ( Hollerith: HOLLERITH_6 or HOLLERITH_8 or HOLLERITH_12; Native: $4e),
+    ( Hollerith: HOLLERITH_6 or HOLLERITH_8 or HOLLERITH_11; Native: $5e),
+    ( Hollerith: HOLLERITH_6 or HOLLERITH_8 or HOLLERITH_0; Native: $6e),
+    ( Hollerith: HOLLERITH_6 or HOLLERITH_8 or HOLLERITH_12 or HOLLERITH_11 or HOLLERITH_0; Native: $be),
+    ( Hollerith: HOLLERITH_6 or HOLLERITH_8 or HOLLERITH_12 or HOLLERITH_11; Native: $9e),
+    ( Hollerith: HOLLERITH_6 or HOLLERITH_8 or HOLLERITH_12 or HOLLERITH_0; Native: $8e),
+    ( Hollerith: HOLLERITH_6 or HOLLERITH_8 or HOLLERITH_11 or HOLLERITH_0; Native: $ae),
+
+    ( Hollerith: HOLLERITH_7 or HOLLERITH_8; Native: $7f),
+    ( Hollerith: HOLLERITH_7 or HOLLERITH_8 or HOLLERITH_12; Native: $4f),
+    ( Hollerith: HOLLERITH_7 or HOLLERITH_8 or HOLLERITH_11; Native: $5f),
+    ( Hollerith: HOLLERITH_7 or HOLLERITH_8 or HOLLERITH_0; Native: $6f),
+    ( Hollerith: HOLLERITH_7 or HOLLERITH_8 or HOLLERITH_12 or HOLLERITH_11 or HOLLERITH_0; Native: $bf),
+    ( Hollerith: HOLLERITH_7 or HOLLERITH_8 or HOLLERITH_12 or HOLLERITH_11; Native: $9f),
+    ( Hollerith: HOLLERITH_7 or HOLLERITH_8 or HOLLERITH_12 or HOLLERITH_0; Native: $8f),
+    ( Hollerith: HOLLERITH_7 or HOLLERITH_8 or HOLLERITH_11 or HOLLERITH_0; Native: $af),
+
+    ( Hollerith: HOLLERITH_1 or HOLLERITH_9; Native: $31),
+    ( Hollerith: HOLLERITH_1 or HOLLERITH_9 or HOLLERITH_12; Native: $01),
+    ( Hollerith: HOLLERITH_1 or HOLLERITH_9 or HOLLERITH_11; Native: $11),
+    ( Hollerith: HOLLERITH_1 or HOLLERITH_9 or HOLLERITH_0; Native: $21),
+    ( Hollerith: HOLLERITH_1 or HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_11 or HOLLERITH_0; Native: $71),
+    ( Hollerith: HOLLERITH_1 or HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_11; Native: $51),
+    ( Hollerith: HOLLERITH_1 or HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_0; Native: $41),
+    ( Hollerith: HOLLERITH_1 or HOLLERITH_9 or HOLLERITH_11 or HOLLERITH_0; Native: $e1),
+
+    ( Hollerith: HOLLERITH_2 or HOLLERITH_9; Native: $32),
+    ( Hollerith: HOLLERITH_2 or HOLLERITH_9 or HOLLERITH_12; Native: $02),
+    ( Hollerith: HOLLERITH_2 or HOLLERITH_9 or HOLLERITH_11; Native: $12),
+    ( Hollerith: HOLLERITH_2 or HOLLERITH_9 or HOLLERITH_0; Native: $22),
+    ( Hollerith: HOLLERITH_2 or HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_11 or HOLLERITH_0; Native: $72),
+    ( Hollerith: HOLLERITH_2 or HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_11; Native: $52),
+    ( Hollerith: HOLLERITH_2 or HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_0; Native: $42),
+    ( Hollerith: HOLLERITH_2 or HOLLERITH_9 or HOLLERITH_11 or HOLLERITH_0; Native: $62),
+
+    ( Hollerith: HOLLERITH_3 or HOLLERITH_9; Native: $33),
+    ( Hollerith: HOLLERITH_3 or HOLLERITH_9 or HOLLERITH_12; Native: $03),
+    ( Hollerith: HOLLERITH_3 or HOLLERITH_9 or HOLLERITH_11; Native: $13),
+    ( Hollerith: HOLLERITH_3 or HOLLERITH_9 or HOLLERITH_0; Native: $23),
+    ( Hollerith: HOLLERITH_3 or HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_11 or HOLLERITH_0; Native: $73),
+    ( Hollerith: HOLLERITH_3 or HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_11; Native: $53),
+    ( Hollerith: HOLLERITH_3 or HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_0; Native: $43),
+    ( Hollerith: HOLLERITH_3 or HOLLERITH_9 or HOLLERITH_11 or HOLLERITH_0; Native: $63),
+
+    ( Hollerith: HOLLERITH_4 or HOLLERITH_9; Native: $34),
+    ( Hollerith: HOLLERITH_4 or HOLLERITH_9 or HOLLERITH_12; Native: $04),
+    ( Hollerith: HOLLERITH_4 or HOLLERITH_9 or HOLLERITH_11; Native: $14),
+    ( Hollerith: HOLLERITH_4 or HOLLERITH_9 or HOLLERITH_0; Native: $24),
+    ( Hollerith: HOLLERITH_4 or HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_11 or HOLLERITH_0; Native: $74),
+    ( Hollerith: HOLLERITH_4 or HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_11; Native: $54),
+    ( Hollerith: HOLLERITH_4 or HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_0; Native: $44),
+    ( Hollerith: HOLLERITH_4 or HOLLERITH_9 or HOLLERITH_11 or HOLLERITH_0; Native: $64),
+
+    ( Hollerith: HOLLERITH_5 or HOLLERITH_9; Native: $35),
+    ( Hollerith: HOLLERITH_5 or HOLLERITH_9 or HOLLERITH_12; Native: $05),
+    ( Hollerith: HOLLERITH_5 or HOLLERITH_9 or HOLLERITH_11; Native: $15),
+    ( Hollerith: HOLLERITH_5 or HOLLERITH_9 or HOLLERITH_0; Native: $25),
+    ( Hollerith: HOLLERITH_5 or HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_11 or HOLLERITH_0; Native: $75),
+    ( Hollerith: HOLLERITH_5 or HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_11; Native: $55),
+    ( Hollerith: HOLLERITH_5 or HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_0; Native: $45),
+    ( Hollerith: HOLLERITH_5 or HOLLERITH_9 or HOLLERITH_11 or HOLLERITH_0; Native: $65),
+
+    ( Hollerith: HOLLERITH_6 or HOLLERITH_9; Native: $36),
+    ( Hollerith: HOLLERITH_6 or HOLLERITH_9 or HOLLERITH_12; Native: $06),
+    ( Hollerith: HOLLERITH_6 or HOLLERITH_9 or HOLLERITH_11; Native: $16),
+    ( Hollerith: HOLLERITH_6 or HOLLERITH_9 or HOLLERITH_0; Native: $26),
+    ( Hollerith: HOLLERITH_6 or HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_11 or HOLLERITH_0; Native: $76),
+    ( Hollerith: HOLLERITH_6 or HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_11; Native: $56),
+    ( Hollerith: HOLLERITH_6 or HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_0; Native: $46),
+    ( Hollerith: HOLLERITH_6 or HOLLERITH_9 or HOLLERITH_11 or HOLLERITH_0; Native: $66),
+
+    ( Hollerith: HOLLERITH_7 or HOLLERITH_9; Native: $37),
+    ( Hollerith: HOLLERITH_7 or HOLLERITH_9 or HOLLERITH_12; Native: $07),
+    ( Hollerith: HOLLERITH_7 or HOLLERITH_9 or HOLLERITH_11; Native: $17),
+    ( Hollerith: HOLLERITH_7 or HOLLERITH_9 or HOLLERITH_0; Native: $27),
+    ( Hollerith: HOLLERITH_7 or HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_11 or HOLLERITH_0; Native: $77),
+    ( Hollerith: HOLLERITH_7 or HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_11; Native: $57),
+    ( Hollerith: HOLLERITH_7 or HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_0; Native: $47),
+    ( Hollerith: HOLLERITH_7 or HOLLERITH_9 or HOLLERITH_11 or HOLLERITH_0; Native: $67),
+
+    ( Hollerith: HOLLERITH_8 or HOLLERITH_9; Native: $38),
+    ( Hollerith: HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_12; Native: $08),
+    ( Hollerith: HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_11; Native: $18),
+    ( Hollerith: HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_0; Native: $28),
+    ( Hollerith: HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_11 or HOLLERITH_0; Native: $78),
+    ( Hollerith: HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_11; Native: $58),
+    ( Hollerith: HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_0; Native: $48),
+    ( Hollerith: HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_11 or HOLLERITH_0; Native: $68),
+
+    ( Hollerith: HOLLERITH_1 or HOLLERITH_8 or HOLLERITH_9; Native: $39),
+    ( Hollerith: HOLLERITH_1 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_12; Native: $09),
+    ( Hollerith: HOLLERITH_1 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_11; Native: $19),
+    ( Hollerith: HOLLERITH_1 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_0; Native: $29),
+    ( Hollerith: HOLLERITH_1 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_11 or HOLLERITH_0; Native: $30),
+    ( Hollerith: HOLLERITH_1 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_11; Native: $10),
+    ( Hollerith: HOLLERITH_1 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_0; Native: $00),
+    ( Hollerith: HOLLERITH_1 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_11 or HOLLERITH_0; Native: $20),
+
+    ( Hollerith: HOLLERITH_2 or HOLLERITH_8 or HOLLERITH_9; Native: $3a),
+    ( Hollerith: HOLLERITH_2 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_12; Native: $0a),
+    ( Hollerith: HOLLERITH_2 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_11; Native: $1a),
+    ( Hollerith: HOLLERITH_2 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_0; Native: $2a),
+    ( Hollerith: HOLLERITH_2 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_11 or HOLLERITH_0; Native: $fa),
+    ( Hollerith: HOLLERITH_2 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_11; Native: $da),
+    ( Hollerith: HOLLERITH_2 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_0; Native: $ca),
+    ( Hollerith: HOLLERITH_2 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_11 or HOLLERITH_0; Native: $ea),
+
+    ( Hollerith: HOLLERITH_3 or HOLLERITH_8 or HOLLERITH_9; Native: $3b),
+    ( Hollerith: HOLLERITH_3 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_12; Native: $0b),
+    ( Hollerith: HOLLERITH_3 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_11; Native: $1b),
+    ( Hollerith: HOLLERITH_3 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_0; Native: $2b),
+    ( Hollerith: HOLLERITH_3 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_11 or HOLLERITH_0; Native: $fb),
+    ( Hollerith: HOLLERITH_3 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_11; Native: $db),
+    ( Hollerith: HOLLERITH_3 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_0; Native: $cb),
+    ( Hollerith: HOLLERITH_3 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_11 or HOLLERITH_0; Native: $eb),
+
+    ( Hollerith: HOLLERITH_4 or HOLLERITH_8 or HOLLERITH_9; Native: $3c),
+    ( Hollerith: HOLLERITH_4 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_12; Native: $0c),
+    ( Hollerith: HOLLERITH_4 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_11; Native: $1c),
+    ( Hollerith: HOLLERITH_4 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_0; Native: $2c),
+    ( Hollerith: HOLLERITH_4 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_11 or HOLLERITH_0; Native: $fc),
+    ( Hollerith: HOLLERITH_4 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_11; Native: $dc),
+    ( Hollerith: HOLLERITH_4 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_0; Native: $cc),
+    ( Hollerith: HOLLERITH_4 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_11 or HOLLERITH_0; Native: $ec),
+
+    ( Hollerith: HOLLERITH_5 or HOLLERITH_8 or HOLLERITH_9; Native: $3d),
+    ( Hollerith: HOLLERITH_5 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_12; Native: $0d),
+    ( Hollerith: HOLLERITH_5 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_11; Native: $1d),
+    ( Hollerith: HOLLERITH_5 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_0; Native: $2d),
+    ( Hollerith: HOLLERITH_5 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_11 or HOLLERITH_0; Native: $fd),
+    ( Hollerith: HOLLERITH_5 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_11; Native: $dd),
+    ( Hollerith: HOLLERITH_5 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_0; Native: $cd),
+    ( Hollerith: HOLLERITH_5 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_11 or HOLLERITH_0; Native: $ed),
+
+    ( Hollerith: HOLLERITH_6 or HOLLERITH_8 or HOLLERITH_9; Native: $3e),
+    ( Hollerith: HOLLERITH_6 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_12; Native: $0e),
+    ( Hollerith: HOLLERITH_6 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_11; Native: $1e),
+    ( Hollerith: HOLLERITH_6 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_0; Native: $2e),
+    ( Hollerith: HOLLERITH_6 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_11 or HOLLERITH_0; Native: $fd),
+    ( Hollerith: HOLLERITH_6 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_11; Native: $dd),
+    ( Hollerith: HOLLERITH_6 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_0; Native: $cd),
+    ( Hollerith: HOLLERITH_6 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_11 or HOLLERITH_0; Native: $ed),
+
+    ( Hollerith: HOLLERITH_7 or HOLLERITH_8 or HOLLERITH_9; Native: $3f),
+    ( Hollerith: HOLLERITH_7 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_12; Native: $0f),
+    ( Hollerith: HOLLERITH_7 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_11; Native: $1f),
+    ( Hollerith: HOLLERITH_7 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_0; Native: $2f),
+    ( Hollerith: HOLLERITH_7 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_11 or HOLLERITH_0; Native: $ff),
+    ( Hollerith: HOLLERITH_7 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_11; Native: $df),
+    ( Hollerith: HOLLERITH_7 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_12 or HOLLERITH_0; Native: $cf),
+    ( Hollerith: HOLLERITH_7 or HOLLERITH_8 or HOLLERITH_9 or HOLLERITH_11 or HOLLERITH_0; Native: $ef)
+
+   );
 
    XS3Ascii: array [0..63] of AnsiChar = (
 //  Because certain special XS3 characters don't exist in ASCII, I had to subsitute
@@ -691,6 +984,11 @@ begin
     begin
         Result := '.';
     end;
+end;
+
+function PublicDataDir: String;
+begin
+    Result := GetDir(CSIDL_COMMON_APPDATA);
 end;
 
 function UserDataDir: String;
@@ -824,6 +1122,21 @@ begin
             Exit;
         end;
     end;
+end;
+
+class function TCodeTranslator.Hollerith12ToEbcdic(w: Word): Byte;
+var
+    xi: TXS3XlateItem;
+begin
+    for xi in Hollerith12Ebcdic do
+    begin
+        if (xi.Hollerith = w) then
+        begin
+            Result := xi.Native;
+            Exit;
+        end;
+    end;
+    Result := X3_SPACE;
 end;
 
 class function TCodeTranslator.Hollerith12ToFieldata(w: Word): Byte;

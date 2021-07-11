@@ -4,7 +4,11 @@ interface
 
 uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
-  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.ExtCtrls;
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.ExtCtrls, Xml.xmldom, Xml.XMLIntf, Xml.Win.msxmldom,
+  Xml.XMLDoc;
+
+const
+  START_MSG = WM_USER + 1;
 
 type
   TU9030Form = class(TForm)
@@ -94,9 +98,12 @@ type
     DisableTimerBox: TCheckBox;
     Bevel1: TBevel;
     Label39: TLabel;
-    PrtBrkptBtn: TButton;
-    PrtFileNameEdt: TEdit;
-    PrtBrowseBtn: TButton;
+    PrnSaveBtn: TButton;
+    OpenDlg: TOpenDialog;
+    Bevel2: TBevel;
+    Label40: TLabel;
+    RdrLoadBtn: TButton;
+    ConfigXml: TXMLDocument;
     procedure TimerTimer(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure StopBtnClick(Sender: TObject);
@@ -107,9 +114,15 @@ type
     procedure DebugBtnClick(Sender: TObject);
     procedure DisableTimerBoxClick(Sender: TObject);
     procedure CpuTestBtnClick(Sender: TObject);
+    procedure PrnSaveBtnClick(Sender: TObject);
+    procedure RdrLoadBtnClick(Sender: TObject);
   private
     FConsoleStarted: Boolean;
+    FConfigFile: String;
     function Hex(s: String): Integer;
+    procedure Initialize;
+    procedure ParseCmdLine;
+    procedure StartMsg(var Message: TMessage); message START_MSG;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -123,10 +136,12 @@ implementation
 {$R *.dfm}
 
 uses DebuggerFrm, U9030Types, Globals, Channels, Cpu, Memory, IDA, IPC, Console, Trace,
-     U0773, CpuTestFrm;
+     U0717, U0773, CpuTestFrm, Config;
 
 var
     Cons: TConsole;
+    Printer: T0773;
+    Reader: T0717;
 { TU9030Form }
 
 procedure TU9030Form.BootBtnClick(Sender: TObject);
@@ -169,31 +184,7 @@ end;
 
 constructor TU9030Form.Create(AOwner: TComponent);
 begin
-    inherited;
-
-    IOTraceEnabled := True;
-    SvcTraceEnabled := True;
-
-    Opcodes := TOpcodeList.Create;
-    Core := TMemory.Create;
-    Processor := TCpu.Create;
-    PSW := TPSW.Create;
-    CurInst := TInstruction.Create;
-    Adapters := TChannelList.Create;
-
-    Adapters.Channel[0] := TIPC.Create(0);
-    Cons := TConsole.Create(0);
-    Adapters.Channel[0].AddDevice(Cons);
-    Adapters.Channel[0].AddDevice(T0773.Create(2));
-
-    Adapters.Channel[1] := TChannel.Create(1);
-
-    Adapters.Channel[3] := TIDA.Create(3);
-    Adapters.Channel[3].AddDevice(TIDADisk.Create(0, it8418, '..\..\Disks\REL042.8418'));
-
-    Adapters.Channel[4] := TChannel.Create(4);
-
-    Adapters.Channel[6] := TChannel.Create(6);
+        inherited;
 end;
 
 procedure TU9030Form.DebugBtnClick(Sender: TObject);
@@ -217,6 +208,8 @@ begin
     FreeAndNil(PSW);
     FreeAndNil(CurInst);
     FreeAndNil(Core);
+    FreeAndNil(IOTraceFile);
+    FreeAndNil(SvcTraceFile);
     inherited;
 end;
 
@@ -235,7 +228,7 @@ end;
 
 procedure TU9030Form.FormShow(Sender: TObject);
 begin
-    Timer.Enabled := True;
+    PostMessage(Handle, START_MSG, 0, 0);
 end;
 
 function TU9030Form.Hex(s: String): Integer;
@@ -255,10 +248,164 @@ begin
     end;
 end;
 
+procedure TU9030Form.Initialize;
+var
+    fname: String;
+    disk: TConfigDisk;
+    dtype: TIDAType;
+    idaDisk: TIDADisk;
+begin
+    Opcodes := TOpcodeList.Create;
+    Core := TMemory.Create;
+    Processor := TCpu.Create;
+    PSW := TPSW.Create;
+    CurInst := TInstruction.Create;
+    Adapters := TChannelList.Create;
+    Configuration := TConfig.Create;
+    // Create all channels
+    Adapters.Channel[0] := TIPC.Create(0);
+    Adapters.Channel[1] := TChannel.Create(1);
+    Adapters.Channel[3] := TIDA.Create(3);
+    Adapters.Channel[4] := TChannel.Create(4);
+    Adapters.Channel[6] := TChannel.Create(6);
+    // Create required IPC devices
+    Cons := TConsole.Create(0);
+    Adapters.Channel[0].AddDevice(Cons);
+    Reader := T0717.Create(1);
+    Adapters.Channel[0].AddDevice(Reader);
+    Printer := T0773.Create(2);
+    Adapters.Channel[0].AddDevice(Printer);
+
+    ParseCmdLine;
+    if (FConfigFile = '') then
+    begin
+        // Create a default config if no config file given
+        IOTraceEnabled := True;
+        SvcTraceEnabled := True;
+
+    //    Adapters.Channel[3].AddDevice(TIDADisk.Create(0, it8418, '..\..\Disks\REL042.8418'));
+        Adapters.Channel[3].AddDevice(TIDADisk.Create(0, it8418, '..\..\Disks\SDIVSB.8418'));
+        Adapters.Channel[3].AddDevice(TIDADisk.Create(1, it8418, '..\..\Disks\VSBRES.8418'));
+    end else
+    begin
+        // Try to load the config XML document
+        fname := FConfigFile;
+        if (not FileExists(fname)) then
+        begin
+            fname := Format('%s%s', [ExtractFilePath(Application.ExeName), FConfigFile]);
+            if (not FileExists(fname)) then
+            begin
+                fname := Format('%s..\..\%s', [ExtractFilePath(Application.ExeName), FConfigFile]);
+            end;
+        end;
+        ConfigXml.LoadFromFile(fname);
+        ConfigXml.Active;
+        Configuration.Load(ConfigXml);
+        IOTraceEnabled := Configuration.IOTraceEnabled;
+        SvcTraceEnabled := Configuration.SvcTraceEnabled;
+        for disk in Configuration.Disks do
+        begin
+            case disk.DiskType of
+              cdt8416:  dtype := it8416;
+              cdt8418:  dtype := it8418;
+              else      raise Exception.Create('Invalid disk type');
+            end;
+            idaDisk := TIDADisk.Create(disk.DeviceNum, dtype, disk.DiskFile);
+            Adapters.Channel[disk.ChannelNum].AddDevice(idaDisk);
+            if (not idaDisk.HasFile) then
+                raise Exception.CreateFmt('Could not open file for disk %d%2.2d', [disk.ChannelNum, disk.DeviceNum]);
+        end;
+    end;
+    //
+    if (IOTraceEnabled or SvcTraceEnabled) then
+    begin
+        if (not DirectoryExists(DataDir)) then
+            ForceDirectories(DataDir);
+    end;
+    if (IOTraceEnabled) then
+        IOTraceFile := TTraceFile.Create(DataDir + '\U9030IO.trc', fmCreate or fmShareDenyWrite);
+    if (SvcTraceEnabled) then
+        SvcTraceFile := TTraceFile.Create(DataDir + '\U9030Svc.trc', fmCreate or fmShareDenyWrite);
+end;
+
+procedure TU9030Form.ParseCmdLine;
+var
+    i: Integer;
+begin
+    i := 1;
+    while (i <= ParamCount) do
+    begin
+        if (ParamStr(i) = '-c') then
+        begin
+            Inc(i);
+            FConfigFile := ParamStr(i);
+        end;
+        Inc(i);
+    end;
+end;
+
+procedure TU9030Form.PrnSaveBtnClick(Sender: TObject);
+var
+    err: String;
+    cmd: String;
+    si: TStartupInfo;
+    pi: TProcessInformation;
+begin
+    OpenDlg.Filter := 'Print Files|*.prn';
+    OpenDlg.Options := OpenDlg.Options - [ofAllowMultiSelect, ofFileMustExist];
+    if (not OpenDlg.Execute) then
+        Exit;
+    Printer.SaveAs(OpenDlg.FileName);
+
+    FillChar(si, SizeOf(si), 0);
+    FillChar(pi, SizeOf(pi), 0);
+    cmd := 'notepad.exe ' + OpenDlg.FileName;
+    if (not CreateProcess(nil,
+                          PWideChar(cmd),
+                          nil,
+                          nil,
+                          False,
+                          0,
+                          nil,
+                          nil,
+                          si,
+                          pi)) then
+    begin
+        err := WinError;
+        raise Exception.Create(err);
+    end;
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+end;
+
+procedure TU9030Form.RdrLoadBtnClick(Sender: TObject);
+var
+    fname: String;
+begin
+    OpenDlg.Filter := 'All Card Files|*.h16;*.h80;*.asc;*.asm;*.rpg;*.jcl|' +
+                      'Hollerith 16-bit|*.h16|' +
+                      'Hollerith 12-bit|h80|' +
+                      'ASCII|*.asc|' +
+                      'Assembler Source|*.asm|' +
+                      'RPG Source|*.rpg|' +
+                      'Job Control|*.jcl';
+    OpenDlg.Options := OpenDlg.Options + [ofAllowMultiSelect, ofFileMustExist];
+    if (not OpenDlg.Execute) then
+        Exit;
+    for fname in OpenDlg.Files do
+        Reader.AddFile(fname);
+end;
+
 procedure TU9030Form.RunBtnClick(Sender: TObject);
 begin
     if ((Processor.State = []) or ((Processor.State * [psHalted, psError]) <> [])) then
         Processor.Run;
+end;
+
+procedure TU9030Form.StartMsg(var Message: TMessage);
+begin
+    Initialize;
+    Timer.Enabled := True;
 end;
 
 procedure TU9030Form.StepBtnClick(Sender: TObject);
@@ -281,13 +428,15 @@ var
     edt: TEdit;
     si: TStartupInfo;
     pi: TProcessInformation;
+    exeDir: String;
 begin
     if (not FConsoleStarted) then
     begin
         FConsoleStarted := True;
         FillChar(si, SizeOf(si), 0);
         FillChar(pi, SizeOf(pi), 0);
-        if (not CreateProcess('C:\Development\Emulators\U9030\Win32\Debug\U9030Console.exe',
+        exeDir := ExtractFilePath(Application.ExeName);
+        if (not CreateProcess(PWideChar(exeDir + 'U9030Console.exe'),
                               nil,
                               nil,
                               nil,

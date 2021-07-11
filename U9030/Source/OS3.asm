@@ -128,23 +128,23 @@
 059A:         NI    SB$ERFLG,247                 CLEAR ALL BUT TRANSIENT IN CONTROL
 059E:         SR    R2,R2
 05A0:         L     5,SB$SOI                     GET SUPERVISOR INDICATOR WORD
-05A4:         LTR   R5,R5
-05A6:         BNZ   X'05AE'
-05AA:         SVC   4                            YIELD
+05A4:         LTR   R5,R5                        IS IT ZERO?
+05A6:         BNZ   X'05AE'                      NO
+05AA:         SVC   4                            YES, NOTHING TO DO SO YIELD
 05AC:         BCR   R15,R3
      *
-05AE:         BM    X'05BC'                      WHEN R5 GOES NEGATIVE
+05AE:         BM    X'05BC'                      CONSOLE INTERRUPT?
 05B2:         LA    2,X'0001'(R2)                BUMP R2
 05B6:         AR    R5,R5                        R5 = R5 * 2
 05B8:         BC    15,X'05AE'
 05BC:         XR    R1,R1                        CLEAR R1
 05BE:         LA    2,X'100'(R2,R2)              R2 = R2 * 2 + 265
 05C2:         LA    5,X'0002'
-05C6:         LM    R8,R11,SB$PBA                LOAD SUPER REGISTERS
+05C6:         LM    R8,R11,SB$PBA                LOAD STANDARD SUPER REGISTERS
 05CA:         BALR  R3,R0
-05CC:         NI    X'02B6',247                  CLEAR ALL BUT TRANSIENT IN CONTROL
+05CC:         NI    SB$ERFLG,247                 CLEAR ALL BUT TRANSIENT IN CONTROL
 05D0:         L     7,SB$SOS                     GET ADDR OF SOS TCB
-05D4:         LA    7,X'0074'(R7)
+05D4:         LA    7,JT$TRLNG(R7)
 05D8:         BC    15,X'077C'                   
 05DC:         DC    XL4'00000000'
      *
@@ -353,6 +353,7 @@
 0864:         BC    14,X'0778'
 0868:         ST    0,X'028'(,R14)
 086C:         BC    15,X'06C6'
+     *
 0870:         LR    R1,R6
 0872:         CH    2,X'000C'
 0876:         BC    7,X'100'(,R3)

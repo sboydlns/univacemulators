@@ -52,17 +52,4 @@ begin
         Result := 0;
 end;
 
-initialization
-
-    if (not DirectoryExists(DataDir)) then
-        ForceDirectories(DataDir);
-    IOTraceFile := TTraceFile.Create(DataDir + '\U9030IO.trc', fmCreate);
-    IOTraceEnabled := False;
-    SvcTraceFile := TTraceFile.Create(DataDir + '\U9030Svc.trc', fmCreate);
-    SvcTraceEnabled := False;
-
-finalization
-
-    FreeAndNil(IOTraceFile);
-
 end.

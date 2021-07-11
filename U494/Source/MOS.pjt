@@ -24,17 +24,17 @@ C:\DEVELOPMENT\EMULATORS\U494\PROCS\misc.proc
 C:\DEVELOPMENT\EMULATORS\U494\PROCS\Tasks.proc
 
 [State]
-SysSetCwd='C:\Development\Emulators\U9030\Tests'
+SysSetCwd='C:\Development\Emulators\U9030'
 SrchSetFlags=0x4410600b
 FileSortMode=0x0
 StateWindowFrame=0,0,1056,1068,0x63097f08
-_StateWindow=52,52,575,542,0x00100010,'C:\Development\Emulators\U9030\Tests\Logical.tst',208,31,212,4,20,12,46,26,126,176,8,4294967295,4294967295,1,10,'',12,255,48,72,10,467,0,0,721,252,249,369,10,400,0,212,214,210,220,721,721,720,729,217,80,0,223,224,14,316,1,208,1,6
-_StateBuffer='C:\Development\Emulators\U9030\Tests\Logical.tst',0x0400048a,369,10,25,'6 12 17 22 27 32 37 41','',0x1,'',1,72,1
-_StateHistory=FILELIST,'C:\Development\Emulators\U9030\Source\os3.dis','C:\Development\Emulators\U9030\Source\jl$sch.asm','C:\Development\Emulators\U9030\Source\boot2.asm','C:\temp\uniscope.trc','C:\Development\Emulators\U9030\Source\sl$int.asm','C:\Development\Emulators\U9030\Source\OS3.asm','C:\Development\Emulators\U9030\Tests\Compare.tst','C:\Development\Emulators\U9030\Tests\Logical.tst','C:\Development\Emulators\U9030\Tests\FixedPt.tst'
-_StateHistory=SEARCH,'104','6c6','DEC:','1862:','1730:','1874','program excep','1748:','F2','d '
+_StateWindow=52,52,575,542,0x00100010,'C:\Development\Emulators\U9030\REL042.cfg',208,31,212,4,20,12,46,26,126,176,8,4294967295,4294967295,1,10,'',12,255,48,72,10,467,0,0,721,252,249,6,56,400,0,212,214,210,220,721,721,720,729,217,80,0,223,224,14,1,1,208,1,6
+_StateBuffer='C:\Development\Emulators\U9030\REL042.cfg',0x0400048a,6,56,25,'6 12 17 22 27 32 37 41','',0x1,'',1,72,1
+_StateHistory=FILELIST,'C:\Development\Emulators\U9030\Tests\LoadSave.bak','C:\Development\Emulators\U9030\Tests\LoadSave.tst','C:\Development\Emulators\U9030\Tests\FixedPt.tst','C:\Development\Emulators\U9030\Tests\Logical.tst','C:\DEVELOPMENT\EMULATORS\U494\SOURCE\MOS.asm','C:\Development\Emulators\U9030\REL042.cfg.release','C:\Development\Emulators\U9030\VSB.cfg','C:\Development\Emulators\U9030\VSB.cfg.release','C:\Development\Emulators\U9030\REL042.cfg'
+_StateHistory=SEARCH,'05ac','08A0','05CA','clc','DIAG','console','diag','lpr','slda','SRDA'
 _StateHistory=REPLACE,'.'
 _StateHistory=XSYMBOL,'OUTPUT','ERROR','INPUT','FILE'
-_StateHistory=EDITFILE,'C:\Development\Emulators\U9030\Source\OS3.asm','C:\Development\Emulators\U9030\Source\sl$int.asm','C:\Development\Emulators\U9030\Source\OS3.asm','C:\Development\Emulators\U9030\Source\jl$sch.asm','C:\Development\Emulators\U9030\Source\sl$int.asm','C:\Development\Emulators\U9030\Source\boot2.asm','C:\temp\uniscope.trc','C:\Development\Emulators\U9030\Source\sl$int.asm','C:\Development\Emulators\U9030\Source\OS3.asm','C:\Development\Emulators\U9030\Tests\FixedPt.tst'
+_StateHistory=EDITFILE,'C:\Development\Emulators\U9030\VSB Data\VSB012.asc','C:\Development\Emulators\U9030\VSB Data\VSB004.asc','C:\Development\Emulators\U9030\VSB Data\VSB012.asc','C:\Development\Emulators\U9030\VSB Data\VSB022.asc','C:\Development\Emulators\U9030\Tests\LoadSave.bak','C:\Development\Emulators\U9030\Tests\LoadSave.tst','C:\Development\Emulators\U9030\Tests\FixedPt.tst','C:\Development\Emulators\U9030\Tests\Logical.tst','C:\Development\Emulators\U9030\VSB.cfg','C:\Development\Emulators\U9030\REL042.cfg'
 _StateHistory=DIRECTORY,'c:\tmp\$Y$MAC','C:\tmp\$Y$SRC','C:\tmp\$Y$GEN','C:\TMP','C:\tmp\$Y$MAC'
 _StateHistory=GOTOMARK,'1','2','1'
 

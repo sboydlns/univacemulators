@@ -279,6 +279,66 @@ SH R1,$10
 TEST R1=$7FFFFFFF
 TEST CC=3
 
+# SL
+
+# Non zero result, with carry
+SET R1=$02000000
+SET MEM $10W=$01000000
+SL R1,$10
+TEST R1=$01000000
+TEST CC=3
+
+# Non zero result, no carry
+SET R1=$0
+SET MEM $10W=1
+SL R1,$10
+TEST R1=$FFFFFFFF
+TEST CC=1
+
+# Zero result, no carry
+SET R1=0
+SET MEM $10W=0
+SL R1,$10
+TEST R1=0
+TEST CC=0
+
+# Zero result, with carry
+SET R1=$FFFFFFFF
+SET MEM $10W=$FFFFFFFF
+SL R1,$10
+TEST R1=0
+TEST CC=2
+
+# SLR
+
+# Non zero result, with carry
+SET R1=$02000000
+SET R2=$01000000
+SLR R1,R2
+TEST R1=$01000000
+TEST CC=3
+
+# Non zero result, no carry
+SET R1=$0
+SET R2=1
+SLR R1,R2
+TEST R1=$FFFFFFFF
+TEST CC=1
+
+# Zero result, no carry
+SET R1=0
+SET R2=0
+SLR R1,R2
+TEST R1=0
+TEST CC=0
+
+# Zero result, with carry
+SET R1=$FFFFFFFF
+SET R2=$FFFFFFFF
+SLR R1,R2
+TEST R1=0
+TEST CC=2
+
 # SR 
 
 # Positive result

@@ -26,6 +26,7 @@ type
     procedure DoTest;
     procedure ExecScript;
     procedure GetAddress(var addr: TMemoryAddress; var len: Integer);
+    function GetString: AnsiString;
     function GetInteger: TDblWord;
     function GetRegister(tkn: String): Integer;
     function GetToken: String;
@@ -40,7 +41,7 @@ var
 
 implementation
 
-uses Globals;
+uses Globals, EmulatorTypes;
 
 {$R *.dfm}
 
@@ -116,6 +117,27 @@ var
         b := Reg(tkn);
     end;
 
+    procedure BaseLenRef(var o, b, l: Integer);
+    var
+        tkn: String;
+    begin
+        o := 0;
+        b := 0;
+        l := 0;
+        o := Offset;
+        tkn := GetToken;
+        l := Offset;
+        tkn := GetToken;
+        if ((tkn = '') or (tkn = ')')) then
+            Exit;
+        if (tkn = ',') then
+            tkn := GetToken;
+        b := Reg(tkn);
+        tkn := GetToken;
+        if (tkn = ')') then
+            tkn := GetToken;
+    end;
+
     procedure IndexRef(var o, x, b: Integer);
     var
         tkn: String;
@@ -158,7 +180,7 @@ var
         IndexRef(o, x, b);
         Core.StoreByte(0, 0, op.Opcode);
         Core.StoreByte(0, 1, (r shl 4) or x);
-        Core.StoreByte(0, 2, (b shr 4) or ((o shr 8) and $0f));
+        Core.StoreByte(0, 2, (b shl 4) or ((o shr 8) and $0f));
         Core.StoreByte(0, 3, o and $ff);
         try
             Processor.Test;
@@ -180,7 +202,7 @@ var
         i := Immed;
         Core.StoreByte(0, 0, op.Opcode);
         Core.StoreByte(0, 1, i);
-        Core.StoreByte(0, 2, (b shr 4) or ((o shr 8) and $0f));
+        Core.StoreByte(0, 2, (b shl 4) or ((o shr 8) and $0f));
         Core.StoreByte(0, 3, o and $ff);
         try
             Processor.Test;
@@ -227,8 +249,54 @@ var
         BaseRef(o, b);
         Core.StoreByte(0, 0, op.Opcode);
         Core.StoreByte(0, 1, r shl 4);
-        Core.StoreByte(0, 2, (b shr 4) or ((o shr 8) and $0f));
+        Core.StoreByte(0, 2, (b shl 4) or ((o shr 8) and $0f));
         Core.StoreByte(0, 3, o and $ff);
+        try
+            Processor.Test;
+        except
+          on E: Exception do
+          begin
+              raise Exception.CreateFmt('Failed! %s', [E.Message]);
+          end;
+        end;
+    end;
+
+    procedure DoSS1;
+    // op o1(l,b1),o2(b2)
+    var
+        o1, o2, b1, b2, l: Integer;
+    begin
+        BaseLenRef(o1, b1, l);
+        BaseRef(o2, b2);
+        Core.StoreByte(0, 0, op.Opcode);
+        Core.StoreByte(0, 1, l - 1);
+        Core.StoreByte(0, 2, (b1 shl 4) or ((o1 shr 8) and $0f));
+        Core.StoreByte(0, 3, o1 and $ff);
+        Core.StoreByte(0, 4, (b2 shl 4) or ((o2 shr 8) and $0f));
+        Core.StoreByte(0, 5, o2 and $ff);
+        try
+            Processor.Test;
+        except
+          on E: Exception do
+          begin
+              raise Exception.CreateFmt('Failed! %s', [E.Message]);
+          end;
+        end;
+    end;
+
+    procedure DoSS2;
+    // op o1(l,b1),o2(l2,b2)
+    var
+        o1, o2, b1, b2, l1, l2: Integer;
+    begin
+        BaseLenRef(o1, b1, l1);
+        BaseLenRef(o2, b2, l2);
+        Core.StoreByte(0, 0, op.Opcode);
+        Core.StoreByte(0, 1, ((l1 - 1) shl 4) or ((l2 - 1) and $0f));
+        Core.StoreByte(0, 2, (b1 shl 4) or ((o1 shr 8) and $0f));
+        Core.StoreByte(0, 3, o1 and $ff);
+        Core.StoreByte(0, 4, (b2 shl 4) or ((o2 shr 8) and $0f));
+        Core.StoreByte(0, 5, o2 and $ff);
         try
             Processor.Test;
         except
@@ -255,8 +323,10 @@ begin
             DoRX;
           itSI:
             DoSI ;
-          itSS1: ;
-          itSS2: ;
+          itSS1:
+            DoSS1;
+          itSS2:
+            DoSS2;
           itBranch:
             raise Exception.Create('Testing of branch instructions not supported');
         end;
@@ -286,9 +356,11 @@ var
         len: Integer;
         addr: TMemoryAddress;
         val: TDblWord;
+        s: AnsiString;
+        c: AnsiChar;
     begin
         GetAddress(addr, len);
-        if (len <> 0) then
+        if (len > 0) then
         begin
             val := GetInteger;
             case len of
@@ -299,7 +371,12 @@ var
             end;
         end else
         begin
-            raise Exception.Create('Arbitrary length arguments not supported yet');
+            s := GetString;
+            for c in s do
+            begin
+                Core.StoreByte(0, addr, Byte(c));
+                Inc(addr);
+            end;
         end;
     end;
 
@@ -346,9 +423,12 @@ var
         addr: TMemoryAddress;
         val, test: TDblWord;
         testOK: Boolean;
+        s, mem: AnsiString;
+        c, memc: AnsiChar;
+        testb: Byte;
     begin
         GetAddress(addr, len);
-        if (len <> 0) then
+        if (len > 0) then
         begin
             val := GetInteger;
             case len of
@@ -383,10 +463,26 @@ var
                 len := len * 2;
                 raise Exception.CreateFmt('Failed! MEM = %d (%*.*x)', [test, len, len, test]);
             end;
-
         end else
         begin
-            raise Exception.Create('Arbitrary length arguments not supported yet');
+            testOK := True;
+            s := GetString;
+            mem := '';
+            for c in s do
+            begin
+                testb := Core.FetchByte(0, addr);
+                memc := TCodeTranslator.EbcdicToAscii(testb);
+                if (memc = #0) then
+                    memc := ' ';
+                mem := mem + memc;
+                if (AnsiChar(testb) <> c) then
+                    testOK := False;
+                Inc(addr);
+            end;
+            if (not testOk) then
+            begin
+                raise Exception.CreateFmt('Failed! MEM = %s', [String(mem)]);
+            end;
         end;
     end;
 
@@ -475,7 +571,10 @@ begin
     else if (s = 'W') then
         len := 4
     else if (s = 'D') then
-        len := 8;
+        len := 8
+    else if (s = 'C') then
+        len := -1;
+
     if (len <> 0) then
         tkn := Copy(tkn, 1, Length(tkn) - 1);
     if (not TryStrToInt(tkn, Integer(addr))) then
@@ -504,6 +603,25 @@ begin
         raise Exception.Create('Invalid register number');
     if ((Result < 0) or (Result > 15)) then
         raise Exception.Create('Invalid register number');
+end;
+
+function TCpuTestForm.GetString: AnsiString;
+var
+    tkn: String;
+    c: Char;
+begin
+    Result := '';
+
+    tkn := GetToken;
+    if (tkn <> '=') then
+        raise Exception.Create('Missing =');
+
+    tkn := GetToken;
+    if (tkn = '') then
+        raise Exception.Create('Invalid assignment');
+
+    for c in tkn do
+        Result := Result + TCodeTranslator.AsciiToEbcdic(Byte(AnsiChar(c)));
 end;
 
 function TCpuTestForm.GetToken: String;

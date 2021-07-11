@@ -62,6 +62,8 @@ const
 type
   TIDAType = ( it8416, it8418 );
 
+  TSearchType = ( stEqual, stGreaterEqual );
+
   // IDA BCW wrapper
   TIDABCW = class(TBCW)
   public
@@ -81,6 +83,8 @@ type
   end;
 
   TIDADisk = class(TDevice)
+  private
+    function GetHasFile: Boolean;
   protected
     FSense: array [0..4] of Byte;
     FDiskType: TIDAType;
@@ -90,9 +94,10 @@ type
     FHead: Byte;
     FRecord: Byte;
     procedure ClearSense;
+    procedure DoFormatWrite;
     procedure DoRead;
     procedure DoReset; override;
-    procedure DoSearchEQ;
+    procedure DoSearch(typ: TSearchType);
     procedure DoSeek;
     procedure DoSense;
     procedure DoWrite;
@@ -105,6 +110,7 @@ type
     constructor Create(num: Byte; typ: TIDAType; fname: String); reintroduce;
     destructor Destroy; override;
     procedure SIO(bcw: TIDABCW);
+    property HasFile: Boolean read GetHasFile;
   end;
 
   TIDA = class(TChannel)
@@ -265,14 +271,35 @@ begin
 end;
 
 constructor TIDADisk.Create(num: Byte; typ: TIDAType; fname: String);
+var
+    mode: Word;
+    fmtRequired: Boolean;
 begin
     inherited Create(num);
     FBCW := TIDABCW.Create;
     FDiskType := typ;
-    if (FDiskType = it8416) then
-        FDisk := T8416Disk.Create(fname, fmOpenReadWrite or fmShareDenyWrite)
-    else
-        FDisk := T8418Disk.Create(fname, fmOpenReadWrite or fmShareDenyWrite);
+    if (FileExists(fname)) then
+    begin
+        mode := fmOpenReadWrite or fmShareDenyWrite;
+        fmtRequired := False;
+    end else
+    begin
+        mode := fmCreate or fmShareDenyWrite;
+        fmtRequired := True;
+    end;
+    try
+        if (FDiskType = it8416) then
+            FDisk := T8416Disk.Create(fname, mode)
+        else
+            FDisk := T8418Disk.Create(fname, mode);
+        if (fmtRequired) then
+            FDisk.Format;
+    except
+      on E: Exception do
+      begin
+        ShowException(E, ExceptAddr);
+      end;
+    end;
 end;
 
 destructor TIDADisk.Destroy;
@@ -280,6 +307,49 @@ begin
     FreeAndNil(FBCW);
     FreeAndNil(FDisk);
     inherited Destroy;
+end;
+
+procedure TIDADisk.DoFormatWrite;
+var
+    bfr: array [0..255] of Byte;
+    pattern: array[0..1] of Byte;
+    i: Integer;
+begin
+    ClearSense;
+    FCylinder := FBCW.Cylinder;
+    FHead := FBCW.Head;
+    FRecord := FBCW.RecordNum;
+    FSense[3] := FHead;
+    FSense[4] := FRecord;
+    // Get format patterm
+    if (not FetchBuffer(@pattern, 2)) then
+        Exit;
+    for i := Low(bfr) to High(bfr) do
+        bfr[i] := pattern[0];
+
+    for i:= 1 to FBCW.Count do
+    begin
+        FRecord := i;
+        try
+            FDisk.SeekSector(FCylinder, FHead, FRecord);
+        except
+            FSense[0] := IDA_SENSE_CMD_REJECT;
+            FSense[1] := IDA_SENSE_NOT_FOUND;
+            FChannel.QueueStatus(MakeStatus(IDA_CHANNEL_END or IDA_UNIT_CHECK, 0));
+            Exit;
+        end;
+        try
+            FDisk.WriteSector(FCylinder, FHead, FRecord, @bfr);
+        except
+            FSense[0] := IDA_SENSE_DATA_CHECK;
+            FSense[1] := IDA_SENSE_DATA_FIELD_CHECK;
+            FChannel.QueueStatus(MakeStatus(IDA_CHANNEL_END or IDA_UNIT_CHECK, 0));
+            Exit;
+        end;
+        FSense[3] := FHead;
+        FSense[4] := FRecord;
+    end;
+    FChannel.QueueStatus(MakeStatus(IDA_CHANNEL_END or IDA_DEVICE_END, 0));
 end;
 
 procedure TIDADisk.DoRead;
@@ -341,7 +411,7 @@ begin
     FBCW.Command := 0;
 end;
 
-procedure TIDADisk.DoSearchEQ;
+procedure TIDADisk.DoSearch(typ: TSearchType);
 var
     i: Integer;
     found: Boolean;
@@ -387,10 +457,21 @@ begin
         found := True;
         for i := 0 to FBCW.Count - 1 do
         begin
-            if ((match[i] <> $ff) and (match[i] <> bfr[i])) then
+            if (typ = stEqual) then
             begin
-                found := False;
-                Break;
+                if ((match[i] <> $ff) and (match[i] <> bfr[i])) then
+                begin
+                    found := False;
+                    Break;
+                end;
+            end else
+            begin
+                if ( { (match[i] <> $ff) and } (match[i] > bfr[i])) then
+                begin
+                    found := False;
+                    Break;
+                end else if ( { (match[i] <> $ff) and } (match[i] < bfr[i])) then
+                    Break;
             end;
         end;
         // If match found copy bfr to memory and return successful
@@ -399,7 +480,8 @@ begin
         begin
             if (not FBCW.Skip) then
             begin
-                if (not StoreBuffer(PByte(@bfr), 256)) then
+                Inc(FBCW.Address, FBCW.Count);
+                if (not StoreBuffer(PByte(@bfr) + FBCW.Count, 256 - FBCW.Count)) then
                     Exit;
             end;
             FChannel.QueueStatus(MakeStatus(IDA_CHANNEL_END or IDA_DEVICE_END, 0));
@@ -519,6 +601,11 @@ begin
     Inc(FBCW.Address, len);
 end;
 
+function TIDADisk.GetHasFile: Boolean;
+begin
+    Result := Assigned(FDisk);
+end;
+
 function TIDADisk.MakeStatus(dstat, cstat: Byte): TStatus;
 begin
     Result := TStatus.Create;
@@ -540,10 +627,10 @@ begin
     if (FBCW.Recal) then
         FCylinder := 0;
     case FBCW.Command of
-      IDA_FORMAT_WRITE:     NotImplemented;
+      IDA_FORMAT_WRITE:     DoFormatWrite;
       IDA_WRITE:            DoWrite;
-      IDA_SEARCH_EQ:        DoSearchEQ;
-      IDA_SEARCH_GE:        NotImplemented;
+      IDA_SEARCH_EQ:        DoSearch(stEqual);
+      IDA_SEARCH_GE:        DoSearch(stGreaterEqual);
       IDA_READ_ID:          NotImplemented;
       IDA_READ:             DoRead;
       IDA_SEEK:             DoSeek;

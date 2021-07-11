@@ -274,6 +274,7 @@ begin
       CONS_READ:    DoRead;
       CONS_WRITE:   DoWrite;
       CONS_SENSE:   DoSense;
+      else          raise Exception.Create('Console command not implemented');
     end;
     FCommand := 255;
     FBusy := False;

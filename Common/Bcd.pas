@@ -86,7 +86,9 @@ begin
     for i := 0 to intDigits - 1 do
     begin
         if (Nibble[i] = 0) then
-            Dec(Result);
+            Dec(Result)
+        else
+            Break;
     end;
 end;
 

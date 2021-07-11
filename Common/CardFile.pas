@@ -44,6 +44,7 @@ type
     function ReadRaw(var bfr: TCardRec): Integer; virtual;
     function ReadXS3(var bfr: TCardRec): Integer; overload; virtual;
     class function ReadXS3(var bfrOut: TCardRec; const bfrIn: TCardRec): Integer; overload;
+    class function ReadEbcdic(var bfrOut: TCardRec; const bfrIn: TCardRec): Integer;
     function RecordCount: Integer; virtual;
     procedure SaveToFile(fname: String);
     function WriteFieldata(const bfr: TCardRec): Integer; overload; virtual;
@@ -198,6 +199,17 @@ begin
     bfr.Clear;
     ReadRaw(rawBfr);
     Result := ReadImage(bfr, rawBfr);
+end;
+
+class function TCardFileStream.ReadEbcdic(var bfrOut: TCardRec; const bfrIn: TCardRec): Integer;
+var
+    i: Integer;
+begin
+    bfrOut.Clear;
+    for i := 1 to bfrIn.Count do
+        bfrOut.Columns[i] := TCodeTranslator.Hollerith12ToEbcdic(bfrIn.ColumnAsWord[i]);
+    bfrOut.Count := bfrIn.Count div 2;
+    Result := bfrOut.Count;
 end;
 
 function TCardFileStream.ReadFieldata(var bfr: TCardRec): Integer;

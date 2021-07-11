@@ -256,6 +256,14 @@ TEST R0=$80000000
 TEST R1=$1
 TEST CC=1
 
+# SLDL
+
+SET R0=1
+SET R1=1
+SLDL R0,1
+TEST R0=2
+TEST R1=2
+
 # SLL
 
 # Non zero shift
@@ -351,6 +359,14 @@ TEST R0=$FF
 TEST R1=$FF
 TEST CC=2
 
+# SRDL
+
+SET R0=2
+SET R1=2
+SRDL R0,1
+TEST R0=1
+TEST R1=1
+
 # SRL
 
 # Non zero shift
@@ -367,6 +383,20 @@ TEST R1=$FF000000
 SET R1=$FF000000
 SRL R1,32
 TEST R1=0
+
+# TS
+
+# test cell not set
+SET MEM $10B=0
+TS $10,0
+TEST MEM $10B=$FF
+TEST CC=0
+
+# test cell set
+SET MEM $10B=$FF
+TS $10,0
+TEST MEM $10B=$FF
+TEST CC=1
 
 # LCR
 
