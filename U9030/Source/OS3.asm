@@ -115,14 +115,16 @@
 055E:         DC    XL16'00000000000000000000000000000000'
 056E:         DC    XL16'00000000000000000000000000000000'
 057E:         DC    XL2'0000'
-     *
+
+     * SVC 5 - OPR
+     
 0580:         BALR  R3,R0
 0582:         AI    X'0406',1
-0586:         OI    X'006'(R14),16
-058A:         OI    X'074'(R11),1
-058E:         L     14,X'050'(,R11)
-0592:         NI    X'005'(R14),247
-0596:         BCR   R15,R15
+0586:         OI    JT$WAIT+2(R14),BT$WTOPR      SET WAIT FOR CONSOLE LINE
+058A:         OI    SB$SOI1(R11),BB$SOOPR        OPR COMMUN. SVC
+058E:         L     14,SB$SOS(,R11)              GET ADDR SOS TCV
+0592:         NI    JT$WAIT+1(R14),247           CLEAR YIELD BIT
+0596:         BCR   R15,R15                      GO TO SWITCHER
      *
 0598:         BALR  R3,R0
 059A:         NI    SB$ERFLG,247                 CLEAR ALL BUT TRANSIENT IN CONTROL
@@ -201,7 +203,7 @@
 066A:         BC    13,X'032'(,R3)
 066E:         LR    R8,R9
 0670:         LR    R7,R5
-0672:         BC    15,X'032'(,R3)
+0672:         BC    15,X'0614'
 0676:         LTR   R5,R4                        POINT TO TRANSIENT AREA TO USER
 0678:         BC    7,X'067E'
 067C:         LR    R5,R7
@@ -274,7 +276,8 @@
 0766:         BC    15,X'030'(,R3)
 076A:         DC    XL14'0000000604088800000008000000'
      * THIS SEEMS TO HAVE TO DO WITH CALCULATING THE DISK ADDRESS OF
-     * THE TRANSIENT REQUIRED TO EXECUTE A SUPERVISOR CALL.
+     * THE TRANSIENT REQUIRED TO EXECUTE A SUPERVISOR CALL. IT ALSO
+     * LOADS THE TRANSIENT
      *
      * R7 POINTS TO A BCW
      * R7 + 16 POINTS TO CCB
@@ -353,12 +356,12 @@
 0864:         BC    14,X'0778'
 0868:         ST    0,X'028'(,R14)
 086C:         BC    15,X'06C6'
-     *
+     * JUMP TO 1ST INSTRUCTION OF TRANSIENT JUST LOADED
 0870:         LR    R1,R6
 0872:         CH    2,X'000C'
 0876:         BC    7,X'100'(,R3)
 087A:         HPR   X'0CCC',0
-087E:         BC    15,X'0002'
+087E:         BC    15,X'002'(R15)
 0882:         LH    4,X'00C'(,R7)
 0886:         TM    X'013'(R7),128
 088A:         BC    14,X'114'(,R3)
@@ -366,19 +369,19 @@
 0892:         AH    4,X'028C'
 0896:         STH   4,X'00C'(,R7)
 089A:         OI    X'00C'(R7),128
-     *
-089E:         SVC   R0,R0                        SVC 0 - PHYISCAL I/O REQUEST
+     * READ STUFF FROM DISK
+089E:         SVC   0                            SVC 0 - PHYISCAL I/O REQUEST
 08A0:         TM    X'002'(R1),128
 08A4:         BC    1,X'12C'(,R3)
-08A8:         SVC   R0,R1
+08A8:         SVC   1                            SVC 1 - WAIT FOR I/O
 08AA:         TM    X'002'(R1),119
 08AE:         BC    7,X'13A'(,R3)
 08B2:         CH    2,X'000'(,R15)
-08B6:         BCR   R8,R5
+08B6:         BCR   8,R5
 08B8:         BC    15,X'004'(,R5)
      *
 08BC:         LA    6,X'0284'
-08C0:         MVI   X'007'(R7),4
+08C0:         MVI   X'007'(R7),4                 SET REC COUNT IN BCW
 08C4:         MVC   X'004'(2,R7),X'17C'(R3)
 08CA:         LR    R5,R2                        GET SVC ID
 08CC:         SR    R4,R4                        CLEAR R4
@@ -985,7 +988,7 @@
 178A:         ST    3,SB$TCB                     SAVE PTR TO LAST ACTIVE TCB
 178E:         L     13,JT$PRE                    POINT TO TASKS PREAMBLE
 1792:         BAL   5,X'0452'                    LOAD PROGRAM REGISTERS FROM TCB
-1796:         ST    3,X'0000'(R2)
+1796:         ST    3,X'0000'(R2)                MAKE CRNT TBC 1ST FOR ITS PRIORITY
 179A:         LA    14,X'0000'(R3)               SET R14 TO CURRENT TCB
 179E:         TM    JT$FLGS,BT$ACTIC+BT$SETSV
 17A2:         BZ    X'17AA'                      
@@ -1471,19 +1474,22 @@
 1DEE:         BC    1,X'2CA'(,R11)
 1DF2:         BCR   R15,R13
 1DF4:         DC    XL4'00000000'
-1DF8:         SR    R9,R9
-1DFA:         IC    9,X'003'(,R8)
-1DFE:         SLL   R9,X'0004'
-1E02:         LA    9,X'100'(,R9)
+
+     * CHANNEL 0 INTERRUPT HANDLER
+                             
+1DF8:         SR    R9,R9                        CLEAR R9
+1DFA:         IC    R9,IP$DA(,R8)                GET PUB DVC ADDR.
+1DFE:         SLL   R9,X'0004'                   CALC. BCW ADDRESS OF THIS DVC
+1E02:         LA    R9,X'100'(,R9)               
 1E06:         LR    R13,R0
-1E08:         MVC   X'00A'(2,R13),X'006'(R9)
+1E08:         MVC   X'00A'(2,R13),X'006'(R9)     SAVE BCW FLAGS AND COUNT
 1E0E:         NI    X'00A'(R13),31
-1E12:         TM    X'007'(R8),255
-1E16:         BC    7,X'05A'(,R12)
-1E1A:         TM    X'006'(R8),2
-1E1E:         BC    1,X'086'(,R12)
+1E12:         TM    IP$CONT5(R8),255             COMPOSITE CHAIN ERROR?
+1E16:         BNZ   X'1E52'                      YES
+1E1A:         TM    IP$CONT1(R8),DP$DVERR        UNIT CHECK?                                
+1E1E:         BO    X'1E7E'                      YES
 1E22:         TM    X'003'(R1),16
-1E26:         BC    8,X'04E'(,R12)
+1E26:         BZ    X'1E46'(,R12)
 1E2A:         TM    X'003'(R1),128
 1E2E:         BC    8,X'04E'(,R12)
 1E32:         TM    X'01C'(R8),2
@@ -1491,8 +1497,8 @@
 1E3A:         TM    X'01C'(R1),3
 1E3E:         BC    8,X'04E'(,R12)
 1E42:         BC    15,X'086'(,R12)
-1E46:         TM    X'01C'(R8),2
-1E4A:         BC    8,X'36C'(,R11)
+1E46:         TM    X1P$CONT2(R8),BP$IO2         IO 2 CONTROL?
+1E4A:         BZ    X'4CA8'                      NO
 1E4E:         NI    X'01C'(R8),253
 1E52:         SR    R9,R9
 1E54:         TM    X'003'(R1),16
@@ -3947,13 +3953,14 @@
 4380:         BC    15,X'1A2'(,R11)
 4384:         SUR   R8,R0
 4386:         DC    XL10'00000000000000000000'
-     * ADD ITEM TO I/O QUEUE???????
+
+     * I/O QUEUE PROCESSING
      
               USING *,R12
               USING IP$PUB,R8
               USING IC$CCB,R1
               
-4390:         LH    6,X'010'(,R8)                GET QUEUE ADDR?
+4390:         LH    6,IP$QUE(,R8)                GET QUEUE ADDR?
 4394:         LH    10,X'4618'                   R10 = 0?
 4398:         IC    10,JT$KEY                    GET JOB #
 439C:         SRL   R10,X'0002'
@@ -3993,7 +4000,7 @@
 4422:         ST    1,X'008'(,R2)                SAVE CRNT CCB TO QUEUE
 4426:         MVI   IC$BCW,0                     CLEAR FLAG 
      * DIAG14                    
-442A:         LA    0,X'0014'                    ADDR 14 IS PTR TO NEXT IOST ENTRY
+442A:         LA    0,X'0014'                    
 442E:         DIAG  X'0000',14
 4432:         STC   0,IC$BCW
 4436:         LR    R1,R2
@@ -4015,6 +4022,7 @@
 446A:         BC    1,X'05C'(,R12)
 446E:         MVI   X'0A9'(R12),0
 4472:         BC    15,X'032'(,R12)
+     *
 4476:         AR    R6,R10
 4478:         L     9,X'0000'(R6)
 447C:         LA    9,X'000'(,R9)
@@ -4359,14 +4367,14 @@
 493C:         LH    12,X'690'(,R11)
 4940:         BALR  R13,R12                      GET CURRENT IOSTIW
 4942:         LH    15,X'0008'                   GET POINTER TO SWITCHER
-4946:         BCR   R7,R15                       NO CURRENT IOSTIW? GOTO ENTRY PT 
+4946:         BCR   7,R15                        NO CURRENT IOSTIW? GOTO SWITCHER
 4948:         LH    15,X'4FD0'
 494C:         L     12,SB$CHINT                  MCP CPIOCS ENTRY ADDR
 4950:         LTR   R12,R12                      IS IT ZERO?
 4952:         BZ    X'4958'                      YES
-4956:         BALR  R13,R12
+4956:         BALR  R13,R12                      NO, LET ICAM TRY TO PROCESS IT.
 4958:         LTR   R0,R0                        GET ADDR OF IOSTIW BUFFER
-495A:         BZR   R15                          ZERO, QUIT
+495A:         BZR   R15                          ZERO, GO TO SWITCHER
 495C:         LR    R1,R0
 495E:         LH    2,X'000'(,R1)                GET CHANNEL & DEVICE #S
 4962:         LH    12,SB$PCOV                   GET ADDR PUB CONTROL COVER
@@ -4506,9 +4514,10 @@
 4B52:         OI    X'01D'(R8),64
 4B56:         BC    15,X'2E6'(,R11)
 4B5A:         DC    XL2'0000'
-4B5C:         LH    12,SB$RELOC
+     *
+4B5C:         LH    R12,SB$RELOC
 4B60:         BALR  R13,R12                      LOAD R7 WITH RELOCATION REG.
-4B62:         LH    12,X'02EA'
+4B62:         LH    R12,SB$IOQ
 4B66:         OR    R12,R12
 4B68:         BALR  R13,R12
 4B6A:         LTR   R0,R0
@@ -4594,39 +4603,40 @@
 4CA0:         BALR  R13,R12
 4CA2:         LH    12,IP$EPI(,R8)               GET ENTRY FOR CHANNEL INTERRUPT
 4CA6:         BCR   R15,R12
-4CA8:         STC   6,X'002'(,R1)
-4CAC:         CH    0,X'560'(,R11)
+     *
+4CA8:         STC   R6,X'002'(,R1)
+4CAC:         CH    0,X'4E9C'
 4CB0:         BC    13,X'428'(,R11)
-4CB4:         NI    X'01C'(R8),248
+4CB4:         NI    IP$CONT2(R8),248             CLEAR IO1/2/4 FLAGS
 4CB8:         TM    X'003'(R1),16
 4CBC:         BC    1,X'3E2'(,R11)
-4CC0:         XC    X'006'(2,R8),X'006'(R8)
-4CC6:         LH    12,X'038A'
-4CCA:         LTR   R12,R12
-4CCC:         BC    8,X'396'(,R11)
+4CC0:         XC    IP$CONT1(2,R8),IP$CONT1(R8)  CLEAR IP$CONT1, IP$CONT4
+4CC6:         LH    12,SB$UNLCK                  TRAP UNLOCK?
+4CCA:         LTR   R12,R12                      IS IT ZERO
+4CCC:         BZ    X'4CD2'                      YES
 4CD0:         BALR  R13,R12
-4CD2:         CH    8,X'02A8'                    SB$RES?
-4CD6:         BC    8,X'3C6'(,R11)
-4CDA:         LH    12,X'012'(,R8)
-4CDE:         TM    X'00C'(R8),16
-4CE2:         BC    14,X'3B2'(,R11)
+4CD2:         CH    R8,SB$RES                    PUB = SYSRES?
+4CD6:         BE    X'4D02'                      YES
+4CDA:         LH    R12,IP$TRL(,R8)              GET PUB TLR ADDR.
+4CDE:         TM    IP$TYP(R8),16                CHECK DEVICE TYPE
+4CE2:         BC    14,X'4CEE'
 4CE6:         TM    X'018'(R12),1
 4CEA:         BC    1,X'220'(,R11)
-4CEE:         LA    14,X'000'(,R14)
-4CF2:         C     14,X'02D0'
-4CF6:         BC    8,X'3C6'(,R11)
+4CEE:         LA    R14,X'000'(,R14)             CLEAR MSB OF TCB ADDR.
+4CF2:         C     R14,X'02D0'                  TCB = SOS TCB?
+4CF6:         BE    X'4D02'                      YES
 4CFA:         TM    X'018'(R8),12
 4CFE:         BC    1,X'220'(,R11)
-4D02:         NI    X'018'(R8),251
-4D06:         TM    X'00C'(R8),16
-4D0A:         BC    8,X'3E2'(,R11)
+4D02:         NI    IP$CONT3(R8),251             CLEAR ERROR LOG PENDING FLAG
+4D06:         TM    IP$TYP(R8),16                CHECK DEVICE TYPE
+4D0A:         BE    X'4D1E'
 4D0E:         MVI   X'01B'(R8),60
 4D12:         MVI   X'008'(R8),128
 4D16:         TM    X'01D'(R8),64
 4D1A:         BC    1,X'3E8'(,R11)
-4D1E:         XC    X'008'(4,R8),X'008'(R8)
+4D1E:         XC    IP$CCB(4,R8),IP$CCB(R8)      CLEAR CCB ADDR.
 4D24:         TM    X'003'(R1),16
-4D28:         BC    8,X'420'(,R11)
+4D28:         BZ    X'4D5C'
 4D2C:         CLI   X'01B'(R1),0
 4D30:         BC    7,X'408'(,R11)
 4D34:         TM    X'01A'(R1),2
@@ -4638,16 +4648,16 @@
 4D4C:         DC    XL8'00000040000000BF'
 4D54:         NI    X'002'(R1),191
 4D58:         BC    15,X'428'(,R11)
-4D5C:         NI    X'01C'(R8),248
-4D60:         MVI   X'006'(R8),0
+4D5C:         NI    IP$CONT2(R8),248             CLEAR IO1/2/4 CONTROL
+4D60:         MVI   IP$CONT1(R8),0               CLEAR IP$CONT1
 4D64:         OI    X'002'(R1),128
 4D68:         TM    X'000'(R1),4
 4D6C:         BC    8,X'438'(,R11)
-4D70:         NI    X'005'(R14),251
-4D74:         AI    X'00C'(R14),255
-4D78:         BC    7,X'220'(,R11)
-4D7C:         NI    X'005'(R14),253
-4D80:         BC    15,X'220'(,R11)
+4D70:         NI    JT$WAIT+1(R14),251           CLEAR WAIT BIT             
+4D74:         AI    JT$IOC(R14),255              DEC OUTSTANDING I/O COUNT
+4D78:         BNZ   X'4B5C'                      NOT ZERO, SKIP NEXT
+4D7C:         NI    JT$WAIT+1(R14),253           CLEAR WAIT ALL BIT
+4D80:         BC    15,X'4B5C'
      *
 4D84:         BALR  R11,R0
 4D86:         LH    11,SB$HCOV                   GET INTERRUPT PROCESSOR ADDR.
@@ -4910,87 +4920,358 @@
 550E:         DC    XL16'00000000000000000000000000000000'
 551E:         DC    XL16'00000000000000000000000000000000'
 552E:         DC    XL16'00000000000000000000000000000000'
-553E:         DC    XL16'00009502102E4770F00E90ECD00C18C0'
-554E:         DC    XL16'41A10000918010244710F02292131038'
-555E:         DC    XL16'47F0F11E9201A02D9586A0314770F03E'
-556E:         DC    XL16'9140A0244780F4B058C0A02847F0F3DC'
-557E:         DC    XL16'50C0A0285810C01C4111000019A14770'
-558E:         DC    XL16'F1FE9200C01A9140A0244780F0604570'
-559E:         DC    XL16'F3E0947FA0259200A032D206A03DC011'
-55AE:         DC    XL16'920DA03C9514A0314780F0D29512A031'
-55BE:         DC    XL16'4780F0CE9200A0429140A0314780F094'
-55CE:         DC    XL16'0A3147F0F4869208A03C9585A0314780'
-55DE:         DC    XL16'F1B49601A0249101C0204780F0B2D200'
-55EE:         DC    XL16'A02DC0109120A0314710F14A9110A031'
-55FE:         DC    XL16'4710F0DA9214A0389602A03247F0F11E'
-560E:         DC    XL16'9209A03C9680A02547F0F1B49202A03C'
-561E:         DC    XL16'D502C001C00D4780F13017664880A02C'
-562E:         DC    XL16'5890C00006901A984080A02C4260C01A'
-563E:         DC    XL16'5870C00C4177000019974740F1BE1B98'
-564E:         DC    XL16'416600014680F0F49224A0389640A032'
-565E:         DC    XL16'D602A039A0394780F4BC58E0A03847F0'
-566E:         DC    XL16'F49E9120C0204780F116D602C021C021'
-567E:         DC    XL16'4780F11658E0C02047F0F49E9110A025'
-568E:         DC    XL16'4710F0C2947FA0519110C0204780F162'
-569E:         DC    XL16'9608C020D503C000C00447D0F1849140'
-56AE:         DC    XL16'A0324710F1169640A0320A2E0A3047F0'
-56BE:         DC    XL16'F11A47F0F16294BFA0329205A03CD502'
-56CE:         DC    XL16'C001C00D4740F1BE9180C0204780F1BE'
-56DE:         DC    XL16'D502C001C00D4770F1169110A0244710'
-56EE:         DC    XL16'F1BE9201A03CD503C000C0044720F116'
-56FE:         DC    XL16'5870C0001766197647D0F1165D60C008'
-570E:         DC    XL16'12664720F1DA4360C00B06704260A04A'
-571E:         DC    XL16'17665880A04C41880030D500C00C8000'
-572E:         DC    XL16'4780F2064188000895EE80004770F1E8'
-573E:         DC    XL16'9216A03847F0F11E1896486080068960'
-574E:         DC    XL16'001088600010197647B0F1F218691799'
-575E:         DC    XL16'439080015A90A04C5090A0101B761867'
-576E:         DC    XL16'4780F23817665D60A0544A7080024A60'
-577E:         DC    XL16'80044960A05A47D0F250417700015B60'
-578E:         DC    XL16'A0544260A0469140C0204780F2B84360'
-579E:         DC    XL16'A04A5060A04818865960C0084770F272'
-57AE:         DC    XL16'9680A03217994390C01812994780F2B4'
-57BE:         DC    XL16'5C80A0484380C0181B98419900011788'
-57CE:         DC    XL16'5D80C008186817885890A0480690D200'
-57DE:         DC    XL16'A04BC0165D80A0484186900012884720'
-57EE:         DC    XL16'F2B45880C0084280A04A4070A0489101'
-57FE:         DC    XL16'A0244780F33E418000019140C0204710'
-580E:         DC    XL16'F2F44880A02C17994390A04A1A980690'
-581E:         DC    XL16'947FA0325990C0084740F2F45B90C008'
-582E:         DC    XL16'1B899680A03218985A90C0005090C000'
-583E:         DC    XL16'D502C001C00D4740F30ED202C00DC001'
-584E:         DC    XL16'06905090C0004890A02C1B9841990001'
-585E:         DC    XL16'4090A02C1799177717224320C0174A90'
-586E:         DC    XL16'C0141A724680F32C4270A0434090A040'
-587E:         DC    XL16'17994390C0175090A0144390A04A5C80'
-588E:         DC    XL16'A0145B90A014419900014290A04A9180'
-589E:         DC    XL16'A0254780F3764880A0404B80C0184080'
-58AE:         DC    XL16'A040D200A043C0199501A03C4770F3B6'
-58BE:         DC    XL16'5880C010419000081B89D2018000A048'
-58CE:         DC    XL16'40680002D2008004A04A920080054820'
-58DE:         DC    XL16'C0149102C0204780F3B2D2008005C019'
-58EE:         DC    XL16'4B20C018402800069640A0240A009508'
-58FE:         DC    XL16'A03C4780F4869108C0204710F3DC9501'
-590E:         DC    XL16'A02D4720F3DC9120A0244780F4864170'
-591E:         DC    XL16'F406918010024710F3EA0A0194BFA024'
-592E:         DC    XL16'D200A033A0029173A00207879610A032'
-593E:         DC    XL16'9222A03847F0F11E9180A0254780F44E'
-594E:         DC    XL16'947FA0259400C0164870C0165C60C000'
-595E:         DC    XL16'4360A04A1B764360A0181A764860C016'
-596E:         DC    XL16'5060C00017665D60C00017994390A017'
-597E:         DC    XL16'4360A0461B965C80C0081A795070C000'
-598E:         DC    XL16'9200A0149108C0204780F46A94F7C020'
-599E:         DC    XL16'9680A0429202A03C47F0F3B6947FC016'
-59AE:         DC    XL16'9400A0429120C0204780F4865860C000'
-59BE:         DC    XL16'416600015060C0009AFFA02C4780F49E'
-59CE:         DC    XL16'5880A03C4A80A0405080A03C47F0F0B2'
-59DE:         DC    XL16'94FEA02417774370C01A4A70A02C4270'
-59EE:         DC    XL16'A02D9502A02E077E98FCD01007FE98EC'
-59FE:         DC    XL16'D00C0A3D000000000000183189300001'
-5A0E:         DC    XL16'123347B005E09620E0055840E0184144'
-5A1E:         DC    XL16'00001244078F1A4C9680400291044000'
-5A2E:         DC    XL16'078F94FB4000585040041A5D94FB5005'
-5A3E:         DC    XL16'D7034004400407FF0000000000000000'
+553E:         DC    XL2'0000'
+5540:         CLI   X'02E'(R1),2
+5544:         BC    7,X'00E'(,R15)
+5548:         STM   R14,R12,X'00C'(,R13)
+554C:         LR    R12,R0
+554E:         LA    R10,X'0000'(R1)
+5552:         TM    X'024'(R1),128
+5556:         BC    1,X'022'(,R15)
+555A:         MVI   X'038'(R1),19
+555E:         BC    15,X'11E'(,R15)
+5562:         MVI   X'02D'(R10),1
+5566:         CLI   X'031'(R10),134
+556A:         BC    7,X'03E'(,R15)
+556E:         TM    X'024'(R10),64
+5572:         BC    8,X'4B0'(,R15)
+5576:         L     R12,X'028'(,R10)
+557A:         BC    15,X'3DC'(,R15)
+557E:         ST    R12,X'028'(,R10)
+5582:         L     R1,X'01C'(,R12)
+5586:         LA    R1,X'0000'(R1)
+558A:         CR    R10,R1
+558C:         BC    7,X'1FE'(,R15)
+5590:         MVI   X'01A'(R12),0
+5594:         TM    X'024'(R10),64
+5598:         BC    8,X'060'(,R15)
+559C:         BAL   R7,X'3E0'(,R15)
+55A0:         NI    X'025'(R10),127
+55A4:         MVI   X'032'(R10),0
+55A8:         MVC   X'03D'(7,R10),X'011'(R12)
+55AE:         MVI   X'03C'(R10),13
+55B2:         CLI   X'031'(R10),20
+55B6:         BC    8,X'0D2'(,R15)
+55BA:         CLI   X'031'(R10),18
+55BE:         BC    8,X'0CE'(,R15)
+55C2:         MVI   X'042'(R10),0
+55C6:         TM    X'031'(R10),64
+55CA:         BC    8,X'094'(,R15)
+55CE:         SVC   49
+55D0:         BC    15,X'486'(,R15)
+55D4:         MVI   X'03C'(R10),8
+55D8:         CLI   X'031'(R10),133
+55DC:         BC    8,X'1B4'(,R15)
+55E0:         OI    X'024'(R10),1
+55E4:         TM    X'020'(R12),1
+55E8:         BC    8,X'0B2'(,R15)
+55EC:         MVC   X'02D'(1,R10),X'010'(R12)
+55F2:         TM    X'031'(R10),32
+55F6:         BC    1,X'14A'(,R15)
+55FA:         TM    X'031'(R10),16
+55FE:         BC    1,X'0DA'(,R15)
+5602:         MVI   X'038'(R10),20
+5606:         OI    X'032'(R10),2
+560A:         BC    15,X'11E'(,R15)
+560E:         MVI   X'03C'(R10),9
+5612:         OI    X'025'(R10),128
+5616:         BC    15,X'1B4'(,R15)
+561A:         MVI   X'03C'(R10),2
+561E:         CLC   X'001'(3,R12),X'00D'(R12)
+5624:         BC    8,X'130'(,R15)
+5628:         XR    R6,R6
+562A:         LH    R8,X'02C'(,R10)
+562E:         L     R9,X'000'(,R12)
+5632:         BCTR  R9,R0
+5634:         AR    R9,R8
+5636:         STH   R8,X'02C'(,R10)
+563A:         STC   R6,X'01A'(,R12)
+563E:         L     R7,X'00C'(,R12)
+5642:         LA    R7,X'0000'(R7)
+5646:         CR    R9,R7
+5648:         BC    4,X'1BE'(,R15)
+564C:         SR    R9,R8
+564E:         LA    R6,X'0001'(R6)
+5652:         BCT   R8,X'0F4'(,R15)
+5656:         MVI   X'038'(R10),36
+565A:         OI    X'032'(R10),64
+565E:         OC    X'039'(3,R10),X'039'(R10)
+5664:         BC    8,X'4BC'(,R15)
+5668:         L     R14,X'038'(,R10)
+566C:         BC    15,X'49E'(,R15)
+5670:         TM    X'020'(R12),32
+5674:         BC    8,X'116'(,R15)
+5678:         OC    X'021'(3,R12),X'021'(R12)
+567E:         BC    8,X'116'(,R15)
+5682:         L     R14,X'020'(,R12)
+5686:         BC    15,X'49E'(,R15)
+568A:         TM    X'025'(R10),16
+568E:         BC    1,X'0C2'(,R15)
+5692:         NI    X'051'(R10),127
+5696:         TM    X'020'(R12),16
+569A:         BC    8,X'162'(,R15)
+569E:         OI    X'020'(R12),8
+56A2:         CLC   X'000'(4,R12),X'004'(R12)
+56A8:         BC    13,X'184'(,R15)
+56AC:         TM    X'032'(R10),64
+56B0:         BC    1,X'116'(,R15)
+56B4:         OI    X'032'(R10),64
+56B8:         SVC   46
+56BA:         SVC   48
+56BC:         BC    15,X'11A'(,R15)
+56C0:         BC    15,X'162'(,R15)
+56C4:         NI    X'032'(R10),191
+56C8:         MVI   X'03C'(R10),5
+56CC:         CLC   X'001'(3,R12),X'00D'(R12)
+56D2:         BC    4,X'1BE'(,R15)
+56D6:         TM    X'020'(R12),128
+56DA:         BC    8,X'1BE'(,R15)
+56DE:         CLC   X'001'(3,R12),X'00D'(R12)
+56E4:         BC    7,X'116'(,R15)
+56E8:         TM    X'024'(R10),16
+56EC:         BC    1,X'1BE'(,R15)
+56F0:         MVI   X'03C'(R10),1
+56F4:         CLC   X'000'(4,R12),X'004'(R12)
+56FA:         BC    2,X'116'(,R15)
+56FE:         L     R7,X'000'(,R12)
+5702:         XR    R6,R6
+5704:         CR    R7,R6
+5706:         BC    13,X'116'(,R15)
+570A:         D     R6,X'008'(,R12)
+570E:         LTR   R6,R6
+5710:         BC    2,X'1DA'(,R15)
+5714:         IC    R6,X'00B'(,R12)
+5718:         BCTR  R7,R0
+571A:         STC   R6,X'04A'(,R10)
+571E:         XR    R6,R6
+5720:         L     R8,X'04C'(,R10)
+5724:         LA    R8,X'0030'(R8)
+5728:         CLC   X'00C'(1,R12),X'000'(R8)
+572E:         BC    8,X'206'(,R15)
+5732:         LA    R8,X'0008'(R8)
+5736:         CLI   X'000'(R8),238
+573A:         BC    7,X'1E8'(,R15)
+573E:         MVI   X'038'(R10),22
+5742:         BC    15,X'11E'(,R15)
+5746:         LR    R9,R6
+5748:         LH    R6,X'006'(,R8)
+574C:         SLL   R6,X'0010'
+5750:         SRL   R6,X'0010'
+5754:         CR    R7,R6
+5756:         BC    11,X'1F2'(,R15)
+575A:         LR    R6,R9
+575C:         XR    R9,R9
+575E:         IC    R9,X'001'(,R8)
+5762:         A     R9,X'04C'(,R10)
+5766:         ST    R9,X'010'(,R10)
+576A:         SR    R7,R6
+576C:         LR    R6,R7
+576E:         BC    8,X'238'(,R15)
+5772:         XR    R6,R6
+5774:         D     R6,X'054'(,R10)
+5778:         AH    R7,X'002'(,R8)
+577C:         AH    R6,X'004'(,R8)
+5780:         CH    R6,X'05A'(,R10)
+5784:         BC    13,X'250'(,R15)
+5788:         LA    R7,X'0001'(R7)
+578C:         S     R6,X'054'(,R10)
+5790:         STC   R6,X'046'(,R10)
+5794:         TM    X'020'(R12),64
+5798:         BC    8,X'2B8'(,R15)
+579C:         IC    R6,X'04A'(,R10)
+57A0:         ST    R6,X'048'(,R10)
+57A4:         LR    R8,R6
+57A6:         C     R6,X'008'(,R12)
+57AA:         BC    7,X'272'(,R15)
+57AE:         OI    X'032'(R10),128
+57B2:         XR    R9,R9
+57B4:         IC    R9,X'018'(,R12)
+57B8:         LTR   R9,R9
+57BA:         BC    8,X'2B4'(,R15)
+57BE:         M     R8,X'048'(,R10)
+57C2:         IC    R8,X'018'(,R12)
+57C6:         SR    R9,R8
+57C8:         LA    R9,X'0001'(R9)
+57CC:         XR    R8,R8
+57CE:         D     R8,X'008'(,R12)
+57D2:         LR    R6,R8
+57D4:         XR    R8,R8
+57D6:         L     R9,X'048'(,R10)
+57DA:         BCTR  R9,R0
+57DC:         MVC   X'04B'(1,R10),X'016'(R12)
+57E2:         D     R8,X'048'(,R10)
+57E6:         LA    R8,X'000'(R6,R9)
+57EA:         LTR   R8,R8
+57EC:         BC    2,X'2B4'(,R15)
+57F0:         L     R8,X'008'(,R12)
+57F4:         STC   R8,X'04A'(,R10)
+57F8:         STH   R7,X'048'(,R10)
+57FC:         TM    X'024'(R10),1
+5800:         BC    8,X'33E'(,R15)
+5804:         LA    R8,X'0001'
+5808:         TM    X'020'(R12),64
+580C:         BC    1,X'2F4'(,R15)
+5810:         LH    R8,X'02C'(,R10)
+5814:         XR    R9,R9
+5816:         IC    R9,X'04A'(,R10)
+581A:         AR    R9,R8
+581C:         BCTR  R9,R0
+581E:         NI    X'032'(R10),127
+5822:         C     R9,X'008'(,R12)
+5826:         BC    4,X'2F4'(,R15)
+582A:         S     R9,X'008'(,R12)
+582E:         SR    R8,R9
+5830:         OI    X'032'(R10),128
+5834:         LR    R9,R8
+5836:         A     R9,X'000'(,R12)
+583A:         ST    R9,X'000'(,R12)
+583E:         CLC   X'001'(3,R12),X'00D'(R12)
+5844:         BC    4,X'30E'(,R15)
+5848:         MVC   X'00D'(3,R12),X'001'(R12)
+584E:         BCTR  R9,R0
+5850:         ST    R9,X'000'(,R12)
+5854:         LH    R9,X'02C'(,R10)
+5858:         SR    R9,R8
+585A:         LA    R9,X'0001'(R9)
+585E:         STH   R9,X'02C'(,R10)
+5862:         XR    R9,R9
+5864:         XR    R7,R7
+5866:         XR    R2,R2
+5868:         IC    R2,X'017'(,R12)
+586C:         AH    R9,X'014'(,R12)
+5870:         AR    R7,R2
+5872:         BCT   R8,X'32C'(,R15)
+5876:         STC   R7,X'043'(,R10)
+587A:         STH   R9,X'040'(,R10)
+587E:         XR    R9,R9
+5880:         IC    R9,X'017'(,R12)
+5884:         ST    R9,X'014'(,R10)
+5888:         IC    R9,X'04A'(,R10)
+588C:         M     R8,X'014'(,R10)
+5890:         S     R9,X'014'(,R10)
+5894:         LA    R9,X'0001'(R9)
+5898:         STC   R9,X'04A'(,R10)
+589C:         TM    X'025'(R10),128
+58A0:         BC    8,X'376'(,R15)
+58A4:         LH    R8,X'040'(,R10)
+58A8:         SH    R8,X'018'(,R12)
+58AC:         STH   R8,X'040'(,R10)
+58B0:         MVC   X'043'(1,R10),X'019'(R12)
+58B6:         CLI   X'03C'(R10),1
+58BA:         BC    7,X'3B6'(,R15)
+58BE:         L     R8,X'010'(,R12)
+58C2:         LA    R9,X'0008'
+58C6:         SR    R8,R9
+58C8:         MVC   X'000'(2,R8),X'048'(R10)
+58CE:         STH   R6,X'0002'(R8)
+58D2:         MVC   X'004'(1,R8),X'04A'(R10)
+58D8:         MVI   X'005'(R8),0
+58DC:         LH    R2,X'014'(,R12)
+58E0:         TM    X'020'(R12),2
+58E4:         BC    8,X'3B2'(,R15)
+58E8:         MVC   X'005'(1,R8),X'019'(R12)
+58EE:         SH    R2,X'018'(,R12)
+58F2:         STH   R2,X'0006'(R8)
+58F6:         OI    X'024'(R10),64
+58FA:         SVC   0
+58FC:         CLI   X'03C'(R10),8
+5900:         BC    8,X'486'(,R15)
+5904:         TM    X'020'(R12),8
+5908:         BC    1,X'3DC'(,R15)
+590C:         CLI   X'02D'(R10),1
+5910:         BC    2,X'3DC'(,R15)
+5914:         TM    X'024'(R10),32
+5918:         BC    8,X'486'(,R15)
+591C:         LA    R7,X'406'(,R15)
+5920:         TM    X'002'(R1),128
+5924:         BC    1,X'3EA'(,R15)
+5928:         SVC   1
+592A:         NI    X'024'(R10),191
+592E:         MVC   X'033'(1,R10),X'002'(R10)
+5934:         TM    X'002'(R10),115
+5938:         BCR   R8,R7
+593A:         OI    X'032'(R10),16
+593E:         MVI   X'038'(R10),34
+5942:         BC    15,X'11E'(,R15)
+5946:         TM    X'025'(R10),128
+594A:         BC    8,X'44E'(,R15)
+594E:         NI    X'025'(R10),127
+5952:         NI    X'016'(R12),0
+5956:         LH    R7,X'016'(,R12)
+595A:         M     R6,X'000'(,R12)
+595E:         IC    R6,X'04A'(,R10)
+5962:         SR    R7,R6
+5964:         IC    R6,X'018'(,R10)
+5968:         AR    R7,R6
+596A:         LH    R6,X'016'(,R12)
+596E:         ST    R6,X'000'(,R12)
+5972:         XR    R6,R6
+5974:         D     R6,X'000'(,R12)
+5978:         XR    R9,R9
+597A:         IC    R9,X'017'(,R10)
+597E:         IC    R6,X'046'(,R10)
+5982:         SR    R9,R6
+5984:         M     R8,X'008'(,R12)
+5988:         AR    R7,R9
+598A:         ST    R7,X'000'(,R12)
+598E:         MVI   X'014'(R10),0
+5992:         TM    X'020'(R12),8
+5996:         BC    8,X'46A'(,R15)
+599A:         NI    X'020'(R12),247
+599E:         OI    X'042'(R10),128
+59A2:         MVI   X'03C'(R10),2
+59A6:         BC    15,X'3B6'(,R15)
+59AA:         NI    X'016'(R12),127
+59AE:         NI    X'042'(R10),0
+59B2:         TM    X'020'(R12),32
+59B6:         BC    8,X'486'(,R15)
+59BA:         L     R6,X'000'(,R12)
+59BE:         LA    R6,X'0001'(R6)
+59C2:         ST    R6,X'000'(,R12)
+59C6:         AI    X'02C'(R10),255
+59CA:         BC    8,X'49E'(,R15)
+59CE:         L     R8,X'03C'(,R10)
+59D2:         AH    R8,X'040'(,R10)
+59D6:         ST    R8,X'03C'(,R10)
+59DA:         BC    15,X'0B2'(,R15)
+59DE:         NI    X'024'(R10),254
+59E2:         XR    R7,R7
+59E4:         IC    R7,X'01A'(,R12)
+59E8:         AH    R7,X'02C'(,R10)
+59EC:         STC   R7,X'02D'(,R10)
+59F0:         CLI   X'02E'(R10),2
+59F4:         BCR   R7,R14
+59F6:         LM    R15,R12,X'010'(,R13)
+59FA:         BCR   R15,R14
+59FC:         LM    R14,R12,X'00C'(,R13)
+5A00:         SVC   61
+5A02:         DC    XL6'000000000000'
+
+     * SVC 12 - AWAKE
+     
+5A08:         LR    R3,R1                        R1 = R3
+5A0A:         SLL   R3,X'0001'                   R3 = R3 * 2
+5A0E:         LTR   R3,R3                        R3 < 0?
+5A10:         BNM   X'5E0'                       NO, GO LOAD AWAKE TRANSIENT
+     * R1 BIT 1 = 1 MAKES THIS A TYIELD CALL, NOT AWAKE.
+     * DO TYIELD PROCESSING HERE
+5A14:         OI    JT$WAIT+1(R14),BT$TYLD       YES, DO TYIELD - SET YIELD BIT
+5A18:         L     R4,JT$ECB(,R14)              GET THE ECB ADDRESS
+5A1C:         LA    R4,X'0000'(R4)               CLEAR MSB
+5A20:         LTR   R4,R4                        ECB ADDR = 0?
+5A22:         BZR   R15                          YES
+5A24:         AR    R4,R12                       NO, ADD RELOC REGISTER
+5A26:         OI    EC$ACTIV(R4),BE$ACT          MARK ECB ACITVE
+5A2A:         TM    EC$CTL(R4),BE$WAIT           IS WAIT BIT SET?
+5A2E:         BZR   R15                          NO
+5A30:         NI    EC$CTL(R4),251               CLEAR WAIT BIT
+5A34:         L     R5,EC$WTCB(,R4)              GET ADDR OF WAITING TCB
+5A38:         AR    R5,R13
+5A3A:         NI    JT$WAIT+1(R5),251            CLEAR TCB WAIT BIT
+5A3E:         XC    X'004'(4,R4),X'004'(R4)      CLEAR WAITING TCB ADDR.
+5A44:         BCR   R15,R15
+     *
+5A46:         DC    XL8'0000000000000000'
 5A4E:         DC    XL16'00000000000000000000000000000000'
 5A5E:         DC    XL16'00000000000000000000000000000000'
 5A6E:         DC    XL16'00000000000000000000000000000000'

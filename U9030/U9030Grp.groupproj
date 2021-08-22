@@ -21,6 +21,9 @@
 			<Projects Include="U9030.dproj">
 				<Dependencies/>
 			</Projects>
+			<Projects Include="U9030Print.dproj">
+				<Dependencies/>
+			</Projects>
 		</ItemGroup>
 		<ProjectExtensions>
 			<Borland.Personality>Default.Personality.12</Borland.Personality>
@@ -83,14 +86,23 @@
 		<Target Name="U9030:Make">
 			<MSBuild Targets="Make" Projects="U9030.dproj"/>
 		</Target>
+		<Target Name="U9030Print">
+			<MSBuild Projects="U9030Print.dproj"/>
+		</Target>
+		<Target Name="U9030Print:Clean">
+			<MSBuild Targets="Clean" Projects="U9030Print.dproj"/>
+		</Target>
+		<Target Name="U9030Print:Make">
+			<MSBuild Targets="Make" Projects="U9030Print.dproj"/>
+		</Target>
 		<Target Name="Build">
-			<CallTarget Targets="DmpRst;U8418Util;U9030DisAsm;U9030Console;U9030ConsoleTest;U9030"/>
+			<CallTarget Targets="DmpRst;U8418Util;U9030DisAsm;U9030Console;U9030ConsoleTest;U9030;U9030Print"/>
 		</Target>
 		<Target Name="Clean">
-			<CallTarget Targets="DmpRst:Clean;U8418Util:Clean;U9030DisAsm:Clean;U9030Console:Clean;U9030ConsoleTest:Clean;U9030:Clean"/>
+			<CallTarget Targets="DmpRst:Clean;U8418Util:Clean;U9030DisAsm:Clean;U9030Console:Clean;U9030ConsoleTest:Clean;U9030:Clean;U9030Print:Clean"/>
 		</Target>
 		<Target Name="Make">
-			<CallTarget Targets="DmpRst:Make;U8418Util:Make;U9030DisAsm:Make;U9030Console:Make;U9030ConsoleTest:Make;U9030:Make"/>
+			<CallTarget Targets="DmpRst:Make;U8418Util:Make;U9030DisAsm:Make;U9030Console:Make;U9030ConsoleTest:Make;U9030:Make;U9030Print:Make"/>
 		</Target>
 		<Import Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')" Project="$(BDS)\Bin\CodeGear.Group.Targets"/>
 	</Project>

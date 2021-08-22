@@ -105,13 +105,13 @@ type
     FStatusQueue: TStatusQueue;
     FDevices: array [0..31] of TDevice;
     FSense: array [0..31, 0..4] of Byte;
-    function BcwAddress(chan, dvc: Byte): TMemoryAddress;
     procedure ClearSense(dvc: Byte);
     procedure TraceSIO(dvc: Byte);
   public
     constructor Create(chan: Byte); virtual;
     destructor Destroy; override;
     procedure AddDevice(dvc: TDevice); virtual;
+    function BcwAddress(chan, dvc: Byte): TMemoryAddress;
     procedure ForceAttn;
     function GetStatus: TStatus;
     function IntPending: Boolean;
@@ -339,7 +339,11 @@ begin
         begin
             // If sense command, return CMD_REJECT
             bfr := bcw.Address;
-            Core.StoreByte(bcw.Key, bfr, $ff);
+            if ((FChannelNum = 0) and (dvc >= 4)) then
+                // Special for line adapters
+                Core.StoreByte(bcw.Key, bfr, $80)
+            else
+                Core.StoreByte(bcw.Key, bfr, $ff);
             Inc(bfr, 1);
             count := bcw.Count - 1;
             while (count > 0) do
@@ -355,9 +359,18 @@ begin
         end else
         begin
             // Otherweise return UNIT_CHECK
-            stat.DeviceStatus := CHANNEL_END or UNIT_CHECK;
-            QueueStatus(stat);
-            Result := 3;
+            if ((FChannelNum = 0) and (dvc >= 4)) then
+            begin
+                // Special for line adapters
+                stat.DeviceStatus := UNIT_CHECK;
+                QueueStatus(stat);
+                Result := 1;
+            end else
+            begin
+                stat.DeviceStatus := CHANNEL_END or UNIT_CHECK;
+                QueueStatus(stat);
+                Result := 3;
+            end;
         end;
     finally
         bcw.Free;
@@ -376,8 +389,9 @@ begin
         bcw := TBCW.Create;
         try
             bcw.Fetch(BcwAddress(FChannelNum, dvc));
-            bfr := AnsiString(Format('SIO chan = %d dvc = %2.2x cmd = %2.2x count = %d'#13#10,
-                                     [FChannelNum, dvc, bcw.Command, bcw.Count]));
+            bfr := AnsiString(Format('SIO chan = %d dvc = %2.2x cmd = %2.2x count = %d @ %6.6x'#13#10,
+                                     [FChannelNum, dvc, bcw.Command, bcw.Count,
+                                      PSW.InstAddr - (PSW.InstLength * 2)]));
             IOTraceFile.Write(PAnsiChar(bfr)^, Length(bfr));
             if (FChannelNum = 3) then
             begin

@@ -56,26 +56,33 @@ type
     procedure DecCursor;
     procedure DeleteLine;
     procedure DoTimer(Sender: TObject);
+    procedure Down;
     procedure DrawStatus;
     procedure EndProtected;
     procedure EraseDisplay;
     procedure FindSOE(var row, col: Integer);
     function GetCharacter: Char;
     procedure HideCursor;
+    procedure Home;
     procedure IncCursor;
     function IsProtected(row, col: Integer): Boolean;
+    procedure Left;
     procedure MsgWait;
     procedure OpenPrntrFile;
     procedure Print;
     procedure PrintTransparent;
     procedure Refresh;
+    procedure Right;
     procedure SetArrayLengths;
     procedure SetCharacter(c: Char);
+    procedure SkipProtectBackward;
+    procedure SkipProtectForward;
     procedure StartProtected;
     procedure TelnetConnected(Sender: TObject);
     procedure TelnetDataAvailable(Sender: TIdTelnet; const Buffer: TIdBytes);
     procedure TelnetDisconnected(Sender: TObject);
     procedure Transmit;
+    procedure Up;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -225,11 +232,7 @@ begin
 end;
 
 procedure TUniscope.DecCursor;
-var
-    i, fin, origCol, origRow: Integer;
 begin
-    origRow := FRow;
-    origCol := FCol;
     Dec(FCol);
     if (FCol < 0) then
     begin
@@ -238,23 +241,7 @@ begin
         if (FRow < 0) then
             FRow := FMaxRow - 1;
     end;
-    // Skip until beginning of next unprotected field
-    i := (FRow * FMaxCol) + FCol;
-    fin := 0;
-    if (not FHostControl) then
-    begin
-        while ((i >= fin) and (tProtected in FAttributes[i])) do
-            Dec(i);
-        if (i >= fin) then
-        begin
-            FRow := i div FMaxCol;
-            FCol := i mod FMaxCol;
-        end else
-        begin
-            FCol := origCol;
-            FRow := origRow;
-        end;
-    end;
+    SkipProtectBackward;
 end;
 
 
@@ -333,6 +320,15 @@ begin
             Inc(i);
         end;
     end;
+end;
+
+procedure TUniscope.Down;
+begin
+    HideCursor;
+    if (FRow < FMaxRow) then
+        Inc(FRow);
+    SkipProtectForward;
+    DrawStatus;
 end;
 
 procedure TUniscope.DrawStatus;
@@ -448,12 +444,17 @@ begin
     FCanvas.TextOut(FCol * FCharSize.cx, FRow * FCharSize.cy, GetCharacter);
 end;
 
-procedure TUniscope.IncCursor;
-var
-    i, fin, origCol, origRow: Integer;
+procedure TUniscope.Home;
 begin
-    origCol := FCol;
-    origRow := FRow;
+    HideCursor;
+    FRow := 0;
+    FCol := 0;
+    SkipProtectForward;
+    DrawStatus;
+end;
+
+procedure TUniscope.IncCursor;
+begin
     Inc(FCol);
     if (FCol >= FMaxCol) then
     begin
@@ -462,23 +463,7 @@ begin
         if (FRow >= FMaxRow) then
             FRow := 0;
     end;
-    // Skip until beginning of next unprotected field
-    i := (FRow * FMaxCol) + FCol;
-    fin := (FMaxRow * FMaxCol) - 1;
-    if (not FHostControl) then
-    begin
-        while ((i <= fin) and (tProtected in FAttributes[i])) do
-            Inc(i);
-        if (i <= fin) then
-        begin
-            FRow := i div FMaxCol;
-            FCol := i mod FMaxCol;
-        end else
-        begin
-            FCol := origCol;
-            FRow := origRow;
-        end;
-    end;
+    SkipProtectForward;
 end;
 
 function TUniscope.IsProtected(row, col: Integer): Boolean;
@@ -515,16 +500,21 @@ end;
 procedure TUniscope.KeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
     case Key of
-      VK_F11:
-      begin
-        MsgWait;
-      end;
-      VK_F12:
-      begin
-        if (not FKbdLocked) then
-          Transmit;
-      end;
+      VK_F11:       MsgWait;
+      VK_F12:       Transmit;
+      VK_HOME:      Home;
+      VK_LEFT:      Left;
+      VK_RIGHT:     Right;
+      VK_UP:        Up;
+      VK_DOWN:      Down;
     end;
+end;
+
+procedure TUniscope.Left;
+begin
+    HideCursor;
+    DecCursor;
+    DrawStatus;
 end;
 
 procedure TUniscope.MsgWait;
@@ -582,6 +572,13 @@ procedure TUniscope.Repaint;
 begin
     inherited Repaint;
     Refresh;
+end;
+
+procedure TUniscope.Right;
+begin
+    HideCursor;
+    IncCursor;
+    DrawStatus;
 end;
 
 procedure TUniscope.Refresh;
@@ -659,6 +656,56 @@ end;
 procedure TUniscope.SetTextColour(const Value: TColor);
 begin
     FCanvas.Font.Color := Value;
+end;
+
+procedure TUniscope.SkipProtectBackward;
+var
+    i, fin, origRow, origCol: Integer;
+begin
+    origRow := FRow;
+    origCol := FCol;
+    // Skip until beginning of next unprotected field
+    i := (FRow * FMaxCol) + FCol;
+    fin := 0;
+    if (not FHostControl) then
+    begin
+        while ((i >= fin) and (tProtected in FAttributes[i])) do
+            Dec(i);
+        if (i >= fin) then
+        begin
+            FRow := i div FMaxCol;
+            FCol := i mod FMaxCol;
+        end else
+        begin
+            FCol := origCol;
+            FRow := origRow;
+        end;
+    end;
+end;
+
+procedure TUniscope.SkipProtectForward;
+// Skip until beginning of next unprotected field
+var
+    i, fin, origRow, origCol: Integer;
+begin
+    origRow := FRow;
+    origCol := FCol;
+    i := (FRow * FMaxCol) + FCol;
+    fin := (FMaxRow * FMaxCol) - 1;
+    if (not FHostControl) then
+    begin
+        while ((i <= fin) and (tProtected in FAttributes[i])) do
+            Inc(i);
+        if (i <= fin) then
+        begin
+            FRow := i div FMaxCol;
+            FCol := i mod FMaxCol;
+        end else
+        begin
+            FCol := origCol;
+            FRow := origRow;
+        end;
+    end;
 end;
 
 procedure TUniscope.StartProtected;
@@ -866,6 +913,9 @@ var
     end;
 
 begin
+    if (FKbdLocked) then
+        Exit;
+
     FindSOE(row, col);
     bfr := Chr(ESC) + Chr(VT) + Chr(row + Ord(' ')) + Chr(col + Ord(' ')) + Chr(0) + Chr(SI);
     if (FCharacters[(row * FMaxCol) + col] = SOE_CHAR) then
@@ -919,5 +969,13 @@ begin
     FKbdLocked := True;
 end;
 
+procedure TUniscope.Up;
+begin
+    HideCursor;
+    if (FRow > 0) then
+        Dec(FRow);
+    SkipProtectBackward;
+    DrawStatus;
+end;
 
 end.

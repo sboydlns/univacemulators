@@ -42,15 +42,18 @@ type
     procedure DoReadImage;
     procedure DoReadTranslate;
     procedure DoSense;
+    function GetCurrentFileName: String;
     function OpenNextFile: Boolean;
+    procedure ProcessCommand; override;
     function StoreBuffer(bfr: PByte; len: Integer): Boolean;
     procedure UnitCheck;
   public
     constructor Create(num: Byte); override;
     destructor Destroy; override;
     procedure AddFile(fname: String); override;
-    procedure ProcessCommand; override;
     procedure SIO; override;
+    property CurrentFile: TCardFileStream read FCurrentFile;
+    property CurrentFileName: String read GetCurrentFileName;
   end;
 
 implementation
@@ -63,6 +66,8 @@ procedure T0717.AddFile(fname: String);
 begin
     inherited;
     FHopperEmpty := False;
+    if (not Assigned(FCurrentFile)) then
+        OpenNextFile;
 end;
 
 procedure T0717.ClearSense;
@@ -105,6 +110,8 @@ begin
             end;
         end;
         FCurrentFile.ReadRaw(FReadStation);
+        if (FCurrentFile.Eof) then
+            FreeAndNil(FCurrentFile);
 end;
 
 procedure T0717.DoRead;
@@ -159,6 +166,14 @@ procedure T0717.DoSense;
 begin
     if (StoreBuffer(PByte(@FSense), 2)) then
         DeviceEnd;
+end;
+
+function T0717.GetCurrentFileName: String;
+begin
+    if (FFiles.Count > 0) then
+        Result := FFiles[0].FileName
+    else
+        Result := '';
 end;
 
 function T0717.OpenNextFile: Boolean;

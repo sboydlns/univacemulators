@@ -10,6 +10,25 @@ uses
 type
   TDebuggerState = ( dsStep, dsContinue );
 
+  TWatch = packed record
+    Address: TMemoryAddress;
+    PriorValue: Byte;
+    Mask: Byte;
+  end;
+
+  TWatchList = class(TList<TWatch>)
+  public
+    function Find(addr: TMemoryAddress): Integer;
+  end;
+
+  TSvc = packed record
+    Address: TMemoryAddress;
+    SvcNum: Byte;
+  end;
+
+  TSvcList = class(TList<TSvc>)
+  end;
+
   TDebuggerForm = class(TForm)
     DumpMemo: TMemo;
     Bevel1: TBevel;
@@ -38,6 +57,10 @@ type
     Label5: TLabel;
     CondCodeLbl: TLabel;
     RelRegLbl: TLabel;
+    WatchesPage: TTabSheet;
+    WatchesGrid: TStringGrid;
+    SvcPage: TTabSheet;
+    SvcGrid: TStringGrid;
     procedure FormShow(Sender: TObject);
     procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
     procedure CommandEdtKeyPress(Sender: TObject; var Key: Char);
@@ -46,13 +69,19 @@ type
     FState: TDebuggerState;
     FTraceList: TList<TMemoryAddress>;
     FBreakPoints: TList<TMemoryAddress>;
+    FWatches: TWatchList;
+    FSvcList: TSvcList;
     FWaiting: Boolean;
     FDumpAddr: TMemoryAddress;
+    procedure CheckWatches;
     procedure Dump(start: TMemoryAddress);
+    procedure FillBrkpts;
     procedure FillForm;
+    procedure FillWatches;
     function ToHex(val: Smallint): String;
     procedure ParseCommand(s: String; var cmd: String; var param1, param2: Integer);
     function Printable(val: Cardinal): String;
+    procedure SetWatch(addr: TMemoryAddress; mask: Integer);
     procedure SysDump(start, fin: TMemoryAddress);
     procedure Wait;
   public
@@ -71,6 +100,38 @@ uses EmulatorTypes, Globals;
 {$R *.dfm}
 
 { TU9200Debugger }
+
+procedure TDebuggerForm.CheckWatches;
+var
+    i: Integer;
+    b: Byte;
+    w: TWatch;
+begin
+    for i := 0 to FWatches.Count - 1 do
+    begin
+        w := FWatches[i];
+        b := Core.FetchByte(0, w.Address);
+        if (w.Mask = 0) then
+        begin
+            if (b <> w.PriorValue) then
+            begin
+                FState := dsStep;
+                ExceptLbl.Caption := Format('Watch @ %6.6x', [w.Address]);
+                w.PriorValue := b;
+                FWatches[i] := w;
+                Exit;
+            end;
+        end else
+        begin
+            if ((b and w.Mask) <> 0) then
+            begin
+                FState := dsStep;
+                ExceptLbl.Caption := Format('Watch @ %6.6x', [w.Address]);
+                Exit;
+            end;
+        end;
+    end;        
+end;
 
 procedure TDebuggerForm.CommandEdtKeyPress(Sender: TObject; var Key: Char);
 var
@@ -101,12 +162,12 @@ begin
             FWaiting := False;
         end;
       end;
-      'X':
-      begin
-        Key := #0;
-        CommandEdt.Text := '';
-        FWaiting := False;
-      end;
+//      'X':
+//      begin
+//        Key := #0;
+//        CommandEdt.Text := '';
+//        FWaiting := False;
+//      end;
       #13,
       #10:
       begin
@@ -120,12 +181,18 @@ begin
                     absAddr := absAddr + Processor.Registers[PSW.RegisterSet, addr2];
                 i := FBreakPoints.IndexOf(absAddr);
                 if (i = -1) then
-                    FBreakPoints.Add(TMemoryAddress(absAddr))
-                else
+                begin
+                    FBreakPoints.Add(TMemoryAddress(absAddr));
+                    ExceptLbl.Caption := Format('Breakpoint @ %6.6x added', [addr]);
+                end else
+                begin
                     FBreakPoints.Delete(i);
+                    ExceptLbl.Caption := Format('Breakpoint @ %6.6x deleted', [addr]);
+                end;
                 CommandEdt.Clear;
             end else
                 raise Exception.Create('Command invalid');
+            FillBrkpts;
         end else if (cmd = 'D') then
         begin
             if (addr <> -1) then
@@ -140,6 +207,9 @@ begin
         end else if (cmd = 'SD') then
         begin
             SysDump(TMemoryAddress(addr), TMemoryAddress(addr2));
+        end else if (cmd = 'W') then
+        begin
+            SetWatch(TMemoryAddress(addr), addr2);
         end;
         Key := #0;
         CommandEdt.Text := '';
@@ -154,12 +224,16 @@ begin
     FState := dsStep;
     FTraceList := TList<TMemoryAddress>.Create;
     FBreakPoints := TList<TMemoryAddress>.Create;
+    FWatches := TWatchList.Create;
+    FSvcList := TSvcList.Create;
 end;
 
 destructor TDebuggerForm.Destroy;
 begin
     FreeAndNil(FTraceList);
     FreeAndNil(FBreakPoints);
+    FreeAndNil(FWatches);
+    FreeAndNil(FSvcList);
     inherited;
 end;
 
@@ -167,6 +241,7 @@ procedure TDebuggerForm.DoDebug(Sender: TObject; E: Exception);
 var
     opcode: TOpcode;
     pc: TMemoryAddress;
+    svc: TSvc;
 begin
     if (Assigned(E)) then
     begin
@@ -179,6 +254,14 @@ begin
     while (FTraceList.Count >= (TraceGrid.RowCount - 1)) do
         FTraceList.Delete(0);
     FTraceList.Add(pc);
+    if (opcode.Code = 'SVC') then
+    begin
+        while (FSvcList.Count >= 100) do
+            FSvcList.Delete(0);
+        svc.Address := pc;
+        svc.SvcNum := CurInst.ImmedOperand;
+        FsvcLIst.Add(svc);
+    end;
     if (Visible) then
     begin
         // If we hit an HPR, stop
@@ -188,6 +271,9 @@ begin
         begin
             FState := dsStep;
             ExceptLbl.Caption := Format('Breakpoint @ %6.6x', [pc]);
+        end else
+        begin
+            CheckWatches;
         end;
         if (FState = dsStep) then
         begin
@@ -250,6 +336,23 @@ begin
     end;
 end;
 
+procedure TDebuggerForm.FillBrkpts;
+var
+    i: Integer;
+begin
+    with BrkptGrid do
+    begin
+        RowCount := 2;
+        Cells[1, 1] := '';
+        for i := 0 to FBreakPoints.Count - 1 do
+        begin
+            if (i >= (RowCount - 1)) then
+                RowCount := RowCount + 1;
+            Cells[1, i + 1] := Format('%6.6x', [FBreakPoints[i]]);
+        end;
+    end;
+end;
+
 procedure TDebuggerForm.FillForm;
 var
     r, r2: Integer;
@@ -263,6 +366,7 @@ var
     off1, off2: Smallint;
     i: Integer;
     op1, op2: String;
+    svc: TSvc;
 begin
     Pages.ActivePage := TracePage;
     CommandEdt.Text := '';
@@ -395,16 +499,16 @@ begin
     if (FTraceList.Count > 0) then
         TraceGrid.Row := FTraceList.Count;
 
-    with BrkptGrid do
+    SvcGrid.RowCount := 2;
+    for svc in FSvcList do
     begin
-        RowCount := 2;
-        for i := 0 to FBreakPoints.Count - 1 do
-        begin
-            if (i >= (RowCount - 1)) then
-                RowCount := RowCount + 1;
-            Cells[1, i + 1] := Format('%6.6x', [FBreakPoints[i]]);
-        end;
+        SvcGrid.Cells[0, SvcGrid.RowCount - 1] := Format('%6.6x', [svc.Address]);
+        SvcGrid.Cells[1, SvcGrid.RowCount - 1] := Format('SVC %d', [svc.SvcNum]);
+        SvcGrid.RowCount := SvcGrid.RowCount + 1;
     end;
+
+    FillBrkpts;
+    FillWatches;
 
     with RegGrid do
     begin
@@ -413,6 +517,23 @@ begin
     end;
 
     Dump(FDumpAddr);
+end;
+
+procedure TDebuggerForm.FillWatches;
+var
+    i: Integer;
+begin
+    with WatchesGrid do
+    begin
+        RowCount := 2;
+        Cells[1, 1] := '';
+        for i := 0 to FWatches.Count - 1 do
+        begin
+            if (i >= (RowCount - 1)) then
+                RowCount := RowCount + 1;
+            Cells[1, i + 1] := Format('%6.6x,%2.2x', [FWatches[i].Address, FWatches[i].Mask]);
+        end;
+    end;
 end;
 
 procedure TDebuggerForm.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
@@ -438,6 +559,7 @@ procedure TDebuggerForm.ParseCommand(s: String; var cmd: String; var param1, par
 var
     split: Integer;
 begin
+    ExceptLbl.Caption := '';
     cmd := ' ';
     param1 := -1;
     param2 := -1;
@@ -454,13 +576,22 @@ begin
         if (split = 0) then
         begin
             if (not TryStrToInt('$' + s, param1)) then
+            begin
                 cmd := ' ';
+                ExceptLbl.Caption := 'Illegal address';
+            end;
         end else
         begin
             if (not TryStrToInt('$' + Trim(Copy(s, 1, split - 1)), param1)) then
+            begin
                 cmd := ' ';
+                ExceptLbl.Caption := 'Illegal address';
+            end;
             if (not TryStrToInt('$' + Trim(Copy(s, split + 1)), param2)) then
+            begin
                 cmd := ' ';
+                ExceptLbl.Caption := 'Illegal address2';
+            end;
         end;
     end;
 end;
@@ -479,6 +610,26 @@ begin
         Result := Char(c) + Result;
         val := val shr 8;
     end;
+end;
+
+procedure TDebuggerForm.SetWatch(addr: TMemoryAddress; mask: Integer);
+var
+    i: Integer;
+    w: TWatch;
+begin
+    i := FWatches.Find(addr);
+    if (i = -1) then
+    begin
+        w.Address := addr;
+        w.Mask := Byte(mask);
+        FWatches.Add(w);
+        ExceptLbl.Caption := Format('Watch @ %6.6x added', [addr]);
+    end else
+    begin
+        FWatches.Delete(i);
+        ExceptLbl.Caption := Format('Watch @ %6.6x deleted', [addr]);
+    end;
+    FillWatches;
 end;
 
 procedure TDebuggerForm.SysDump(start, fin: TMemoryAddress);
@@ -526,6 +677,23 @@ begin
         Application.ProcessMessages;
         Sleep(10);
     end;
+end;
+
+{ TWatchList }
+
+function TWatchList.Find(addr: TMemoryAddress): Integer;
+var
+    i: Integer;
+begin
+    for i := 0 to Count - 1 do
+    begin
+        if (Items[i].Address = addr) then
+        begin
+            Result := i;
+            Exit;
+        end;
+    end;
+    Result := -1;
 end;
 
 end.

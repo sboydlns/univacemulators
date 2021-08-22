@@ -43,7 +43,6 @@ object DebuggerForm: TDebuggerForm
     Caption = 
       'N - next/C - continue/D x - Dump/B x - Set Brkpt/SD start,end - ' +
       'System Dump'
-    ExplicitTop = 524
   end
   object ExceptLbl: TLabel
     Left = 424
@@ -176,7 +175,7 @@ object DebuggerForm: TDebuggerForm
     Top = 254
     Width = 405
     Height = 325
-    ActivePage = TracePage
+    ActivePage = SvcPage
     Anchors = [akLeft, akTop, akRight, akBottom]
     TabOrder = 8
     object TracePage: TTabSheet
@@ -214,6 +213,45 @@ object DebuggerForm: TDebuggerForm
         ColWidths = (
           10
           58)
+      end
+    end
+    object WatchesPage: TTabSheet
+      Caption = 'Watches'
+      ImageIndex = 2
+      object WatchesGrid: TStringGrid
+        Left = 0
+        Top = 0
+        Width = 397
+        Height = 297
+        Align = alClient
+        ColCount = 2
+        DefaultColWidth = 10
+        RowCount = 2
+        Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goColSizing]
+        TabOrder = 0
+        ColWidths = (
+          10
+          85)
+      end
+    end
+    object SvcPage: TTabSheet
+      Caption = 'Svc Trace'
+      ImageIndex = 3
+      ExplicitTop = 26
+      object SvcGrid: TStringGrid
+        Left = 0
+        Top = 0
+        Width = 397
+        Height = 297
+        Align = alClient
+        ColCount = 2
+        DefaultColWidth = 45
+        RowCount = 101
+        Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goColSizing]
+        TabOrder = 0
+        ColWidths = (
+          45
+          327)
       end
     end
   end

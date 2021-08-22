@@ -77,6 +77,26 @@ type
     constructor Create(const Msg: String); reintroduce;
   end;
 
+  EExponentOverflow = class(EProgramException)
+  public
+    constructor Create(const Msg: String); reintroduce;
+  end;
+
+  EExponentUnderflow = class(EProgramException)
+  public
+    constructor Create(const Msg: String); reintroduce;
+  end;
+
+  ESignifiganceException = class(EProgramException)
+  public
+    constructor Create(const Msg: String); reintroduce;
+  end;
+
+  EFPDivideException = class(EProgramException)
+  public
+    constructor Create(const Msg: String); reintroduce;
+  end;
+
   TMemoryAddress = UInt32;
   THalfWord = Int16;
   TWord = Int32;
@@ -201,10 +221,10 @@ begin
     Add(Opcode($1D, 2, nil, 'DR', itRR));
     Add(Opcode($1E, 2, nil, 'ALR', itRR));
     Add(Opcode($1F, 2, nil, 'SLR', itRR));
-    Add(Opcode($20, 2, nil, 'LDPR', itRR));
+    Add(Opcode($20, 2, nil, 'LPDR', itRR));
     Add(Opcode($21, 2, nil, 'LNDR', itRR));
     Add(Opcode($22, 2, nil, 'LTDR', itRR));
-    Add(Opcode($23, 2, nil, 'LDCR', itRR));
+    Add(Opcode($23, 2, nil, 'LCDR', itRR));
     Add(Opcode($24, 2, nil, 'HDR', itRR));
     Add(Opcode($28, 2, nil, 'LDR', itRR));
     Add(Opcode($29, 2, nil, 'CDR', itRR));
@@ -470,6 +490,38 @@ constructor EDecimalDivideException.Create(const Msg: String);
 begin
     inherited;
     IntCode := 11;
+end;
+
+{ EExponentOverflow }
+
+constructor EExponentOverflow.Create(const Msg: String);
+begin
+    inherited;
+    IntCode := 12;
+end;
+
+{ EExponentUnderflow }
+
+constructor EExponentUnderflow.Create(const Msg: String);
+begin
+    inherited;
+    IntCode := 13;
+end;
+
+{ ESignifiganceException }
+
+constructor ESignifiganceException.Create(const Msg: String);
+begin
+    inherited;
+    IntCode := 14;
+end;
+
+{ EFPDivideException }
+
+constructor EFPDivideException.Create(const Msg: String);
+begin
+    inherited;
+    IntCode := 15;
 end;
 
 end.

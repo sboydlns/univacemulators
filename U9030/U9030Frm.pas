@@ -104,6 +104,8 @@ type
     Label40: TLabel;
     RdrLoadBtn: TButton;
     ConfigXml: TXMLDocument;
+    PrintBtn: TButton;
+    ReaderStatusLbl: TLabel;
     procedure TimerTimer(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure StopBtnClick(Sender: TObject);
@@ -116,6 +118,7 @@ type
     procedure CpuTestBtnClick(Sender: TObject);
     procedure PrnSaveBtnClick(Sender: TObject);
     procedure RdrLoadBtnClick(Sender: TObject);
+    procedure PrintBtnClick(Sender: TObject);
   private
     FConsoleStarted: Boolean;
     FConfigFile: String;
@@ -136,7 +139,7 @@ implementation
 {$R *.dfm}
 
 uses DebuggerFrm, U9030Types, Globals, Channels, Cpu, Memory, IDA, IPC, Console, Trace,
-     U0717, U0773, CpuTestFrm, Config;
+     U0717, U0773, CpuTestFrm, Config, CommAdapter;
 
 var
     Cons: TConsole;
@@ -275,6 +278,8 @@ begin
     Adapters.Channel[0].AddDevice(Reader);
     Printer := T0773.Create(2);
     Adapters.Channel[0].AddDevice(Printer);
+    // Create a generic comm adapter for testing
+    Adapters.Channel[0].AddDevice(TCommAdapter.Create(4));
 
     ParseCmdLine;
     if (FConfigFile = '') then
@@ -342,6 +347,36 @@ begin
         end;
         Inc(i);
     end;
+end;
+
+procedure TU9030Form.PrintBtnClick(Sender: TObject);
+var
+    err: String;
+    cmd: String;
+    si: TStartupInfo;
+    pi: TProcessInformation;
+begin
+    Printer.SaveAs(DataDir + '\print.tmp');
+
+    FillChar(si, SizeOf(si), 0);
+    FillChar(pi, SizeOf(pi), 0);
+    cmd := 'U9030Print.exe -f "' + DataDir + '\print.tmp"';
+    if (not CreateProcess(nil,
+                          PWideChar(cmd),
+                          nil,
+                          nil,
+                          False,
+                          0,
+                          nil,
+                          nil,
+                          si,
+                          pi)) then
+    begin
+        err := WinError;
+        raise Exception.Create(err);
+    end;
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
 end;
 
 procedure TU9030Form.PrnSaveBtnClick(Sender: TObject);
@@ -485,6 +520,17 @@ begin
         edt.Text := Format('%8.8x', [Processor.Registers[rsSupervisor, r]]);
         edt := TEdit(FindComponent(Format('PR%d', [r])));
         edt.Text := Format('%8.8x', [Processor.Registers[rsProgram, r]]);
+    end;
+
+    if (Assigned(Reader.CurrentFile)) then
+    begin
+        ReaderStatusLbl.Caption :=
+            Format('%s - %%%d', [ExtractFileName(Reader.CurrentFileName),
+                                 Round(((Reader.CurrentFile.Size - Reader.CurrentFile.Position) /
+                                       Reader.CurrentFile.Size) * 100)]);
+    end else
+    begin
+        ReaderStatusLbl.Caption := 'Empty';
     end;
 end;
 

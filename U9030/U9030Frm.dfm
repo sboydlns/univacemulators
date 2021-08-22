@@ -45,6 +45,7 @@ object U9030Form: TU9030Form
     Height = 456
     Align = alTop
     TabOrder = 1
+    ExplicitTop = 2
     DesignSize = (
       556
       456)
@@ -342,7 +343,7 @@ object U9030Form: TU9030Form
       Left = 12
       Top = 177
       Width = 307
-      Height = 49
+      Height = 68
       Shape = bsFrame
     end
     object Label40: TLabel
@@ -352,6 +353,15 @@ object U9030Form: TU9030Form
       Height = 14
       Caption = 'READER'
       Transparent = False
+    end
+    object ReaderStatusLbl: TLabel
+      Left = 16
+      Top = 220
+      Width = 297
+      Height = 14
+      Alignment = taCenter
+      AutoSize = False
+      Caption = 'ReaderStatusLbl'
     end
     object PSWEdt: TEdit
       Left = 46
@@ -615,6 +625,15 @@ object U9030Form: TU9030Form
       Caption = 'Load'
       TabOrder = 36
       OnClick = RdrLoadBtnClick
+    end
+    object PrintBtn: TButton
+      Left = 103
+      Top = 127
+      Width = 75
+      Height = 25
+      Caption = 'Print'
+      TabOrder = 37
+      OnClick = PrintBtnClick
     end
   end
   object CpuTestBtn: TButton

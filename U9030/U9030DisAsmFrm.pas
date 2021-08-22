@@ -133,8 +133,12 @@ begin
       begin
         r := (fal and $f0) shr 4;
         r2 := fal and $0f;
-        SourceMemo.Lines.Add(Format('%4.4x: %-6.6s  %-5.5s R%d,R%d',
-                                    [FCrntAddr - FCrntOpcode.Length + 1, FLabel, FCrntOpcode.Code, r, r2]));
+        if (FCrntOpcode.Code = 'SVC') then
+            SourceMemo.Lines.Add(Format('%4.4x: %-6.6s  %-5.5s %d',
+                                        [FCrntAddr - FCrntOpcode.Length + 1, FLabel, FCrntOpcode.Code, fal]))
+        else
+            SourceMemo.Lines.Add(Format('%4.4x: %-6.6s  %-5.5s R%d,R%d',
+                                        [FCrntAddr - FCrntOpcode.Length + 1, FLabel, FCrntOpcode.Code, r, r2]));
       end;
       itRS:
       begin
@@ -187,7 +191,7 @@ begin
         if (FRegExtern <> '') then
             reg := ExtRef(FRegExtern, r)
         else
-            reg := Format('%d', [r]);
+            reg := Format('R%d', [r]);
         SourceMemo.Lines.Add(Format('%4.4x: %-6.6s  %-5.5s %s,%s',
                                     [FCrntAddr - FCrntOpcode.Length + 1, FLabel, FCrntOpcode.Code, reg, op1]))
       end;
@@ -261,15 +265,24 @@ begin
       itBranch:
       begin
         r := (fal and $F0) shr 4;
+        x := (fal and $0f);
         b1 := (fad1 and $F000) shr 12;
         off1 := fad1 and $FFF;
         if (FOp1Extern <> '') then
             op1 := ExtRef(FOp1Extern, fad1)
-        else
-          if (b1 = 0) then
-            op1 := Format('X''%4.4x''', [fad1])
-        else
-            op1 := Format('X''%3.3x''(,R%d)', [off1, b1]);
+        else if (b1 = 0) then
+        begin
+            if (x = 0) then
+                op1 := Format('X''%3.3x''', [fad1])
+            else
+                op1 := Format('X''%3.3x''(R%d)', [fad1, x]);
+        end else
+        begin
+            if (x = 0) then
+                op1 := Format('X''%3.3x''(,R%d)', [off1, b1])
+            else
+                op1 := Format('X''%3.3x''(R%d,R%d)', [off1, x, b1]);
+        end;
         if (FRegExtern <> '') then
             reg := ExtRef(FRegExtern, r)
         else

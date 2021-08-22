@@ -27,6 +27,7 @@ type
     procedure ExecScript;
     procedure GetAddress(var addr: TMemoryAddress; var len: Integer);
     function GetString: AnsiString;
+    function GetFloat: TDblWord;
     function GetInteger: TDblWord;
     function GetRegister(tkn: String): Integer;
     function GetToken: String;
@@ -362,13 +363,19 @@ var
         GetAddress(addr, len);
         if (len > 0) then
         begin
-            val := GetInteger;
+            if (len < 10) then
+                val := GetInteger
+            else
+                val := GetFloat;
             case len of
               1:    Core.StoreByte(0, addr, val);
               2:    Core.StoreHalfWord(0, addr, val);
               4:    Core.StoreWord(0, addr, val);
-              8:    Core.StoreDblWord(0, addr, val);
+              14:   Core.StoreWord(0, addr, (val shr 32));
+              8,
+              18:   Core.StoreDblWord(0, addr, val);
             end;
+
         end else
         begin
             s := GetString;
@@ -430,7 +437,10 @@ var
         GetAddress(addr, len);
         if (len > 0) then
         begin
-            val := GetInteger;
+            if (len < 10) then
+                val := GetInteger
+            else
+                val := GetFloat;
             case len of
               1:
               begin
@@ -447,7 +457,13 @@ var
                 test := Core.FetchWord(0, addr);
                 testOK := TWord(val) = TWord(test);
               end;
-              8:
+              14:
+              begin
+                test := Core.FetchWord(0, addr);
+                testOK := TWord(val shr 32) = TWord(test);
+              end;
+              8,
+              18:
               begin
                 test := Core.FetchDblWord(0, addr);
                 testOK := val = test;
@@ -460,6 +476,8 @@ var
             end;
             if (not testOk) then
             begin
+                if (len > 10) then
+                    Dec(len, 10);
                 len := len * 2;
                 raise Exception.CreateFmt('Failed! MEM = %d (%*.*x)', [test, len, len, test]);
             end;
@@ -573,12 +591,61 @@ begin
     else if (s = 'D') then
         len := 8
     else if (s = 'C') then
-        len := -1;
+        len := -1
+    // Single and Double precision floating point
+    else if (s = 'F') then
+        len := 14
+    else if (s = 'G') then
+        len := 18;
 
     if (len <> 0) then
         tkn := Copy(tkn, 1, Length(tkn) - 1);
     if (not TryStrToInt(tkn, Integer(addr))) then
         raise Exception.Create('Invalid address');
+end;
+
+function TCpuTestForm.GetFloat: TDblWord;
+var
+    tkn: String;
+    ftemp, frac: Double;
+    exp: Integer;
+    sign, int, digit: UInt64;
+begin
+    Result := 0;
+    tkn := GetToken;
+    if (tkn <> '=') then
+        raise Exception.Create('Missing =');
+
+    tkn := GetToken;
+    if (tkn = '') then
+        raise Exception.Create('Invalid assignment')
+    else
+    begin
+        if (not TryStrToFloat(tkn, ftemp)) then
+            raise Exception.Create('Invalid floating point value');
+        if (ftemp = 0) then
+            Exit;
+        if (ftemp < 0) then
+            sign := $8000000000000000
+        else
+            sign := 0;
+        ftemp := Abs(ftemp);
+        int := Trunc(ftemp);
+        frac := ftemp - int;
+        exp := 14;
+        while((int and $f0000000000000) = 0) do
+        begin
+            frac := frac * 16;
+            digit := Trunc(frac);
+            int := (int shl 4) or digit;
+            frac := frac - digit;
+            Dec(exp);
+        end;
+    end;
+    Result := sign or
+              UInt64((exp + 64)) shl 56 or
+              int;
+//    ShowMessageFmt('%8.8x', [Result]);
 end;
 
 function TCpuTestForm.GetInteger: TDblWord;

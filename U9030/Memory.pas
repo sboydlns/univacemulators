@@ -53,6 +53,18 @@ const
     READER_BCW0 = $110;
     PRINTER_BCW0 = $120;
     PUNCH_BCW0 = $130;
+    CA0_BCW0 = $140;
+    CA1_BCW0 = $150;
+    CA2_BCW0 = $160;
+    CA3_BCW0 = $170;
+    CA4_BCW0 = $180;
+    CA5_BCW0 = $190;
+    CA6_BCW0 = $1A0;
+    CA7_BCW0 = $1B0;
+    CA8_BCW0 = $1C0;
+    CA9_BCW0 = $1D0;
+    CA10_BCW0 = $1E0;
+    CA11_BCW0 = $1F0;
     //
     MUX_BCW0 = $200;
     //
@@ -79,10 +91,12 @@ type
     function FetchByte(key: Byte; addr: TMemoryAddress): Byte;
     function FetchDblWord(key: Byte; addr: TMemoryAddress): TDblWord;
     function FetchHalfWord(key: Byte; addr: TMemoryAddress): THalfWord;
+    function FetchHalfWordNoAlign(key: Byte; addr: TMemoryAddress): THalfWord;
     function FetchPacked(key: Byte; addr: TMemoryAddress; len: Integer): TBcd;
     function FetchRelReg(key: Byte): TMemoryAddress;
     function FetchStorageKey(addr: TMemoryAddress): Byte;
     function FetchWord(key: Byte; addr: TMemoryAddress): TWord;
+    function FetchWordNoAlign(key: Byte; addr: TMemoryAddress): TWord;
     procedure StoreByte(key: Byte; addr: TMemoryAddress; val: Byte);
     procedure StoreDblWord(key: Byte; addr: TMemoryAddress; val: TDblWord);
     procedure StoreHalfWord(key: Byte; addr: TMemoryAddress; val: THalfWord);
@@ -229,6 +243,16 @@ begin
     (b + 1)^ := FMemory[addr];
 end;
 
+function TMemory.FetchHalfWordNoAlign(key: Byte; addr: TMemoryAddress): THalfWord;
+var
+    b: PByte;
+begin
+    CheckAddressRead(key, addr);
+    b := PByte(@Result);
+    b^ := FMemory[addr + 1];
+    (b + 1)^ := FMemory[addr];
+end;
+
 function TMemory.FetchPacked(key: Byte; addr: TMemoryAddress; len: Integer): TBcd;
 var
     i: UInt32;
@@ -279,6 +303,18 @@ var
 begin
     CheckAddressRead(key, addr);
     CheckAlignment(addr, aWord);
+    b := PByte(@Result);
+    b^ := FMemory[addr + 3];
+    (b + 1)^ := FMemory[addr + 2];
+    (b + 2)^ := FMemory[addr + 1];
+    (b + 3)^ := FMemory[addr];
+end;
+
+function TMemory.FetchWordNoAlign(key: Byte; addr: TMemoryAddress): TWord;
+var
+    b: PByte;
+begin
+    CheckAddressRead(key, addr);
     b := PByte(@Result);
     b^ := FMemory[addr + 3];
     (b + 1)^ := FMemory[addr + 2];

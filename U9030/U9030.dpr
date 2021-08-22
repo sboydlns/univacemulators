@@ -23,7 +23,8 @@ uses
   CpuTestFrm in 'CpuTestFrm.pas' {CpuTestForm},
   U0717 in 'U0717.pas',
   CardFile in '..\Common\CardFile.pas',
-  Config in 'Config.pas';
+  Config in 'Config.pas',
+  CommAdapter in 'CommAdapter.pas';
 
 {$R *.res}
 
@@ -32,9 +33,9 @@ begin
       Application.Initialize;
       Application.MainFormOnTaskbar := True;
       Application.CreateForm(TU9030Form, U9030Form);
-      Application.CreateForm(TDebuggerForm, DebuggerForm);
-      Application.CreateForm(TCpuTestForm, CpuTestForm);
-      Application.Run;
+  Application.CreateForm(TDebuggerForm, DebuggerForm);
+  Application.CreateForm(TCpuTestForm, CpuTestForm);
+  Application.Run;
   except
     on E: Exception do
     begin

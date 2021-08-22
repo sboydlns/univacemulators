@@ -108,6 +108,7 @@
 			<DCCReference Include="U0717.pas"/>
 			<DCCReference Include="..\Common\CardFile.pas"/>
 			<DCCReference Include="Config.pas"/>
+			<DCCReference Include="CommAdapter.pas"/>
 			<BuildConfiguration Include="Release">
 				<Key>Cfg_2</Key>
 				<CfgParent>Base</CfgParent>

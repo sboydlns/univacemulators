@@ -1,9 +1,9 @@
 ﻿	<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 		<PropertyGroup>
-			<ProjectGuid>{E418D716-64FB-4637-9F6D-40E8E2C3A446}</ProjectGuid>
+			<ProjectGuid>{9EE4FF10-926F-4ECC-B431-4172C1745E2B}</ProjectGuid>
 			<ProjectVersion>13.4</ProjectVersion>
 			<FrameworkType>VCL</FrameworkType>
-			<MainSource>U9030Console.dpr</MainSource>
+			<MainSource>U9030Print.dpr</MainSource>
 			<Base>True</Base>
 			<Config Condition="'$(Config)'==''">Debug</Config>
 			<Platform Condition="'$(Platform)'==''">Win32</Platform>
@@ -65,12 +65,10 @@
 			<DCC_RemoteDebug>true</DCC_RemoteDebug>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Cfg_1_Win32)'!=''">
-			<Debugger_HostApplication>C:\Development\Emulators\U9030\Win32\Debug\U9030.exe </Debugger_HostApplication>
-			<Debugger_RunParams>-c REL042.cfg</Debugger_RunParams>
-			<Icon_MainIcon>U9030Console_Icon.ico</Icon_MainIcon>
 			<VerInfo_Locale>1033</VerInfo_Locale>
 			<VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
-			<DCC_DebugDCUs>true</DCC_DebugDCUs>
+			<Icon_MainIcon>U9030Print_Icon.ico</Icon_MainIcon>
+			<Debugger_RunParams>-f c:\temp\test.prn</Debugger_RunParams>
 			<DCC_RemoteDebug>false</DCC_RemoteDebug>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Cfg_2)'!=''">
@@ -83,12 +81,10 @@
 			<DelphiCompile Include="$(MainSource)">
 				<MainSource>MainSource</MainSource>
 			</DelphiCompile>
-			<DCCReference Include="U9030ConsoleFrm.pas">
-				<Form>U9030ConsoleForm</Form>
+			<DCCReference Include="U9030PrintFrm.pas">
+				<Form>U9030PrintForm</Form>
 				<FormType>dfm</FormType>
 			</DCCReference>
-			<DCCReference Include="..\Uniscope\Uniscope.pas"/>
-			<DCCReference Include="..\Common\EmulatorTypes.pas"/>
 			<BuildConfiguration Include="Release">
 				<Key>Cfg_2</Key>
 				<CfgParent>Base</CfgParent>
@@ -106,6 +102,9 @@
 			<Borland.ProjectType/>
 			<BorlandProject>
 				<Delphi.Personality>
+					<Source>
+						<Source Name="MainSource">U9030Print.dpr</Source>
+					</Source>
 					<VersionInfo>
 						<VersionInfo Name="IncludeVerInfo">False</VersionInfo>
 						<VersionInfo Name="AutoIncBuild">False</VersionInfo>
@@ -138,9 +137,6 @@
 						<Excluded_Packages Name="$(BDSBIN)\dcloffice2k160.bpl">Microsoft Office 2000 Sample Automation Server Wrapper Components</Excluded_Packages>
 						<Excluded_Packages Name="$(BDSBIN)\dclofficexp160.bpl">Microsoft Office XP Sample Automation Server Wrapper Components</Excluded_Packages>
 					</Excluded_Packages>
-					<Source>
-						<Source Name="MainSource">U9030Console.dpr</Source>
-					</Source>
 				</Delphi.Personality>
 				<Deployment/>
 				<Platforms>
