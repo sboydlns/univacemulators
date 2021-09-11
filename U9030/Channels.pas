@@ -46,29 +46,6 @@ type
     procedure Fetch(addr: TMemoryAddress); virtual;
   end;
 
-  TDevice = class(TThread)
-  protected
-    FChannel: TChannel;
-    FDeviceNum: Byte;
-    FCmdRecvd: TEvent;
-    FResetDone: TEvent;
-    FReset: Boolean;
-    FBusy: Boolean;
-    FFiles: TCardFileList;
-    FLock: TCriticalSection;
-    procedure DoReset; virtual;
-    procedure ProcessCommand; virtual; abstract;
-    procedure DoTimer; virtual;
-  public
-    constructor Create(num: Byte); virtual;
-    destructor Destroy; override;
-    procedure AddFile(fname: String); virtual;
-    procedure Execute; override;
-    procedure Reset;
-    procedure SaveAs(fname: String); virtual;
-    property Busy: Boolean read FBusy;
-  end;
-
   TStatus = class
   private
     function GetChannel: Byte;
@@ -93,6 +70,33 @@ type
     destructor Destroy; override;
     function Dequeue: TStatus; reintroduce;
     procedure Enqueue(s: TStatus); reintroduce;
+  end;
+
+  TDevice = class(TThread)
+  protected
+    FChannel: TChannel;
+    FDeviceNum: Byte;
+    FCmdRecvd: TEvent;
+    FResetDone: TEvent;
+    FReset: Boolean;
+    FBusy: Boolean;
+    FCommand: Byte;
+    FFiles: TCardFileList;
+    FLock: TCriticalSection;
+    procedure DoReset; virtual;
+    procedure DoTimer; virtual;
+    procedure ProcessCommand; virtual; abstract;
+    function MakeStatus(dstat, cstat: Byte): TStatus;
+    procedure QueueStatus(dstat, cstat: Byte); virtual;
+  public
+    constructor Create(num: Byte); virtual;
+    destructor Destroy; override;
+    procedure AddFile(fname: String); virtual;
+    procedure Empty; virtual;
+    procedure Execute; override;
+    procedure Reset;
+    procedure SaveAs(fname: String); virtual;
+    property Busy: Boolean read FBusy;
   end;
 
   TChannel = class
@@ -473,6 +477,16 @@ begin
     ;
 end;
 
+procedure TDevice.Empty;
+begin
+    FLock.Acquire;
+    try
+        FFiles.Clear;
+    finally
+        FLock.Release;
+    end;
+end;
+
 procedure TDevice.Execute;
 var
     stat: TWaitResult;
@@ -501,6 +515,27 @@ begin
           end;
         end;
     end;
+end;
+
+function TDevice.MakeStatus(dstat, cstat: Byte): TStatus;
+begin
+    Result := TStatus.Create;
+    Result.Device := FDeviceNum;
+    Result.Length := 1;
+    Result.ChannelNum := FChannel.ChannelNum;
+    Result.DeviceNum := FDeviceNum;
+    Result.DeviceStatus := dstat;
+    Result.ChannelStatus := cstat;
+end;
+
+procedure TDevice.QueueStatus(dstat, cstat: Byte);
+var
+    stat: TStatus;
+begin
+    stat := MakeStatus(dstat, cstat);
+    FBusy := False;
+    FCommand := 0;
+    FChannel.QueueStatus(stat);
 end;
 
 procedure TDevice.Reset;

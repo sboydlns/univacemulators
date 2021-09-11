@@ -1,4 +1,4 @@
-﻿unit U9030ConsoleFrm;
+﻿unit U200TNFrm;
 
 interface
 
@@ -11,7 +11,7 @@ const
   START_MSG = WM_USER + 1;
 
 type
-  TU9030ConsoleForm = class(TForm)
+  TU200TNForm = class(TForm)
     Telnet: TIdTelnet;
     Timer: TTimer;
     procedure TelnetTelnetCommand(Sender: TIdTelnet; Status: TIdTelnetCommand);
@@ -31,15 +31,15 @@ type
   end;
 
 var
-  U9030ConsoleForm: TU9030ConsoleForm;
+  U200TNForm: TU200TNForm;
 
 implementation
 
 {$R *.dfm}
-constructor TU9030ConsoleForm.Create(AOwner: TComponent);
+constructor TU200TNForm.Create(AOwner: TComponent);
 begin
     inherited;
-    FDisplay := TUniscope.Create(Self, umConsole, us16x64);
+    FDisplay := TUniscope.Create(Self, umU200, us24x80);
     FDisplay.Parent := Self;
     FDisplay.Align := alClient;
     FDisplay.TextColour := clGreen;
@@ -51,37 +51,37 @@ begin
     ClientWidth := FDisplay.DisplaySize.cx;
 end;
 
-procedure TU9030ConsoleForm.FormDestroy(Sender: TObject);
+procedure TU200TNForm.FormDestroy(Sender: TObject);
 begin
     FDestroying := True;
 end;
 
-procedure TU9030ConsoleForm.FormKeyPress(Sender: TObject; var Key: Char);
+procedure TU200TNForm.FormKeyPress(Sender: TObject; var Key: Char);
 begin
     FDisplay.KeyPress(Key);
 end;
 
-procedure TU9030ConsoleForm.FormKeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
+procedure TU200TNForm.FormKeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
     FDisplay.KeyUp(Sender, Key, Shift);
 end;
 
-procedure TU9030ConsoleForm.FormPaint(Sender: TObject);
+procedure TU200TNForm.FormPaint(Sender: TObject);
 begin
     FDisplay.Repaint;
 end;
 
-procedure TU9030ConsoleForm.FormShow(Sender: TObject);
+procedure TU200TNForm.FormShow(Sender: TObject);
 begin
     PostMessage(Handle, START_MSG, 0, 0);
 end;
 
-procedure TU9030ConsoleForm.StartMsg(var Message: TMessage);
+procedure TU200TNForm.StartMsg(var Message: TMessage);
 begin
     Timer.Enabled := True;
 end;
 
-procedure TU9030ConsoleForm.TelnetStatus(ASender: TObject; const AStatus: TIdStatus; const AStatusText: string);
+procedure TU200TNForm.TelnetStatus(ASender: TObject; const AStatus: TIdStatus; const AStatusText: string);
 begin
     if (not FDestroying) then
     begin
@@ -103,7 +103,7 @@ begin
     end;
 end;
 
-procedure TU9030ConsoleForm.TelnetTelnetCommand(Sender: TIdTelnet; Status: TIdTelnetCommand);
+procedure TU200TNForm.TelnetTelnetCommand(Sender: TIdTelnet; Status: TIdTelnetCommand);
 begin
     case Status of
       tncNoLocalEcho:   ShowMessage('NoLocalEcho');
@@ -113,7 +113,7 @@ begin
     end;
 end;
 
-procedure TU9030ConsoleForm.TimerTimer(Sender: TObject);
+procedure TU200TNForm.TimerTimer(Sender: TObject);
 begin
     if (not Telnet.Connected) then
     begin

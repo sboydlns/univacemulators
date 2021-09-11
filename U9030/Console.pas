@@ -23,45 +23,10 @@ const
   CONS_TRANSMIT_ACTIVE = $08;
   CONS_AUX_FEATURE = $04;
   CONS_PRINT_TIMEOUT = $02;
-  // ASCII  control characters
-  NUL = 0;
-  SOH = 1;
-  STX = 2;
-  ETX = 3;
-  EOT = 4;
-  ENQ = 5;
-  ACK = 6;
-  BEL = 7;
-  BS = 8;
-  HT = 9;
-  LF = 10;
-  VT = 11;
-  FF = 12;
-  CR = 13;
-  SO = 14;
-  SI = 15;
-  DLE = 16;
-  DC1 = 17;
-  DC2 = 18;
-  DC3 = 19;
-  DC4 = 20;
-  NAK = 21;
-  SYN = 22;
-  ETB = 23;
-  CAN = 24;
-  EM = 25;
-  SUB = 26;
-  ESC = 27;
-  FS = 28;
-  GS = 29;
-  RS = 30;
-  US = 31;
-  SPACE = 32;
 
 type
   TConsole = class(TIPCDevice)
   private
-    FCommand: Byte;
     FSense: array [0..1] of Byte;
     FBCW: TIPCBCW;
     FTelnet: TIdTelnetServer;
@@ -86,6 +51,7 @@ type
     procedure TelnetListenException(AThread: TIdListenerThread; AException: Exception);
   protected
     procedure DoTimer; override;
+    procedure QueueStatus(dstat, cstat: Byte); override;
   public
     constructor Create(num: Byte); override;
     destructor Destroy; override;
@@ -141,12 +107,12 @@ end;
 
 procedure TConsole.DeviceEnd;
 begin
-    FChannel.QueueStatus(MakeStatus(DEVICE_END, 0));
+    QueueStatus(DEVICE_END, 0);
 end;
 
 procedure TConsole.DoAttention;
 begin
-    FChannel.QueueStatus(MakeStatus(ATTENTION, 0));
+    SendAttention;
 end;
 
 procedure TConsole.DoRead;
@@ -239,7 +205,7 @@ begin
             b := Core.FetchByte(FBCW.ActvKey, addr);
         except
             b := 0;
-            FChannel.QueueStatus(MakeStatus(DEVICE_END or UNIT_CHECK, INVALID_ADDRESS));
+            QueueStatus(DEVICE_END or UNIT_CHECK, INVALID_ADDRESS);
             Exit;
         end;
         if (translate) then
@@ -265,7 +231,7 @@ begin
     ClearSense;
     FSense[0] := SENSE_INTERVENTION;
     FSense[1] := CONS_POWER_OFF;
-    FChannel.QueueStatus(MakeStatus(UNIT_CHECK, 0));
+    QueueStatus(UNIT_CHECK, 0);
 end;
 
 procedure TConsole.ProcessCommand;
@@ -276,8 +242,16 @@ begin
       CONS_SENSE:   DoSense;
       else          raise Exception.Create('Console command not implemented');
     end;
-    FCommand := 255;
+end;
+
+procedure TConsole.QueueStatus(dstat, cstat: Byte);
+var
+    stat: TStatus;
+begin
+    stat := MakeStatus(dstat, cstat);
     FBusy := False;
+    FCommand := 255;
+    FChannel.QueueStatus(stat);
 end;
 
 procedure TConsole.Shutdown;
@@ -310,7 +284,7 @@ begin
             Dec(len);
         except
             Result := False;
-            FChannel.QueueStatus(MakeStatus(DEVICE_END or UNIT_CHECK, INVALID_ADDRESS));
+            QueueStatus(DEVICE_END or UNIT_CHECK, INVALID_ADDRESS);
         end;
     end;
 end;
@@ -325,7 +299,7 @@ procedure TConsole.TelnetConnect(AContext: TIdContext);
 begin
     FConsole := AContext;
     FConsole.Connection.IOHandler.ReadTimeout := 100;
-    // Send a fake Telnet command to make the client think it is talking to
+    // Send a fake Telnet command to make the client thinks it is talking to
     // a Telnet server
     FConsole.Connection.IOHandler.Write(TNC_IAC);
     FConsole.Connection.IOHandler.Write(Ord(' '));

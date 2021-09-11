@@ -126,6 +126,7 @@ begin
         maxLine := 66;
     end;
 
+    Printer.Orientation := poLandscape;
     if (not PrinterDlg.Execute) then
         Exit;
 

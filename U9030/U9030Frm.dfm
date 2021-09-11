@@ -45,7 +45,6 @@ object U9030Form: TU9030Form
     Height = 456
     Align = alTop
     TabOrder = 1
-    ExplicitTop = 2
     DesignSize = (
       556
       456)
@@ -634,6 +633,24 @@ object U9030Form: TU9030Form
       Caption = 'Print'
       TabOrder = 37
       OnClick = PrintBtnClick
+    end
+    object RdrEmptyBtn: TButton
+      Left = 100
+      Top = 190
+      Width = 75
+      Height = 25
+      Caption = 'Empty'
+      TabOrder = 38
+      OnClick = RdrEmptyBtnClick
+    end
+    object RdrAttnBtn: TButton
+      Left = 174
+      Top = 190
+      Width = 75
+      Height = 25
+      Caption = 'Attention'
+      TabOrder = 39
+      OnClick = RdrAttnBtnClick
     end
   end
   object CpuTestBtn: TButton

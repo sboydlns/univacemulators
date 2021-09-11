@@ -24,7 +24,8 @@ uses
   U0717 in 'U0717.pas',
   CardFile in '..\Common\CardFile.pas',
   Config in 'Config.pas',
-  CommAdapter in 'CommAdapter.pas';
+  CommAdapter in 'CommAdapter.pas',
+  UniscopeAdapter in 'UniscopeAdapter.pas';
 
 {$R *.res}
 

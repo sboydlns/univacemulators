@@ -42,7 +42,7 @@ type
     FOp1Extern: String;
     FOp2Extern: String;
     FRegExtern: String;
-    FCrntAddr: Smallint;
+    FCrntAddr: UInt32;
     FCrntInstLen: Integer;
     FLabel: String;
     FSkipCount: Integer;
@@ -94,7 +94,8 @@ end;
 
 procedure TU9030DisAsmForm.EmitConst;
 var
-    i, addr: Integer;
+    i: Integer;
+    addr: UInt32;
     stemp: String;
     stemp1: String;
 begin
@@ -106,7 +107,7 @@ begin
     begin
         stemp1 := Copy(stemp, 1, 32);
         stemp := Copy(stemp, 33);
-        SourceMemo.Lines.Add(Format('%4.4x: %-6.6s  DC    XL%d''%s''',
+        SourceMemo.Lines.Add(Format('%6.6x: %-6.6s  DC    XL%d''%s''',
                                     [addr, FLabel, Length(stemp1) div 2, stemp1]));
         Inc(addr, Length(stemp1) div 2);
     end;
@@ -134,10 +135,10 @@ begin
         r := (fal and $f0) shr 4;
         r2 := fal and $0f;
         if (FCrntOpcode.Code = 'SVC') then
-            SourceMemo.Lines.Add(Format('%4.4x: %-6.6s  %-5.5s %d',
+            SourceMemo.Lines.Add(Format('%6.6x: %-6.6s  %-5.5s %d',
                                         [FCrntAddr - FCrntOpcode.Length + 1, FLabel, FCrntOpcode.Code, fal]))
         else
-            SourceMemo.Lines.Add(Format('%4.4x: %-6.6s  %-5.5s R%d,R%d',
+            SourceMemo.Lines.Add(Format('%6.6x: %-6.6s  %-5.5s R%d,R%d',
                                         [FCrntAddr - FCrntOpcode.Length + 1, FLabel, FCrntOpcode.Code, r, r2]));
       end;
       itRS:
@@ -161,10 +162,10 @@ begin
             (FCrntOpcode.Code = 'LM') or
             (FCrntOpcode.Code = 'SSTM') or
             (FCrntOpcode.Code = 'SLM')) then
-            SourceMemo.Lines.Add(Format('%4.4x: %-6.6s  %-5.5s %s,R%d,%s',
+            SourceMemo.Lines.Add(Format('%6.6x: %-6.6s  %-5.5s %s,R%d,%s',
                                         [FCrntAddr - FCrntOpcode.Length + 1, FLabel, FCrntOpcode.Code, reg, r2, op1]))
         else
-            SourceMemo.Lines.Add(Format('%4.4x: %-6.6s  %-5.5s %s,%s',
+            SourceMemo.Lines.Add(Format('%6.6x: %-6.6s  %-5.5s %s,%s',
                                         [FCrntAddr - FCrntOpcode.Length + 1, FLabel, FCrntOpcode.Code, reg, op1]));
       end;
       itRX:
@@ -192,7 +193,7 @@ begin
             reg := ExtRef(FRegExtern, r)
         else
             reg := Format('R%d', [r]);
-        SourceMemo.Lines.Add(Format('%4.4x: %-6.6s  %-5.5s %s,%s',
+        SourceMemo.Lines.Add(Format('%6.6x: %-6.6s  %-5.5s %s,%s',
                                     [FCrntAddr - FCrntOpcode.Length + 1, FLabel, FCrntOpcode.Code, reg, op1]))
       end;
       itSI:
@@ -211,10 +212,10 @@ begin
         else
             reg := Format('%d', [fal]);
         if (b1 = 0) then
-            SourceMemo.Lines.Add(Format('%4.4x: %-6.6s  %-5.5s %s,%s',
+            SourceMemo.Lines.Add(Format('%6.6x: %-6.6s  %-5.5s %s,%s',
                                         [FCrntAddr - FCrntOpcode.Length + 1, FLabel, FCrntOpcode.Code, op1, reg]))
         else
-            SourceMemo.Lines.Add(Format('%4.4x: %-6.6s  %-5.5s %s,%s',
+            SourceMemo.Lines.Add(Format('%6.6x: %-6.6s  %-5.5s %s,%s',
                                         [FCrntAddr - FCrntOpcode.Length + 1, FLabel, FCrntOpcode.Code, op1, reg]));
       end;
       itSS1:
@@ -236,7 +237,7 @@ begin
             op2 := Format('X''%4.4x''', [fad2])
         else
             op2 := Format('X''%3.3x''(R%d)', [off2, b2]);
-        SourceMemo.Lines.Add(Format('%4.4x: %-6.6s  %-5.5s %s,%s',
+        SourceMemo.Lines.Add(Format('%6.6x: %-6.6s  %-5.5s %s,%s',
                                     [FCrntAddr - FCrntOpcode.Length + 1, FLabel, FCrntOpcode.Code, op1, op2]));
       end;
       itSS2:
@@ -259,7 +260,7 @@ begin
             op2 := Format('X''%4.4x''(%d)', [fad2, l2])
         else
             op2 := Format('X''%3.3x''(%d,R%d)', [off2, l2, b2]);
-        SourceMemo.Lines.Add(Format('%4.4x: %-6.6s  %-5.5s %s,%s',
+        SourceMemo.Lines.Add(Format('%6.6x: %-6.6s  %-5.5s %s,%s',
                                     [FCrntAddr - FCrntOpcode.Length + 1, FLabel, FCrntOpcode.Code, op1, op2]));
       end;
       itBranch:
@@ -287,7 +288,7 @@ begin
             reg := ExtRef(FRegExtern, r)
         else
             reg := Format('%d', [r]);
-        SourceMemo.Lines.Add(Format('%4.4x: %-6.6s  %-5.5s %s,%s',
+        SourceMemo.Lines.Add(Format('%6.6x: %-6.6s  %-5.5s %s,%s',
                                     [FCrntAddr - FCrntOpcode.Length + 1, FLabel, FCrntOpcode.Code, reg, op1]))
       end;
       itUnknown:
@@ -398,8 +399,8 @@ begin
         GetMem(bfr, fin.Size);
         Clear;
         fin.Read(bfr^, fin.Size);
-        SourceMemo.Lines.Add(Format('%4.4x:         START', [FCrntAddr]));
-        SourceMemo.Lines.Add(Format('%4.4x: STRT    EQU   *', [FCrntAddr]));
+        SourceMemo.Lines.Add(Format('%6.6x:         START', [FCrntAddr]));
+        SourceMemo.Lines.Add(Format('%6.6x: STRT    EQU   *', [FCrntAddr]));
         SourceMemo.Lines.Add('');
         len := fin.Size;
         i := 0;

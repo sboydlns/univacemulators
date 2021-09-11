@@ -31,11 +31,11 @@ type
   private
     FSense: array [0..1] of Byte;
     FBCW: TIPCBCW;
-    FCommand: Byte;
     FCurrentFile: TCardFileStream;
     FReadStation: TCardRec;
     FHopperEmpty: Boolean;
     procedure ClearSense;
+    procedure CloseCurrentFile;
     procedure DeviceEnd;
     procedure DoFeed;
     procedure DoRead;
@@ -44,13 +44,15 @@ type
     procedure DoSense;
     function GetCurrentFileName: String;
     function OpenNextFile: Boolean;
-    procedure ProcessCommand; override;
     function StoreBuffer(bfr: PByte; len: Integer): Boolean;
     procedure UnitCheck;
+  protected
+    procedure ProcessCommand; override;
   public
     constructor Create(num: Byte); override;
     destructor Destroy; override;
     procedure AddFile(fname: String); override;
+    procedure Empty; override;
     procedure SIO; override;
     property CurrentFile: TCardFileStream read FCurrentFile;
     property CurrentFileName: String read GetCurrentFileName;
@@ -65,14 +67,25 @@ uses Memory, Globals;
 procedure T0717.AddFile(fname: String);
 begin
     inherited;
-    FHopperEmpty := False;
-    if (not Assigned(FCurrentFile)) then
-        OpenNextFile;
+    FLock.Acquire;
+    try
+        FHopperEmpty := False;
+        if (not Assigned(FCurrentFile)) then
+            OpenNextFile;
+    finally
+        FLock.Release;
+    end;
 end;
 
 procedure T0717.ClearSense;
 begin
     FillChar(FSense, SizeOf(FSense), 0);
+end;
+
+procedure T0717.CloseCurrentFile;
+begin
+    FreeAndNil(FCurrentFile);
+    FFiles.Delete(0);
 end;
 
 constructor T0717.Create(num: Byte);
@@ -96,7 +109,7 @@ end;
 
 procedure T0717.DeviceEnd;
 begin
-    FChannel.QueueStatus(MakeStatus(DEVICE_END, 0));
+    QueueStatus(DEVICE_END, 0);
 end;
 
 procedure T0717.DoFeed;
@@ -111,7 +124,7 @@ begin
         end;
         FCurrentFile.ReadRaw(FReadStation);
         if (FCurrentFile.Eof) then
-            FreeAndNil(FCurrentFile);
+            CloseCurrentFile;
 end;
 
 procedure T0717.DoRead;
@@ -145,8 +158,6 @@ end;
 procedure T0717.DoReadTranslate;
 var
     bfr: TCardRec;
-    stemp: String;
-    i: Integer;
 begin
     DoFeed;
     if (FHopperEmpty) then
@@ -168,6 +179,18 @@ begin
         DeviceEnd;
 end;
 
+procedure T0717.Empty;
+begin
+    inherited;
+    FLock.Acquire;
+    try
+        FHopperEmpty := True;
+        FreeAndNil(FCurrentFile);
+    finally
+        FLock.Release;
+    end;
+end;
+
 function T0717.GetCurrentFileName: String;
 begin
     if (FFiles.Count > 0) then
@@ -183,10 +206,7 @@ var
 begin
     Result := False;
     if (Assigned(FCurrentFile)) then
-    begin
-        FFiles.Delete(0);
-        FreeAndNil(FCurrentFile);
-    end;
+        CloseCurrentFile;
     if (FFiles.Count > 0) then
     begin
         cfr := FFiles[0];
@@ -214,8 +234,6 @@ begin
         else
             raise Exception.Create('0773 command not implemented');
     end;
-    FBusy := False;
-    FCommand := 0;
 end;
 
 procedure T0717.SIO;
@@ -242,14 +260,14 @@ begin
             Dec(len);
         except
             Result := False;
-            FChannel.QueueStatus(MakeStatus(DEVICE_END or UNIT_CHECK, INVALID_ADDRESS));
+            QueueStatus(DEVICE_END or UNIT_CHECK, INVALID_ADDRESS);
         end;
     end;
 end;
 
 procedure T0717.UnitCheck;
 begin
-    FChannel.QueueStatus(MakeStatus(UNIT_CHECK, 0));
+    QueueStatus(UNIT_CHECK, 0);
 end;
 
 end.

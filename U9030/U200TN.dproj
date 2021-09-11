@@ -1,9 +1,9 @@
 ﻿	<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 		<PropertyGroup>
-			<ProjectGuid>{DBCD9832-03CD-4022-B6DF-EF8B9BB391FE}</ProjectGuid>
+			<ProjectGuid>{E418D716-64FB-4637-9F6D-40E8E2C3A446}</ProjectGuid>
 			<ProjectVersion>13.4</ProjectVersion>
 			<FrameworkType>VCL</FrameworkType>
-			<MainSource>U9030.dpr</MainSource>
+			<MainSource>U200TN.dpr</MainSource>
 			<Base>True</Base>
 			<Config Condition="'$(Config)'==''">Debug</Config>
 			<Platform Condition="'$(Platform)'==''">Win32</Platform>
@@ -42,18 +42,18 @@
 		<PropertyGroup Condition="'$(Base)'!=''">
 			<DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;Vcl;Vcl.Imaging;Vcl.Touch;Vcl.Samples;Vcl.Shell;$(DCC_Namespace)</DCC_Namespace>
 			<Icon_MainIcon>$(BDS)\bin\delphi_PROJECTICON.ico</Icon_MainIcon>
-			<DCC_UsePackage>fmx;IndySystem;DBXInterBaseDriver;DbxCommonDriver;dbxcds;CustomIPTransport;dsnap;fmxase;IndyCore;inetdbxpress;bindcompfmx;rtl;dbrtl;DbxClientDriver;bindcomp;inetdb;xmlrtl;ibxpress;IndyProtocols;DBXMySQLDriver;soaprtl;bindengine;inet;fmxobj;fmxdae;dbexpress;$(DCC_UsePackage)</DCC_UsePackage>
+			<DCC_UsePackage>fmx;IndySystem;DBXInterBaseDriver;DbxCommonDriver;dbxcds;CustomIPTransport;dsnap;fmxase;IndyCore;inetdbxpress;bindcompfmx;rtl;dbrtl;DbxClientDriver;bindcomp;inetdb;xmlrtl;IndyProtocols;DBXMySQLDriver;soaprtl;bindengine;inet;fmxobj;fmxdae;dbexpress;$(DCC_UsePackage)</DCC_UsePackage>
 			<DCC_DcuOutput>.\$(Platform)\$(Config)</DCC_DcuOutput>
 			<DCC_ExeOutput>.\$(Platform)\$(Config)</DCC_ExeOutput>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Base_Win64)'!=''">
-			<DCC_UsePackage>gtQRExpD16;TeeDB;vclib;vclimg;vcldb;vcldsnap;vcl;gtDocEngD16;webdsnap;adortl;Tee;vclactnband;TeeUI;bindcompvcl;Jcl;vclie;vcltouch;websnap;gtPDFkitDXE2ProP;VclSmp;AurRdpPluginRXE2;dsnapcon;vclx;$(DCC_UsePackage)</DCC_UsePackage>
+			<DCC_UsePackage>vclimg;vcldb;vcldsnap;vcl;webdsnap;vclactnband;bindcompvcl;vclie;vcltouch;websnap;gtPDFkitDXE2ProP;VclSmp;dsnapcon;vclx;$(DCC_UsePackage)</DCC_UsePackage>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Base_Win32)'!=''">
 			<Manifest_File>$(BDS)\bin\default_app.manifest</Manifest_File>
 			<VerInfo_Locale>1033</VerInfo_Locale>
 			<VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
-			<DCC_UsePackage>ImgIntfRXE2;gtQRExpD16;TeeDB;AccountComboPackage;IBO40FTS_D2012;vclib;inetdbbde;IBO40TRT_D2012;IBO40VRT_D2012;Rave100VCL;ExcellentImagePrintRXE2;FarPointSpread;IBO40WRT_D2012;vclimg;QR5RunDXE2;fmi;gtPDF32DXE2;AuroraConfigurationRXE2;IboAdminD15;IBO40WSRT_D2012;vcldb;AurPcmilerRXE2;vcldsnap;PdfiumRXE2;Intraweb_120_160;vclribbon;frxe16;WIARXE2;vcl;AurFormsRXE2;CloudService;CodeSiteExpressPkg;FmxTeeUI;gtDocEngD16;AurMainDMRXE2;webdsnap;IBO40XRT_D2012;IBO40FRT_D2012;adortl;AurTwainRXE2;vcldbx;IgorRXE2;frx16;IBO40CRT_D2012;ilcorp2010;Tee;AurQuickRepRXE2;CPortLibDXE;svnui;EmailIntfRXE2;intrawebdb_120_160;ApdFaxViewer;fs16;vclactnband;FMXTee;TeeUI;bindcompvcl;Jcl;vclie;vcltouch;websnap;ExceptionExpert16;IBO40RPL_D2012;gtPDFkitDXE2ProP;VclSmp;fsDB16;AurRdpPluginRXE2;dsnapcon;IBO40WXRT_D2012;QRD_DXE2;vclx;svn;IBO40ART_D2012;bdertl;AurCobolRXE2;AurUtilityRXE2;xf40_d2011;$(DCC_UsePackage)</DCC_UsePackage>
+			<DCC_UsePackage>ImgIntfRXE2;gtQRExpD16;TeeDB;AccountComboPackage;IBO40FTS_D2012;vclib;inetdbbde;IBO40TRT_D2012;IBO40VRT_D2012;Rave100VCL;ExcellentImagePrintRXE2;FarPointSpread;IBO40WRT_D2012;vclimg;QR5RunDXE2;fmi;gtPDF32DXE2;AuroraConfigurationRXE2;IboAdminD15;IBO40WSRT_D2012;vcldb;AurPcmilerRXE2;vcldsnap;PdfiumRXE2;Intraweb_120_160;vclribbon;frxe16;WIARXE2;vcl;AurFormsRXE2;CloudService;CodeSiteExpressPkg;FmxTeeUI;gtDocEngD16;AurMainDMRXE2;webdsnap;IBO40XRT_D2012;IBO40FRT_D2012;adortl;AurTwainRXE2;vcldbx;IgorRXE2;frx16;IBO40CRT_D2012;ilcorp2010;Tee;AurQuickRepRXE2;CPortLibDXE;svnui;ibxpress;EmailIntfRXE2;intrawebdb_120_160;ApdFaxViewer;fs16;vclactnband;FMXTee;TeeUI;bindcompvcl;Jcl;vclie;vcltouch;websnap;ExceptionExpert16;IBO40RPL_D2012;gtPDFkitDXE2ProP;VclSmp;fsDB16;AurRdpPluginRXE2;dsnapcon;IBO40WXRT_D2012;QRD_DXE2;vclx;svn;IBO40ART_D2012;bdertl;AurCobolRXE2;AurUtilityRXE2;xf40_d2011;$(DCC_UsePackage)</DCC_UsePackage>
 			<VerInfo_Keys>CompanyName=;FileDescription=;FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=;ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
 			<DCC_Namespace>Winapi;System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;Bde;$(DCC_Namespace)</DCC_Namespace>
 		</PropertyGroup>
@@ -65,12 +65,12 @@
 			<DCC_RemoteDebug>true</DCC_RemoteDebug>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Cfg_1_Win32)'!=''">
-			<DCC_DebugDCUs>true</DCC_DebugDCUs>
-			<VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
+			<Debugger_HostApplication>C:\Development\Emulators\U9030\Win32\Debug\U200TN.exe </Debugger_HostApplication>
+			<Debugger_RunParams>-c REL042.cfg</Debugger_RunParams>
+			<Icon_MainIcon>U200TN_Icon.ico</Icon_MainIcon>
 			<VerInfo_Locale>1033</VerInfo_Locale>
-			<Icon_MainIcon>U9030_Icon.ico</Icon_MainIcon>
-			<Debugger_RunParams>-c rel042.cfg</Debugger_RunParams>
-			<Debugger_CWD>C:\Development\Emulators\U9030\Win32\Debug</Debugger_CWD>
+			<VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
+			<DCC_DebugDCUs>true</DCC_DebugDCUs>
 			<DCC_RemoteDebug>false</DCC_RemoteDebug>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Cfg_2)'!=''">
@@ -83,33 +83,12 @@
 			<DelphiCompile Include="$(MainSource)">
 				<MainSource>MainSource</MainSource>
 			</DelphiCompile>
-			<DCCReference Include="U9030Frm.pas">
-				<Form>U9030Form</Form>
+			<DCCReference Include="U200TNFrm.pas">
+				<Form>U9030ConsoleForm</Form>
+				<FormType>dfm</FormType>
 			</DCCReference>
-			<DCCReference Include="Memory.pas"/>
-			<DCCReference Include="Cpu.pas"/>
-			<DCCReference Include="Channels.pas"/>
-			<DCCReference Include="U9030Types.pas"/>
-			<DCCReference Include="Globals.pas"/>
-			<DCCReference Include="IDA.pas"/>
-			<DCCReference Include="U8418.pas"/>
-			<DCCReference Include="IPC.pas"/>
-			<DCCReference Include="Console.pas"/>
+			<DCCReference Include="..\Uniscope\Uniscope.pas"/>
 			<DCCReference Include="..\Common\EmulatorTypes.pas"/>
-			<DCCReference Include="DebuggerFrm.pas">
-				<Form>DebuggerForm</Form>
-			</DCCReference>
-			<DCCReference Include="..\Common\Bcd.pas"/>
-			<DCCReference Include="Trace.pas"/>
-			<DCCReference Include="U0773.pas"/>
-			<DCCReference Include="CpuTestFrm.pas">
-				<Form>CpuTestForm</Form>
-			</DCCReference>
-			<DCCReference Include="U0717.pas"/>
-			<DCCReference Include="..\Common\CardFile.pas"/>
-			<DCCReference Include="Config.pas"/>
-			<DCCReference Include="CommAdapter.pas"/>
-			<DCCReference Include="UniscopeAdapter.pas"/>
 			<BuildConfiguration Include="Release">
 				<Key>Cfg_2</Key>
 				<CfgParent>Base</CfgParent>
@@ -160,7 +139,7 @@
 						<Excluded_Packages Name="$(BDSBIN)\dclofficexp160.bpl">Microsoft Office XP Sample Automation Server Wrapper Components</Excluded_Packages>
 					</Excluded_Packages>
 					<Source>
-						<Source Name="MainSource">U9030.dpr</Source>
+						<Source Name="MainSource">U200TN.dpr</Source>
 					</Source>
 				</Delphi.Personality>
 				<Deployment/>

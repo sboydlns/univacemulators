@@ -49,6 +49,7 @@ type
   protected
     function MakeStatus(dstat, cstat: Byte): TStatus;
   public
+    procedure SendAttention;
     procedure SIO; virtual; abstract;
   end;
 
@@ -211,6 +212,11 @@ begin
 end;
 
 { TIPCDevice }
+
+procedure TIPCDevice.SendAttention;
+begin
+    QueueStatus(ATTENTION, 0);
+end;
 
 function TIPCDevice.MakeStatus(dstat, cstat: Byte): TStatus;
 begin

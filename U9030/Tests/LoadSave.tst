@@ -69,51 +69,51 @@ TEST CC=1
 
 # Positive argument
 SET R1=1
-LCR R1,R1
-TEST R1=-1
+LCR R2,R1
+TEST R2=-1
 TEST CC=1
 
 # Negative argument
 SET R1=-1
-LCR R1,R1
-TEST R1=1
+LCR R2,R1
+TEST R2=1
 TEST CC=2
 
 # Zero argument
 SET R1=0
-LCR R1,R1
-TEST R1=0
+LCR R2,R1
+TEST R2=0
 TEST CC=0
 
 # Overflow
 SET R1=$80000000
-LCR R1,R1
-TEST R1=$80000000
+LCR R2,R1
+TEST R2=$80000000
 TEST CC=3
 
 # LPR
 
 # Positive argument
 SET R1=1
-LPR R1,R1
-TEST R1=1
+LPR R2,R1
+TEST R2=1
 TEST CC=2
 
 # Negative argument
 SET R1=-1
-LPR R1,R1
-TEST R1=1
+LPR R2,R1
+TEST R2=1
 TEST CC=2
 
 # Zero argument
 SET R1=0
-LPR R1,R1
-TEST R1=0
+LPR R2,R1
+TEST R2=0
 TEST CC=0
 
 # Overflow
 SET R1=$80000000
-LPR R1,R1
+LPR R2,R1
 TEST R1=$80000000
 TEST CC=3
 
@@ -121,20 +121,20 @@ TEST CC=3
 
 # Positive argument
 SET R1=1
-LNR R1,R1
-TEST R1=-1
+LNR R2,R1
+TEST R2=-1
 TEST CC=1
 
 # Negative argument
 SET R1=-1
-LNR R1,R1
-TEST R1=-1
+LNR R2,R1
+TEST R2=-1
 TEST CC=1
 
 # Zero argument
 SET R1=0
-LNR R1,R1
-TEST R1=0
+LNR R2,R1
+TEST R2=0
 TEST CC=0
 
 # IC

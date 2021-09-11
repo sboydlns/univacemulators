@@ -7,9 +7,13 @@ uses
   Vcl.Forms, IdTelnet, IdBaseComponent, IdComponent, IdTCPConnection, IdTCPClient, IdGlobal;
 
 type
-  TUniscopeModel = ( umU100, umU200 );
+  TUniscopeModel = ( umConsole, umU100, umU200 );
 
   TUniscopeSize = ( us16x64, us12x80, us24x80 );
+
+  TMessageTypes = ( mtTrafficPoll, mtAck, mtStatusPoll,
+                    mtText, mtRetransmitReq, mtMsgWait );
+  TMessageType = set of TMessageTypes;
 
   TAttribute = ( tProtected, tTabStop );
 
@@ -29,6 +33,8 @@ type
     FLockKbd: Boolean;
     FKbdLocked: Boolean;
     FProtected: Boolean;
+    FRid: Byte;
+    FSid: Byte;
     function GetCanvas: TCanvas;
     procedure SetBackColour(const Value: TColor);
     procedure SetTextColour(const Value: TColor);
@@ -55,11 +61,16 @@ type
     procedure CursorPosition(row, col: Byte);
     procedure DecCursor;
     procedure DeleteLine;
+    procedure DoAcknowledge;
+    procedure DoBell;
+    procedure DoRetransmit;
+    procedure DoStatus;
     procedure DoTimer(Sender: TObject);
+    procedure DoTrafficPoll;
     procedure Down;
     procedure DrawStatus;
     procedure EndProtected;
-    procedure EraseDisplay;
+    procedure EraseDisplay(prot: Boolean);
     procedure FindSOE(var row, col: Integer);
     function GetCharacter: Char;
     procedure HideCursor;
@@ -84,7 +95,7 @@ type
     procedure Transmit;
     procedure Up;
   public
-    constructor Create(AOwner: TComponent); override;
+    constructor Create(AOwner: TComponent; model: TUniscopeModel; size: TUniscopeSize); reintroduce;
     destructor Destroy; override;
     procedure Clear;
     property Canvas: TCanvas read GetCanvas;
@@ -123,40 +134,6 @@ const
   START_BLINK_CHAR = '«';
   END_BLINK_CHAR = '»';
   CURSOR_CHAR = '█';
-  // ASCII  control characters
-  NUL = 0;
-  SOH = 1;
-  STX = 2;
-  ETX = 3;
-  EOT = 4;
-  ENQ = 5;
-  ACK = 6;
-  BEL = 7;
-  BS = 8;
-  HT = 9;
-  LF = 10;
-  VT = 11;
-  FF = 12;
-  CR = 13;
-  SO = 14;
-  SI = 15;
-  DLE = 16;
-  DC1 = 17;
-  DC2 = 18;
-  DC3 = 19;
-  DC4 = 20;
-  NAK = 21;
-  SYN = 22;
-  ETB = 23;
-  CAN = 24;
-  EM = 25;
-  SUB = 26;
-  ESC = 27;
-  FS = 28;
-  GS = 29;
-  RS = 30;
-  US = 31;
-  SPACE = 32;
 
 { TUniscope }
 
@@ -184,7 +161,8 @@ end;
 
 procedure TUniscope.Clear;
 begin
-    EraseDisplay;
+    ClearBuffer;
+    Refresh;
 end;
 
 procedure TUniscope.ClearBuffer;
@@ -198,14 +176,15 @@ begin
     end;
 end;
 
-constructor TUniscope.Create(AOwner: TComponent);
+constructor TUniscope.Create(AOwner: TComponent; model: TUniscopeModel; size: TUniscopeSize);
 var
     i: Integer;
 begin
-    inherited;
-    FTraceFile := TFileStream.Create('c:\temp\uniscope.trc', fmCreate);
-    Model := umU100;
-    Size := us16x64;
+    inherited Create(AOwner);
+    Self.Model := model;
+    Self.Size := size;
+    if (model = umConsole) then
+        FTraceFile := TFileStream.Create('c:\temp\uniscope.trc', fmCreate);
     FCanvas := TControlCanvas.Create;
     FCanvas.Control := Self;
     FTimer := TTimer.Create(AOwner);
@@ -280,6 +259,26 @@ begin
     inherited;
 end;
 
+procedure TUniscope.DoAcknowledge;
+begin
+
+end;
+
+procedure TUniscope.DoBell;
+begin
+
+end;
+
+procedure TUniscope.DoRetransmit;
+begin
+
+end;
+
+procedure TUniscope.DoStatus;
+begin
+
+end;
+
 procedure TUniscope.DoTimer(Sender: TObject);
 var
     c: Char;
@@ -289,7 +288,7 @@ begin
     begin
         // Do some initialization the first time the timer fires and then
         // set the interval to 0.5 seconds for cursor and blink character blinking.
-        EraseDisplay;
+        Clear;
         FTimer.Interval := 500;
         FInitialized := True;
     end;
@@ -322,6 +321,15 @@ begin
     end;
 end;
 
+procedure TUniscope.DoTrafficPoll;
+var
+    bfr: String;
+begin
+    { TODO : probably not needed }
+    bfr := Chr(EOT) + Chr(EOT);
+    FTelnet.SendString(bfr);
+end;
+
 procedure TUniscope.Down;
 begin
     HideCursor;
@@ -343,6 +351,12 @@ begin
     s := Format('%2d %2d', [FRow + 1, FCol + 1]);
     FCanvas.TextOut(0, FMaxRow * FCharSize.cy, s);
 
+    if ((FModel <> umConsole) and (FRid <> 0)) then
+    begin
+        s := Format('%2.2x:%2.2x', [FRid, FSid]);
+        FCanvas.TextOut((FMaxCol - 10) * FCharSize.cx, FMaxRow * FCharSize.cy, s);
+    end;
+
     if (FKbdLocked) then
     begin
         holdCol := TextColour;
@@ -360,9 +374,20 @@ begin
     FProtected := False;
 end;
 
-procedure TUniscope.EraseDisplay;
+procedure TUniscope.EraseDisplay(prot: Boolean);
+var
+    i: Integer;
 begin
-    ClearBuffer;
+    i := (FRow * FMaxCol) + FCol;
+    while (i <= High(FCharacters)) do
+    begin
+        if (prot or (not (tProtected in FAttributes[i]))) then
+        begin
+            FCharacters[i] := ' ';
+            FAttributes[i] := [];
+        end;
+        Inc(i);
+    end;
     Refresh;
 end;
 
@@ -725,7 +750,107 @@ end;
 procedure TUniscope.TelnetDataAvailable(Sender: TIdTelnet; const Buffer: TIdBytes);
 var
     b, x, y, shiftIn: Byte;
+    rid, sid, did: Byte;
     i: Integer;
+    mtype: TMessageType;
+
+    procedure SkipToEtx;
+    // Skip to first character past ETX.
+    begin
+        while ((i <= High(Buffer)) and (Buffer[i] <> ETX)) do
+            Inc(i);
+        Inc(i);
+    end;
+
+    procedure DoHeader;
+    // Process a Uniscope protocol header.
+    begin
+        rid := $20;
+        sid := $50;
+        did := $70;
+        mtype := [];
+        Inc(i);
+        if (i <= High(Buffer)) then
+            rid := Buffer[i];
+        Inc(i);
+        if (i <= High(Buffer)) then
+            sid := Buffer[i];
+        Inc(i);
+        if (i <= High(Buffer)) then
+            did := Buffer[i];
+        Inc(i);
+        { TODO :
+This stuff is probably not needed because we won't be receiving polls
+and acknowledgements here. }
+        while ((i <= High(Buffer)) and (Buffer[i] <> ETX)) do
+        begin
+            b := Buffer[i];
+            case b of
+              STX:
+              begin
+                mtype := [mtText];
+                Dec(i);
+                Break;
+              end;
+              BEL:
+              begin
+                mtype := [mtMsgWait];
+                Inc(i);
+                Break;
+              end;
+              ENQ:
+              begin
+                mtype := mtype + [mtStatusPoll];
+                Inc(i);
+              end;
+              DLE:
+              begin
+                Inc(i);
+                if (i <= High(Buffer)) then
+                begin
+                    b := Buffer[i];
+                    case b of
+                      Ord('1'):
+                      begin
+                        mtype := mtype + [mtAck];
+                        Inc(i);
+                      end;
+                      NAK:
+                      begin
+                        mtype := [mtRetransmitReq];
+                        Inc(i);
+                        Break;
+                      end;
+                    end;
+                end;
+              end;
+            end;
+        end;
+        // Ignore messages not intended for us
+        if (((rid <> $20) and (rid <> FRid)) or
+            ((sid <> $50) and (sid <> FSid))) then
+        begin
+            SkipToEtx;
+            Exit;
+        end;
+        //
+        if (mtText in mtype) then
+            Exit
+        else if (mtMsgWait in mtype) then
+            DoBell
+        else if (mtRetransmitReq in mtype) then
+            DoRetransmit
+        else
+        begin
+            if (mtype = []) then
+                DoTrafficPoll;
+            if (mtStatusPoll in mtype) then
+                DoStatus;
+            if (mtAck in mtype) then
+                DoAcknowledge;
+        end;
+        SkipToEtx;
+    end;
 
     procedure DoEscape;
     begin
@@ -754,6 +879,11 @@ var
           begin
             PrintTransparent;
           end;
+          Ord('a'):
+          begin
+            EraseDisplay(False);
+            Inc(i);
+          end;
           Ord('e'):
           begin
             CursorHome;
@@ -766,13 +896,13 @@ var
           end;
           Ord('M'):
           begin
-            Clear;
+            EraseDisplay(True);
             Inc(i);
           end;
-          else
-          begin
-            ShowMessageFmt('Unimplemented escape code %2.2x-%s', [Ord(b), b]);
-          end;
+//          else
+//          begin
+//            ShowMessageFmt('Unimplemented escape code %2.2x-%s', [Ord(b), b]);
+//          end;
         end;
     end;
 
@@ -817,6 +947,19 @@ begin
                 ;
               LF:
                 ;
+              TNC_IAC:                              // Get RID/SID assigned by 90/30 emulator
+              begin
+                if (FModel <> umConsole) then
+                begin
+                    Inc(i);
+                    if (i <= High(Buffer)) then
+                        FRid := Buffer[i];
+                    Inc(i);
+                    if (i <= High(Buffer)) then
+                        FSid := Buffer[i];
+                    DrawStatus;
+                end;
+              end;
               CR:
               begin
                 FCol := 0;
@@ -824,6 +967,10 @@ begin
                 if (FRow >= FMaxRow) then
                     FRow := 0;
                 DrawStatus;
+              end;
+              SOH:
+              begin
+                DoHeader;
               end;
               STX:
               begin

@@ -142,19 +142,20 @@ type
     FMSInterval: Int64;
     FInstCount: Int64;
     FOnDebug: TDebugEvent;
+    function AddFloat(op1, op2: TDblWord; norm: Boolean): TDblWord; overload;
+    function AddFloat(op1, op2: TWord; norm: Boolean): TWord; overload;
     procedure CheckRegEven(r: Byte); inline;
     function Compare(op1, op2: TWord): Byte;
     function CompareLogical(op1, op2: UInt32): Byte; overload;
     function CompareLogical(op1, op2: Byte): Byte; overload;
+    function DivFloat(op1, op2: TDblWord): TDblWord; overload;
+    function DivFloat(op1, op2: TWord): TWord; overload;
     procedure DivideTestOverflow(dividend: TDblWord; divisor: TWord;
                              var quotient, remainder: TWord);
     procedure Execute;
     procedure Fetch;
-    function FloatCC(value: Double): Byte; overload;
     function FloatCC(value: UInt64): Byte; overload;
     function FloatCC(value: UInt32): Byte; overload;
-    function FloatToDblWord(val: Double): UInt64;
-    function FloatToWord(val: Double): UInt32;
     function GetAbsAddress(b: Byte; off: UInt16): TMemoryAddress; overload; inline;
     function GetAbsAddress(b, x: Byte; off: UInt16): TMemoryAddress; overload; inline;
     function GetDblRegister(r: Integer): TDblWord;
@@ -169,8 +170,8 @@ type
     procedure InitProgramException;
     procedure InitTimer;
     procedure GetPackedOperands(var bcd1, bcd2: TBcd);
-    function NativeToFloat(val: UInt32): Double; overload;
-    function NativeToFloat(val: UInt64): Double; overload;
+    function MultFloat(op1, op2: TDblWord): TDblWord; overload;
+    function MultFloat(op1, op2: TWord): TWord; overload;
     function PackedCC(value: TBcd; len: Integer): Byte;
     procedure SetFPRegDouble(r: Integer; const Value: UInt64);
     procedure SetFPRegSingle(r: Integer; const Value: UInt32);
@@ -192,6 +193,10 @@ type
     procedure ALR;
     procedure AP;
     procedure AR;
+    procedure AU;
+    procedure AUR;
+    procedure AW;
+    procedure AWR;
     procedure BAL;
     procedure BALR;
     procedure BC;
@@ -304,7 +309,11 @@ type
     procedure STH;
     procedure STM;
     procedure STR;
+    procedure SU;
+    procedure SUR;
     procedure SVC;
+    procedure SW;
+    procedure SWR;
     procedure TM;
     procedure TR;
     procedure TRT;
@@ -318,6 +327,8 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+    function NativeToFloat(val: UInt32): Double; overload;
+    function NativeToFloat(val: UInt64): Double; overload;
     procedure Reset;
     procedure Run;
     procedure Step(enable: Boolean);
@@ -337,6 +348,18 @@ implementation
 
 uses Math, Globals, Channels, Memory, Trace, EmulatorTypes;
 
+const
+  SIGN64 = $8000000000000000;
+  EXP64  = $7f00000000000000;
+  FRAC64 = $00ffffffffffffff;
+  NORM64 = $00f0000000000000;
+  MSB32  = $ffffffff00000000;
+  LSB32  = $00000000ffffffff;
+  SIGN32 = $80000000;
+  EXP32  = $7f000000;
+  FRAC32 = $00ffffff;
+  NORM32 = $00f00000;
+
 { TCpu }
 
 procedure TCpu.A;
@@ -353,147 +376,361 @@ begin
 end;
 
 procedure TCpu.AD;
-// NOTE: Because I chose to implement floating point by converting to IEEE and using the
-//       PC floating point hardware there are a couple of points that you need to be aware
-//       of:
-//       1) It is not possible to detect signifigance exceptions.
-//       2) It it not possible to do unnormalized arithmetic. So, this routine implements
-//          both normalized and unnormalized addition.
 var
     r: Integer;
-    op1, op2: Double;
+    op1, op2: TDblWord;
 begin
     r := CurInst.R1;
-    op1 := NativeToFloat(FPRegDouble[r]);
-    op2 := NativeToFloat(Core.FetchDblWord(PSW.Key, GetAbsAddress(CurInst.B1, CurInst.X1, CurInst.Off1)));
-    try
-        op1 := op1 + op2;
-        FPRegDouble[r] := FloatToDblWord(op1);
-        PSW.CondCode := FloatCC(op1);
-    except
-      on E: EOverflow do
-      begin
-        raise EExponentOverflow.Create('AD caused exponent overflow');
-      end;
-      on E: EUnderflow do
-      begin
-        FPRegDouble[r] := 0;
-        if (PSW.FCharacteristicOvflExcp) then
-          raise EExponentUnderflow.Create('AD caused exponent underflow');
-      end;
-      else
-      begin
-        raise;
-      end;
+    op1 := FPRegDouble[r];
+    op2 := Core.FetchDblWord(PSW.Key, GetAbsAddress(CurInst.B1, CurInst.X1, CurInst.Off1));
+    FPRegDouble[r] := AddFloat(op1, op2, True);
+end;
+
+function TCpu.AddFloat(op1, op2: TWord; norm: Boolean): TWord;
+var
+    e1, e2, sign1, sign2, shift: Integer;
+    rslt: TWord;
+    ovfl, undfl, signif: Boolean;
+begin
+    ovfl := False;
+    undfl := False;
+    signif := False;
+    // Isolate exponents
+    e1 := (op1 and EXP32) shr 24;
+    e2 := (op2 and EXP32) shr 24;
+    // Isolate signs
+    sign1 := (op1 and SIGN32) shr 31;
+    sign2 := (op2 and SIGN32) shr 31;
+    // Isolate mantissas and add space for the guard digit
+    op1 := (op1 and FRAC32) shl 4;
+    op2 := (op2 and FRAC32) shl 4;
+    // Shift until expopnents are the same
+    shift := e1 - e2;
+    if (shift > 0) then
+    begin
+        if (shift > 8) then
+            op2 := 0
+        else
+            op2 := op2 shr (shift * 4);
+    end else if (shift < 0) then
+    begin
+        if (shift < -15) then
+            op1 := 0
+        else
+            op1 := op1 shr (-shift * 4);
+        e1 := e2;
     end;
+    // Add results
+    if (sign1 <> sign2) then
+    begin
+        // Different signs, so subtract by adding 2s comp of op2
+        op2 := (op2 xor $0fffffff) + 1;
+        rslt := op1 + op2;
+        if ((rslt and $10000000 ) <> 0) then
+        begin
+            // Overflow, result has same sign as op1
+            rslt := rslt and $0fffffff;
+        end else
+        begin
+            // No overflow, result has opposite sign to op1 and
+            // take 2s comp of result.
+            sign1 := sign1 xor 1;
+            rslt := (rslt xor $0fffffff) + 1;
+        end;
+    end else
+    begin
+        rslt := op1 + op2;
+    end;
+    // If overflow, shift right 4 bits and adjust exponent.
+    if ((rslt and $10000000) <> 0) then
+    begin
+        rslt := rslt shr 4;
+        Inc(e1);
+        if  (e1 >= 128) then
+            ovfl := True;
+    end;
+    // Set the condition codes
+    PSW.CondCode := 0;
+    if (norm) then
+    begin
+        if (rslt = 0) then
+        begin
+            e1 := 0;
+            sign1 := 0;
+        end else
+        begin
+            if (sign1 <> 0) then
+                PSW.CondCode := 1
+            else
+                PSW.CondCode := 2;
+        end;
+    end else
+    begin
+        // Check for zero excluding guard digit
+        if ((rslt and $0ffffff0) = 0) then
+        begin
+            rslt := 0;
+            e1 := 0;
+            sign1 := 0;
+        end else
+        begin
+            if (sign1 <> 0) then
+                PSW.CondCode := 1
+            else
+                PSW.CondCode := 2;
+        end;
+    end;
+    // Check for signifigance exception
+    if ((PSW.CondCode = 0) and PSW.SignificantExcp) then
+    begin
+        signif := True;
+        e1 := 0;
+        sign1 := 0;
+        rslt := 0;
+    end;
+    // Normalize result
+    if (norm) then
+    begin
+        // Only for non-zero result
+        if (PSW.CondCode <> 0) then
+        begin
+            while ((rslt and $0f000000) = 0) do
+            begin
+                rslt := rslt shl 4;
+                Dec(e1);
+            end;
+            // Check for underflow
+            if (e1 < 0) then
+            begin
+                if (PSW.CharacteristicOvflExcp) then
+                    undfl := True;
+                rslt := 0;
+                e1 := 0;
+                sign1 := 0;
+            end;
+        end else
+        begin
+            // Return true zero
+            rslt := 0;
+            e1 := 0;
+            sign1 := 0;
+        end;
+    end else
+    begin
+        if (PSW.CondCode = 0) then
+        begin
+            // Return true zero
+            rslt := 0;
+            e1 := 0;
+            sign1 := 0;
+        end;
+    end;
+    // Remove guard digit
+    rslt := rslt shr 4;
+    // Return the result
+    Result := rslt or (TDblWord(e1) shl 24);
+    if ((PSW.CondCode <> 0) and (sign1 <> 0)) then
+        Result := Result or SIGN32;
+    // Raise exceptions as appropriate
+    if (ovfl) then
+    begin
+        PSW.CondCode := 3;
+        raise EExponentOverflow.Create('Exponent overflow in AddFloat');
+    end;
+    if (undfl) then
+        raise EExponentUnderflow.Create('Exponent underflow in AddFloat');
+    if (signif) then
+        raise ESignifiganceException.Create('Signifigance in AddFloat');
+end;
+
+function TCpu.AddFloat(op1, op2: TDblWord; norm: Boolean): TDblWord;
+var
+    e1, e2, sign1, sign2, shift: Integer;
+    rslt: TDblWord;
+    ovfl, undfl, signif: Boolean;
+begin
+    ovfl := False;
+    undfl := False;
+    signif := False;
+    // Isolate exponents
+    e1 := (op1 and EXP64) shr 56;
+    e2 := (op2 and EXP64) shr 56;
+    // Isolate signs
+    sign1 := (op1 and SIGN64) shr 63;
+    sign2 := (op2 and SIGN64) shr 63;
+    // Isolate mantissas and add space for the guard digit
+    op1 := (op1 and FRAC64) shl 4;
+    op2 := (op2 and FRAC64) shl 4;
+    // Shift until expopnents are the same
+    shift := e1 - e2;
+    if (shift > 0) then
+    begin
+        if (shift > 15) then
+            op2 := 0
+        else
+            op2 := op2 shr (shift * 4);
+    end else if (shift < 0) then
+    begin
+        if (shift < -15) then
+            op1 := 0
+        else
+            op1 := op1 shr (-shift * 4);
+        e1 := e2;
+    end;
+    // Add results
+    if (sign1 <> sign2) then
+    begin
+        // Different signs, so subtract by adding 2s comp of op2
+        op2 := (op2 xor $0fffffffffffffff) + 1;
+        rslt := op1 + op2;
+        if ((rslt and $1000000000000000) <> 0) then
+        begin
+            // Overflow, result has same sign as op1
+            rslt := rslt and $0fffffffffffffff;
+        end else
+        begin
+            // No overflow, result has opposite sign to op1 and
+            // take 2s comp of result.
+            sign1 := sign1 xor 1;
+            rslt := (rslt xor $0fffffffffffffff) + 1;
+        end;
+    end else
+    begin
+        rslt := op1 + op2;
+    end;
+    // If overflow, shift right 4 bits and adjust exponent.
+    if ((rslt and $1000000000000000) <> 0) then
+    begin
+        rslt := rslt shr 4;
+        Inc(e1);
+        if  (e1 >= 128) then
+            ovfl := True;
+    end;
+    // Set the condition codes
+    PSW.CondCode := 0;
+    if (norm) then
+    begin
+        if (rslt = 0) then
+        begin
+            e1 := 0;
+            sign1 := 0;
+        end else
+        begin
+            if (sign1 <> 0) then
+                PSW.CondCode := 1
+            else
+                PSW.CondCode := 2;
+        end;
+    end else
+    begin
+        // Check for zero excluding guard digit
+        if ((rslt and $0ffffffffffffff0) = 0) then
+        begin
+            rslt := 0;
+            e1 := 0;
+            sign1 := 0;
+        end else
+        begin
+            if (sign1 <> 0) then
+                PSW.CondCode := 1
+            else
+                PSW.CondCode := 2;
+        end;
+    end;
+    // Check for signifigance exception
+    if ((PSW.CondCode = 0) and PSW.SignificantExcp) then
+    begin
+        signif := True;
+        e1 := 0;
+        sign1 := 0;
+        rslt := 0;
+    end;
+    // Normalize result
+    if (norm) then
+    begin
+        // Only for non-zero result
+        if (PSW.CondCode <> 0) then
+        begin
+            while ((rslt and $0f00000000000000) = 0) do
+            begin
+                rslt := rslt shl 4;
+                Dec(e1);
+            end;
+            // Check for underflow
+            if (e1 < 0) then
+            begin
+                if (PSW.CharacteristicOvflExcp) then
+                    undfl := True;
+                rslt := 0;
+                e1 := 0;
+                sign1 := 0;
+            end;
+        end else
+        begin
+            // Return true zero
+            rslt := 0;
+            e1 := 0;
+            sign1 := 0;
+        end;
+    end else
+    begin
+        if (PSW.CondCode = 0) then
+        begin
+            // Return true zero
+            rslt := 0;
+            e1 := 0;
+            sign1 := 0;
+        end;
+    end;
+    // Remove guard digit
+    rslt := rslt shr 4;
+    // Return the result
+    Result := rslt or (TDblWord(e1) shl 56);
+    if ((PSW.CondCode <> 0) and (sign1 <> 0)) then
+        Result := Result or SIGN64;
+    // Raise exceptions as appropriate
+    if (ovfl) then
+    begin
+        PSW.CondCode := 3;
+        raise EExponentOverflow.Create('Exponent overflow in AddFloat');
+    end;
+    if (undfl) then
+        raise EExponentUnderflow.Create('Exponent underflow in AddFloat');
+    if (signif) then
+        raise ESignifiganceException.Create('Signifigance in AddFloat');
 end;
 
 procedure TCpu.ADR;
-// NOTE: Because I chose to implement floating point by converting to IEEE and using the
-//       PC floating point hardware there are a couple of points that you need to be aware
-//       of:
-//       1) It is not possible to detect signifigance exceptions.
-//       2) It it not possible to do unnormalized arithmetic. So, this routine implements
-//          both normalized and unnormalized addition.
 var
     r: Integer;
-    op1, op2: Double;
+    op1, op2: TDblWord;
 begin
     r := CurInst.R1;
-    op1 := NativeToFloat(FPRegDouble[r]);
-    op2 := NativeToFloat(FPRegDouble[CurInst.R2]);
-    try
-        op1 := op1 + op2;
-        FPRegDouble[r] := FloatToDblWord(op1);
-        PSW.CondCode := FloatCC(op1);
-    except
-      on E: EOverflow do
-      begin
-        raise EExponentOverflow.Create('ADR caused exponent overflow');
-      end;
-      on E: EUnderflow do
-      begin
-        FPRegDouble[r] := 0;
-        if (PSW.FCharacteristicOvflExcp) then
-          raise EExponentUnderflow.Create('ADR caused exponent underflow');
-      end;
-      else
-      begin
-        raise;
-      end;
-    end;
+    op1 := FPRegDouble[r];
+    op2 := FPRegDouble[CurInst.R2];
+    FPRegDouble[r] := AddFloat(op1, op2, True);
 end;
 
 procedure TCpu.AE;
-// NOTE: Because I chose to implement floating point by converting to IEEE and using the
-//       PC floating point hardware there are a couple of points that you need to be aware
-//       of:
-//       1) It is not possible to detect signifigance exceptions.
-//       2) It it not possible to do unnormalized arithmetic. So, this routine implements
-//          both normalized and unnormalized addition.
 var
     r: Integer;
-    op1, op2: Double;
+    op1, op2: TWord;
 begin
     r := CurInst.R1;
-    op1 := NativeToFloat(FPRegSingle[r]);
-    op2 := NativeToFloat(UInt32(Core.FetchWord(PSW.Key, GetAbsAddress(CurInst.B1, CurInst.X1, CurInst.Off1))));
-    try
-        op1 := op1 + op2;
-        FPRegSingle[r] := FloatToWord(op1);
-        PSW.CondCode := FloatCC(op1);
-    except
-      on E: EOverflow do
-      begin
-        raise EExponentOverflow.Create('AE caused exponent overflow');
-      end;
-      on E: EUnderflow do
-      begin
-        FPRegDouble[r] := 0;
-        if (PSW.FCharacteristicOvflExcp) then
-          raise EExponentUnderflow.Create('AE caused exponent underflow');
-      end;
-      else
-      begin
-        raise;
-      end;
-    end;
+    op1 := FPRegSingle[r];
+    op2 := Core.FetchWord(PSW.Key, GetAbsAddress(CurInst.B1, CurInst.X1, CurInst.Off1));
+    FPRegSingle[r] := AddFloat(op1, op2, True);
 end;
 
 procedure TCpu.AER;
-// NOTE: Because I chose to implement floating point by converting to IEEE and using the
-//       PC floating point hardware there are a couple of points that you need to be aware
-//       of:
-//       1) It is not possible to detect signifigance exceptions.
-//       2) It it not possible to do unnormalized arithmetic. So, this routine implements
-//          both normalized and unnormalized addition.
 var
     r: Integer;
-    op1, op2: Double;
+    op1, op2: TWord;
 begin
     r := CurInst.R1;
-    op1 := NativeToFloat(FPRegSingle[r]);
-    op2 := NativeToFloat(FPRegSingle[CurInst.R2]);
-    try
-        op1 := op1 + op2;
-        FPRegSingle[r] := FloatToWord(op1);
-        PSW.CondCode := FloatCC(op1);
-    except
-      on E: EOverflow do
-      begin
-        raise EExponentOverflow.Create('AER caused exponent overflow');
-      end;
-      on E: EUnderflow do
-      begin
-        FPRegDouble[r] := 0;
-        if (PSW.FCharacteristicOvflExcp) then
-          raise EExponentUnderflow.Create('AER caused exponent underflow');
-      end;
-      else
-      begin
-        raise;
-      end;
-    end;
+    op1 := FPRegSingle[r];
+    op2 := FPRegSingle[CurInst.R2];
+    FPRegSingle[r] := AddFloat(op1, op2, True);
 end;
 
 procedure TCpu.AH;
@@ -575,11 +812,55 @@ begin
         raise EFixedOverflow.Create('AR caused overflow');
 end;
 
+procedure TCpu.AU;
+var
+    r: Integer;
+    op1, op2: TWord;
+begin
+    r := CurInst.R1;
+    op1 := FPRegSingle[r];
+    op2 := Core.FetchWord(PSW.Key, GetAbsAddress(CurInst.B1, CurInst.X1, CurInst.Off1));
+    FPRegSingle[r] := AddFloat(op1, op2, False);
+end;
+
+procedure TCpu.AUR;
+var
+    r: Integer;
+    op1, op2: TWord;
+begin
+    r := CurInst.R1;
+    op1 := FPRegSingle[r];
+    op2 := FPRegSingle[CurInst.R2];
+    FPRegSingle[r] := AddFloat(op1, op2, False);
+end;
+
+procedure TCpu.AW;
+var
+    r: Integer;
+    op1, op2: TDblWord;
+begin
+    r := CurInst.R1;
+    op1 := FPRegDouble[r];
+    op2 := Core.FetchDblWord(PSW.Key, GetAbsAddress(CurInst.B1, CurInst.X1, CurInst.Off1));
+    FPRegDouble[r] := AddFloat(op1, op2, False);
+end;
+
+procedure TCpu.AWR;
+var
+    r: Integer;
+    op1, op2: TDblWord;
+begin
+    r := CurInst.R1;
+    op1 := FPRegDouble[r];
+    op2 := FPRegDouble[CurInst.R2];
+    FPRegDouble[r] := AddFloat(op1, op2, False);
+end;
+
 procedure TCpu.BAL;
 var
     addr: TWord;
 begin
-    addr := (PSW.AsDblWord - FRelocateReg) and $ffffffff;
+    addr := (PSW.AsDblWord - FRelocateReg) and LSB32;
     PSW.InstAddr := GetAbsAddress(CurInst.B1, CurInst.X1, CurInst.Off1);
     FRegisters[PSW.RegisterSet, CurInst.R1] := addr;
 end;
@@ -588,7 +869,7 @@ procedure TCpu.BALR;
 var
     addr: TWord;
 begin
-    addr := (PSW.AsDblWord - FRelocateReg) and $ffffffff;
+    addr := (PSW.AsDblWord - FRelocateReg) and LSB32;
     if (CurInst.R2 <> 0) then
         PSW.InstAddr := TMemoryAddress(FRegisters[PSW.RegisterSet, CurInst.R2]) + FRelocateReg;
     FRegisters[PSW.RegisterSet, CurInst.R1] := addr;
@@ -674,58 +955,58 @@ end;
 
 procedure TCpu.CD;
 var
-    op1, op2: Double;
+    op1, op2: TDblWord;
 begin
-    op1 := NativeToFloat(FPRegDouble[CurInst.R1]);
-    op2 := NativeToFloat(Core.FetchDblWord(PSW.Key, GetAbsAddress(CurInst.B1, CurInst.X1, CurInst.Off1)));
-    if (op1 = op2) then
-        PSW.CondCode := 0
-    else if (op1 < op2) then
-        PSW.CondCode := 1
-    else
-        PSW.CondCode := 2;
+    op1 := FPRegDouble[CurInst.R1];
+    op2 := Core.FetchDblWord(PSW.Key, GetAbsAddress(CurInst.B1, CurInst.X1, CurInst.Off1));
+    op2 := op2 xor SIGN64;
+    try
+        AddFloat(op1, op2, True);
+    except
+        ;
+    end;
 end;
 
 procedure TCpu.CDR;
 var
-    op1, op2: Double;
+    op1, op2: TDblWord;
 begin
-    op1 := NativeToFloat(FPRegDouble[CurInst.R1]);
-    op2 := NativeToFloat(FPRegDouble[CurInst.R2]);
-    if (op1 = op2) then
-        PSW.CondCode := 0
-    else if (op1 < op2) then
-        PSW.CondCode := 1
-    else
-        PSW.CondCode := 2;
+    op1 := FPRegDouble[CurInst.R1];
+    op2 := FPRegDouble[CurInst.R2];
+    op2 := op2 xor SIGN64;
+    try
+        AddFloat(op1, op2, True);
+    except
+        ;
+    end;
 end;
 
 procedure TCpu.CE;
 var
-    op1, op2: Double;
+    op1, op2: TWord;
 begin
-    op1 := NativeToFloat(FPRegSingle[CurInst.R1]);
-    op2 := NativeToFloat(UInt32(Core.FetchWord(PSW.Key, GetAbsAddress(CurInst.B1, CurInst.X1, CurInst.Off1))));
-    if (op1 = op2) then
-        PSW.CondCode := 0
-    else if (op1 < op2) then
-        PSW.CondCode := 1
-    else
-        PSW.CondCode := 2;
+    op1 := FPRegSingle[CurInst.R1];
+    op2 := Core.FetchWord(PSW.Key, GetAbsAddress(CurInst.B1, CurInst.X1, CurInst.Off1));
+    op2 := op2 xor SIGN32;
+    try
+        AddFloat(op1, op2, True);
+    except
+        ;
+    end;
 end;
 
 procedure TCpu.CER;
 var
-    op1, op2: Double;
+    op1, op2: TWord;
 begin
-    op1 := NativeToFloat(FPRegSingle[CurInst.R1]);
-    op2 := NativeToFloat(FPRegSingle[CurInst.R2]);
-    if (op1 = op2) then
-        PSW.CondCode := 0
-    else if (op1 < op2) then
-        PSW.CondCode := 1
-    else
-        PSW.CondCode := 2;
+    op1 := FPRegSingle[CurInst.R1];
+    op2 := FPRegSingle[CurInst.R2];
+    op2 := op2 xor SIGN32;
+    try
+        AddFloat(op1, op2, True);
+    except
+        ;
+    end;
 end;
 
 procedure TCpu.CH;
@@ -871,10 +1152,10 @@ begin
     Opcodes.FindOpcode('ALR').Proc := ALR;
     Opcodes.FindOpcode('AP').Proc := AP;
     Opcodes.FindOpcode('AR').Proc := AR;
-    Opcodes.FindOpcode('AU').Proc := AE;
-    Opcodes.FindOpcode('AUR').Proc := AER;
-    Opcodes.FindOpcode('AW').Proc := AD;
-    Opcodes.FindOpcode('AWR').Proc := ADR;
+    Opcodes.FindOpcode('AU').Proc := AU;
+    Opcodes.FindOpcode('AUR').Proc := AUR;
+    Opcodes.FindOpcode('AW').Proc := AW;
+    Opcodes.FindOpcode('AWR').Proc := AWR;
     Opcodes.FindOpcode('BAL').Proc := BAL;
     Opcodes.FindOpcode('BALR').Proc := BALR;
     Opcodes.FindOpcode('BC').Proc := BC;
@@ -987,11 +1268,11 @@ begin
     Opcodes.FindOpcode('STH').Proc := STH;
     Opcodes.FindOpcode('STM').Proc := STM;
     Opcodes.FindOpcode('STR').Proc := STR;
-    Opcodes.FindOpcode('SU').Proc := AE;
-    Opcodes.FindOpcode('SUR').Proc := AER;
+    Opcodes.FindOpcode('SU').Proc := SU;
+    Opcodes.FindOpcode('SUR').Proc := SUR;
     Opcodes.FindOpcode('SVC').Proc := SVC;
-    Opcodes.FindOpcode('SW').Proc := AD;
-    Opcodes.FindOpcode('SWR').Proc := ADR;
+    Opcodes.FindOpcode('SW').Proc := SW;
+    Opcodes.FindOpcode('SWR').Proc := SWR;
     Opcodes.FindOpcode('TM').Proc := TM;
     Opcodes.FindOpcode('TR').Proc := TR;
     Opcodes.FindOpcode('TRT').Proc := TRT;
@@ -1045,121 +1326,45 @@ end;
 procedure TCpu.DD;
 var
     r: Integer;
-    op1, op2: Double;
+    op1, op2: TDblWord;
 begin
     r := CurInst.R1;
-    op1 := NativeToFloat(FPRegDouble[r]);
-    op2 := NativeToFloat(Core.FetchDblWord(PSW.Key, GetAbsAddress(CurInst.B1, CurInst.X1, CurInst.Off1)));
-    if (op2 = 0) then
-        raise EFPDivideException.Create('DD divide by zero');
-    try
-        FPRegDouble[r] := FloatToDblWord(op1 / op2);
-    except
-      on E: EOverflow do
-      begin
-        raise EExponentOverflow.Create('DD caused exponent overflow');
-      end;
-      on E: EUnderflow do
-      begin
-        FPRegDouble[r] := 0;
-        if (PSW.FCharacteristicOvflExcp) then
-          raise EExponentUnderflow.Create('DD caused exponent underflow');
-      end;
-      else
-      begin
-        raise;
-      end;
-    end;
+    op1 := FPRegDouble[r];
+    op2 := Core.FetchDblWord(PSW.Key, GetAbsAddress(CurInst.B1, CurInst.X1, CurInst.Off1));
+    FPRegDouble[r] := DivFloat(op1, op2);
 end;
 
 procedure TCpu.DDR;
 var
     r: Integer;
-    op1, op2: Double;
+    op1, op2: TDblWord;
 begin
     r := CurInst.R1;
-    op1 := NativeToFloat(FPRegDouble[r]);
-    op2 := NativeToFloat(FPRegDouble[CurInst.R2]);
-    if (op2 = 0) then
-        raise EFPDivideException.Create('DDR divide by zero');
-    try
-        FPRegDouble[r] := FloatToDblWord(op1 / op2);
-    except
-      on E: EOverflow do
-      begin
-        raise EExponentOverflow.Create('DDR caused exponent overflow');
-      end;
-      on E: EUnderflow do
-      begin
-        FPRegDouble[r] := 0;
-        if (PSW.FCharacteristicOvflExcp) then
-          raise EExponentUnderflow.Create('DDR caused exponent underflow');
-      end;
-      else
-      begin
-        raise;
-      end;
-    end;
+    op1 := FPRegDouble[r];
+    op2 := FPRegDouble[CurInst.R2];
+    FPRegDouble[r] := DivFloat(op1, op2);
 end;
 
 procedure TCpu.DE;
 var
     r: Integer;
-    op1, op2: Double;
+    op1, op2: TWord;
 begin
     r := CurInst.R1;
-    op1 := NativeToFloat(FPRegSingle[r]);
-    op2 := NativeToFloat(UInt32(Core.FetchWord(PSW.Key, GetAbsAddress(CurInst.B1, CurInst.X1, CurInst.Off1))));
-    if (op2 = 0) then
-        raise EFPDivideException.Create('DE divide by zero');
-    try
-        FPRegSingle[r] := FloatToWord(op1 / op2);
-    except
-      on E: EOverflow do
-      begin
-        raise EExponentOverflow.Create('DE caused exponent overflow');
-      end;
-      on E: EUnderflow do
-      begin
-        FPRegDouble[r] := 0;
-        if (PSW.FCharacteristicOvflExcp) then
-          raise EExponentUnderflow.Create('DE caused exponent underflow');
-      end;
-      else
-      begin
-        raise;
-      end;
-    end;
+    op1 := FPRegSingle[r];
+    op2 := Core.FetchWord(PSW.Key, GetAbsAddress(CurInst.B1, CurInst.X1, CurInst.Off1));
+    FPRegSingle[r] := DivFloat(op1, op2);
 end;
 
 procedure TCpu.DER;
 var
     r: Integer;
-    op1, op2: Double;
+    op1, op2: TWord;
 begin
     r := CurInst.R1;
-    op1 := NativeToFloat(FPRegSingle[r]);
-    op2 := NativeToFloat(FPRegSingle[CurInst.R2]);
-    if (op2 = 0) then
-        raise EFPDivideException.Create('DER divide by zero');
-    try
-        FPRegSingle[r] := FloatToWord(op1 / op2);
-    except
-      on E: EOverflow do
-      begin
-        raise EExponentOverflow.Create('DER caused exponent overflow');
-      end;
-      on E: EUnderflow do
-      begin
-        FPRegDouble[r] := 0;
-        if (PSW.FCharacteristicOvflExcp) then
-          raise EExponentUnderflow.Create('DER caused exponent underflow');
-      end;
-      else
-      begin
-        raise;
-      end;
-    end;
+    op1 := FPRegSingle[r];
+    op2 := FPRegSingle[CurInst.R2];
+    FPRegSingle[r] := DivFloat(op1, op2);
 end;
 
 destructor TCpu.Destroy;
@@ -1185,6 +1390,39 @@ procedure TCpu.DIAG;
 var
     code: Byte;
 
+    procedure JobName(var n: AnsiString; var isSym: Boolean);
+    var
+        r: UInt32;
+        i: Integer;
+    begin
+        // Get R8 and R9 into a string
+        n := StringOfChar(AnsiChar(' '), 8);
+        r := UInt32(FRegisters[PSW.RegisterSet, 8]);
+        n[1] := AnsiChar(Byte(r shr 24));
+        n[2] := AnsiChar(Byte((r shr 16) and $ff));
+        n[3] := AnsiChar(Byte((r shr 8) and $ff));
+        n[4] := AnsiChar(Byte(r and $ff));
+        r := UInt32(FRegisters[PSW.RegisterSet, 9]);
+        n[5] := AnsiChar(Byte(r shr 24));
+        n[6] := AnsiChar(Byte((r shr 16) and $ff));
+        n[7] := AnsiChar(Byte((r shr 8) and $ff));
+        n[8] := AnsiChar(Byte(r and $ff));
+        isSym := False;
+        // Find the terminating comma or space and clear result
+        // from that point onward. If the character following the
+        // comma is 'S' then we have a symbiont name.
+        for i := 1 to 8 do
+        begin
+            if ((n[i] = ' ') or (n[i] = AnsiChar($6b))) then
+            begin
+                if ((i < 8) and (n[i + 1] = AnsiChar($e2))) then
+                    isSym := True;
+                n := Copy(n, 1, i - 1) + StringOfChar(AnsiChar(' '), 9 - i);
+                Break;
+            end;
+        end;
+    end;
+
     function TCBMatches(tcb: TMemoryAddress; offset, match: THalfWord): Boolean;
     // Check the content of the TCB to see if it is a match.
     // If match = $100 then we are looking for match on the job name or symbiont name. Otherwise,
@@ -1193,45 +1431,78 @@ var
     // the byte at offset.
     var
         pre: TMemoryAddress;
-        j1, j2, r6, r8, r9: TWord;
+        i, j1, r1: TWord;
         hw: THalfWord;
+        n: AnsiString;
+        isSym: Boolean;
     begin
         if (match = $100) then
         begin
             // This shit makes no sense to me. I have implemented this based on what I
             // have seen by debugging different console commands. I have no idea if this
             // is comprehensive. Probably not.
+            //
+            // In any case, there seem to be 2 possibilities.
+            //   1) Commands like CA, PA, ST, et al. In this case, R1 will be negative and
+            //      contain the command in the lower half word. When this happens we find
+            //      the first 8 bytes of the command parameters in R8 & R9. This will include
+            //      the job name or symbiont name along with any sub parameters so we need
+            //      to parse the command looking for a terminating comma or space in order
+            //      to isolate the job or symbiont name. We then check the character following the
+            //      comma to see if it is 'S'. If it is we are looking for a symbiont.
+            //   2) Unsolicited input to a symbiont (00 C1 UP, ......). In this case,
+            //      R1 will be positive and contain a pointer to the beginning of the
+            //      input in the console buffer. In this case, we check the first 2 characters
+            //      of the input against JP$SYMID to see if we have a match.
             pre := (Core.FetchWord(PSW.Key, tcb + 20) and $ffffff);
             if (pre = 0) then
             begin
                 Result := False;
             end else
             begin
-                r8 := FRegisters[PSW.RegisterSet, 8];
-                r9 := FRegisters[PSW.RegisterSet, 9];
-                if ((r8 and $ff000000) = 0) then
+                // CA, PA, ST, etc. Get the job / symbiont name from R8 & R9.
+                r1 := FRegisters[PSW.RegisterSet, 1];
+                if (r1 < 0) then
                 begin
-                    // Unsolicited input to a symbiont. Get symbiont name from the
-                    // console buffer (R6) and compare to symbiont name (JP$SYMID)
-                    // in the TCB preamble.
-                    // 00 C1 .....
-                    r6 := FRegisters[PSW.RegisterSet, 6];
-                    hw := Core.FetchHalfWordNoAlign(0, r6 + FRelocateReg);
-                    Result := Core.FetchHalfWord(0, pre + $80) = hw;
+                    JobName(n, isSym);
+                    Result := True;
+                    if (isSym) then
+                    begin
+                        // It's a symbiont, check JP$SYMID
+                        for i := 0 to 1 do
+                        begin
+                            if (Byte(n[i + 1]) <> Core.FetchByte(0, pre + $80 + i)) then
+                            begin
+                                Result := False;
+                                Break;
+                            end;
+                        end;
+                    end else
+                    begin
+                        // It's not a symbiont, check JP$JOB
+                        for i := 0 to 7 do
+                        begin
+                            if (Byte(n[i + 1]) <> Core.FetchByte(0, pre + i)) then
+                            begin
+                                Result := False;
+                                Break;
+                            end;
+                        end;
+                    end;
                 end else
                 begin
-                    // Look for an actual job name (JP$JOB) in the TCB preamble. The
-                    // job name is given in R8 and R9.
-                    // CA and PA commands and possibly others.
-                    j1 := Core.FetchWord(PSW.Key, pre);
-                    j2 := Core.FetchWord(PSW.Key, pre + 4);
-                    Result := (r8 = j1) and (r9 = j2);
+                    // Unsolicited input to a symbiont. Get symbiont name from the
+                    // console buffer (R1) and compare to symbiont name (JP$SYMID)
+                    // in the TCB preamble.
+                    // 00 C1 .....
+                    hw := Core.FetchHalfWordNoAlign(0, r1 + FRelocateReg);
+                    Result := (Core.FetchHalfWord(0, pre + $80) = hw);
                 end;
             end;
         end else if (offset = 0) then
         begin
             // Having the island code override bit ($8000) forces a TCB to be executable
-            // if none of the absolute wait bits are set.
+            // if none of the absolute wait bits (JT$WAIT + 2) are set.
             j1 := Core.FetchWord(PSW.Key, tcb + 4);
             Result := (j1 = 0) or ((j1 and $FF00) = $8000);
 //            Result := (j1 and (not $8000)) = 0;
@@ -1314,6 +1585,123 @@ begin
       end;
       else     raise ESpecificationException.Create('Unimplemented DIAG function');
     end;
+end;
+
+function TCpu.DivFloat(op1, op2: TDblWord): TDblWord;
+var
+    e1, e2, sign1, sign2, i, fill: Integer;
+    rslt, t: TDblWord;
+    ovfl, undfl: Boolean;
+begin
+    ovfl := False;
+    undfl := False;
+    fill := 0;
+    // Isolate exponents
+    e1 := (op1 and EXP64) shr 56;
+    e2 := (op2 and EXP64) shr 56;
+    // Isolate signs
+    sign1 := (op1 and SIGN64) shr 63;
+    sign2 := (op2 and SIGN64) shr 63;
+    if (sign1 <> sign2) then
+        fill := 1;
+
+    // Isolate mantissas and add space for the guard digit
+    op1 := op1 and FRAC64;
+    op2 := op2 and FRAC64;
+    if (op2 = 0) then
+        raise EFPDivideException.Create('Divide by zero in DivFloat');
+    // Prenormalize operands
+    if (op1 <> 0) then
+    begin
+        while ((op1 and NORM64) = 0) do
+        begin
+            op1 := op1 shl 4;
+            Dec(e1);
+        end;
+    end;
+    if (op2 <> 0) then
+    begin
+        while ((op2 and NORM64) = 0) do
+        begin
+            op2 := op2 shl 4;
+            Dec(e2);
+        end;
+    end;
+    // Compute new exponent
+    e1 := e1 - e2 + 64;
+    // Shift numbers to avoid loss of precision
+    op1 := op1 shl 4;
+    op2 := op2 shl 4;
+    // Adjust dividend if it is larger than the divisor
+    if (op1 > op2) then
+    begin
+        op1 := op1 shr 4;
+        Inc(e1);
+    end;
+    // Negate op2 so we can add
+    op2 := (op2 xor $0fffffffffffffff) + 1;
+    // Do divide
+    rslt := 0;
+    for i := 0 to 55 do
+    begin
+        op1 := op1 shl 1;
+        t := op1 + op2;
+        rslt := rslt shl 1;
+        // if remainder larger than divisor replace
+        if ((t and $1000000000000000) <> 0) then
+        begin
+            op1 := t;
+            rslt := rslt or 1;
+        end;
+    end;
+    // Compute 1 final set to see if rounding needed
+    op1 := op1 shl 1;
+    op1 := op1 + op2;
+    if ((op1 and SIGN64) <> 0) then
+        Inc(rslt);
+    // If overflow, shift right 4 bits and adjust exponent
+    if ((rslt and $7f00000000000000) <> 0) then
+    begin
+        rslt := rslt shr 4;
+        Inc(e1);
+        if (e1 >= 128) then
+            ovfl := True;
+    end;
+    // Normalize result
+    if (rslt <> 0) then
+    begin
+        while ((rslt and NORM64) = 0) do
+        begin
+            rslt := rslt shl 4;
+            Dec(e1);
+        end;
+        if (e1 < 0) then
+        begin
+            if (PSW.CharacteristicOvflExcp) then
+                undfl := True;
+            rslt := 0;
+            e1 := 0;
+            fill := 0;
+        end;
+    end else
+    begin
+        e1 := 0;
+        fill := 0;
+    end;
+    // Return result
+    Result := (TDblWord(e1) shl 56) or rslt;
+    if (fill <> 0) then
+        Result := Result or SIGN64;
+    // Raise exceptions as appropriate
+    if (ovfl) then
+        raise EExponentOverflow.Create('Exponent overflow in MultFloat');
+    if (undfl) then
+        raise EExponentUnderflow.Create('Exponent underflow in MultFloat');
+end;
+
+function TCpu.DivFloat(op1, op2: TWord): TWord;
+begin
+    Result := TDblWord(DivFloat(TDblWord(op1) shl 32, TDblWord(op2) shl 32)) shr 32;
 end;
 
 procedure TCpu.DivideTestOverflow(dividend: TDblWord; divisor: TWord; var quotient, remainder: TWord);
@@ -1578,22 +1966,12 @@ begin
         raise EIllegalOpcode.Create(Format('%s is not implemented @ %6.6x', [FOpcode.Code, PSW.InstAddr]));
 end;
 
-function TCpu.FloatCC(value: Double): Byte;
-begin
-    if (value = 0) then
-        Result := 0
-    else if (value < 0) then
-        Result := 1
-    else
-        Result := 2;
-end;
-
 function TCpu.FloatCC(value: UInt64): Byte;
 var
     sign, frac: UInt64;
 begin
-    sign := value and $8000000000000000;
-    frac := value and $ffffffffffffff;
+    sign := value and SIGN64;
+    frac := value and FRAC64;
     if (frac = 0) then
         Result := 0
     else if (sign = 0) then
@@ -1606,60 +1984,14 @@ function TCpu.FloatCC(value: UInt32): Byte;
 var
     sign, frac: UInt32;
 begin
-    sign := value and $80000000;
-    frac := value and $ffffff;
+    sign := value and SIGN32;
+    frac := value and FRAC32;
     if (frac = 0) then
         Result := 0
     else if (sign = 0) then
         Result := 2
     else
         Result := 1;
-end;
-
-function TCpu.FloatToDblWord(val: Double): UInt64;
-var
-    sign, frac, temp: UInt64;
-    exp, shift: Int64;
-    test: Double;
-begin
-    if (val = 0) then
-    begin
-        Result := 0;
-        Exit;
-    end;
-
-    temp := PUint64(@val)^;
-    sign := temp and $8000000000000000;                     // get the sign
-    exp := ((temp and $7ff0000000000000) shr 52) - 1023;    // get the exponent
-    shift := exp mod 4;
-    exp := exp div 4;
-    if (shift < 0) then
-    begin
-        shift := shift + 4;
-        Dec(exp);
-    end;
-    frac := (temp and $fffffffffffff) or $10000000000000;   // get the fraction plus implied leading 1
-    frac := frac shl shift;
-    Inc(exp, 65);
-    if (exp < 0) then
-    begin
-        Result := 0;
-        Exit;
-    end;
-//        raise EUnderflow.Create('Underflow in FloatToDblWord');
-//    if (exp > 127) then
-//        raise EOverflow.Create('Overflow in FloatToDblWord');
-    if (frac = 0) then
-        Result := 0
-    else
-        Result := sign or (UInt64(exp) shl 56) or frac;
-    test := NativeToFloat(Result);
-    Assert(val = test);
-end;
-
-function TCpu.FloatToWord(val: Double): UInt32;
-begin
-    Result := FloatToDblWord(val) shr 32;
 end;
 
 function TCpu.GetAbsAddress(b: Byte; off: UInt16): TMemoryAddress;
@@ -1732,20 +2064,74 @@ end;
 
 procedure TCpu.HDR;
 var
-    op2, frac: UInt64;
+    op2, sign, frac: UInt64;
+    exp: Integer;
 begin
     op2 := FPRegDouble[CurInst.R2];
-    frac := (op2 and $ffffffffffffff) shr 1;
-    FPRegDouble[CurInst.R1] := (op2 and $ff00000000000000) or frac;
+    sign := op2 and SIGN64;
+    exp := (op2 and EXP64) shr 56;
+    frac := (op2 and FRAC64) shr 1;
+    if (frac <> 0) then
+    begin
+        while ((frac and NORM64) = 0) do
+        begin
+            frac := frac shl 4;
+            Dec(exp);
+        end;
+        if (exp < 0) then
+        begin
+            if (PSW.CharacteristicOvflExcp) then
+            begin
+                Inc(exp, 128);
+            end else
+            begin
+                frac := 0;
+                exp := 0;
+                sign := 0;
+            end;
+        end;
+    end else
+    begin
+        exp := 0;
+        sign := 0;
+    end;
+    FPRegDouble[CurInst.R1] := sign or (UInt64(exp) shl 56) or frac;
 end;
 
 procedure TCpu.HER;
 var
-    op2, frac: UInt32;
+    op2, sign, frac: UInt32;
+    exp: Integer;
 begin
     op2 := FPRegSingle[CurInst.R2];
-    frac := (op2 and $ffffff) shr 1;
-    FPRegSingle[CurInst.R1] := (op2 and $ff000000) or frac;
+    sign := op2 and SIGN32;
+    exp := (op2 and EXP32) shr 24;
+    frac := (op2 and FRAC32) shr 1;
+    if (frac <> 0) then
+    begin
+        while ((frac and NORM32) = 0) do
+        begin
+            frac := frac shl 4;
+            Dec(exp);
+        end;
+        if (exp < 0) then
+        begin
+            if (PSW.CharacteristicOvflExcp) then
+            begin
+                Inc(exp, 128);
+            end else
+            begin
+                frac := 0;
+                exp := 0;
+                sign := 0;
+            end;
+        end;
+    end else
+    begin
+        exp := 0;
+        sign := 0;
+    end;
+    FPRegDouble[CurInst.R1] := sign or (UInt32(exp) shl 24) or frac;
 end;
 
 procedure TCpu.HPR;
@@ -1855,7 +2241,7 @@ var
     op2: UInt64;
 begin
     op2 := FPRegDouble[CurInst.R2];
-    op2 := op2 xor $8000000000000000;
+    op2 := op2 xor SIGN64;
     FPRegDouble[CurInst.R1] := op2;
     PSW.CondCode := FloatCC(op2);
 end;
@@ -1865,7 +2251,7 @@ var
     op2: UInt32;
 begin
     op2 := FPRegSingle[CurInst.R2];
-    op2 := op2 xor $80000000;
+    op2 := op2 xor SIGN32;
     FPRegSingle[CurInst.R1] := op2;
     PSW.CondCode := FloatCC(op2);
 end;
@@ -1875,7 +2261,7 @@ var
     w: TWord;
 begin
     w := FRegisters[PSW.RegisterSet, CurInst.R2];
-    if (w = TWord($80000000)) then
+    if (w = TWord(SIGN32)) then
     begin
         PSW.CondCode := 3;
         if (PSW.FixedOvflExcp) then
@@ -1886,12 +2272,14 @@ begin
         PSW.CondCode := 2
     else
         PSW.CondCode := 1;
-    FRegisters[PSW.RegisterSet, CurInst.R1] := -w;
+    if (PSW.CondCode <> 3) then
+        w := -w;
+    FRegisters[PSW.RegisterSet, CurInst.R1] := w;
 end;
 
 procedure TCpu.LCS;
-// Load control storage. I have no real idea of what this instruction
-// is supposed to do. I just know that I need to set the condition
+// Load control storage. I have no real idea why this instruction is
+// being used by the boot loader. I just know that I need to set the condition
 // code to 1 for the boot process to succeed.
 begin
     PSW.CondCode := 1;
@@ -1950,9 +2338,9 @@ var
     op2, frac: UInt64;
 begin
     op2 := FPRegDouble[CurInst.R2];
-    op2 := op2 or $8000000000000000;
+    op2 := op2 or SIGN64;
     FPRegDouble[CurInst.R1] := op2;
-    frac := op2 and $ffffffffffffff;
+    frac := op2 and FRAC64;
     if (frac = 0) then
         PSW.CondCode := 0
     else
@@ -1964,9 +2352,9 @@ var
     op2, frac: UInt32;
 begin
     op2 := FPRegSingle[CurInst.R2];
-    op2 := op2 or $80000000;
+    op2 := op2 or SIGN32;
     FPRegSingle[CurInst.R1] := op2;
-    frac := op2 and $ffffff;
+    frac := op2 and FRAC32;
     if (frac = 0) then
         PSW.CondCode := 0
     else
@@ -1976,12 +2364,11 @@ end;
 procedure TCpu.LNR;
 var
     w: TWord;
-    ovfl: Boolean;
 begin
-    ovfl := False;
     w := FRegisters[PSW.RegisterSet, CurInst.R2];
     if (w > 0) then
-        FRegisters[PSW.RegisterSet, CurInst.R1] := -w;
+        w := -w;
+    FRegisters[PSW.RegisterSet, CurInst.R1] := w;
     if (w = 0) then
         PSW.CondCode := 0
     else
@@ -1993,9 +2380,9 @@ var
     op2, frac: UInt64;
 begin
     op2 := FPRegDouble[CurInst.R2];
-    op2 := op2 and $7fffffffffffffff;
+    op2 := op2 and (not SIGN64);
     FPRegDouble[CurInst.R1] := op2;
-    frac := op2 and $ffffffffffffff;
+    frac := op2 and FRAC64;
     if (frac = 0) then
         PSW.CondCode := 0
     else
@@ -2007,9 +2394,9 @@ var
     op2, frac: UInt32;
 begin
     op2 := FPRegSingle[CurInst.R2];
-    op2 := op2 and $7fffffff;
+    op2 := op2 and (not SIGN32);
     FPRegSingle[CurInst.R1] := op2;
-    frac := op2 and $ffffff;
+    frac := op2 and FRAC32;
     if (frac = 0) then
         PSW.CondCode := 0
     else
@@ -2025,11 +2412,12 @@ begin
     w := FRegisters[PSW.RegisterSet, CurInst.R2];
     if (w < 0) then
     begin
-        if (w = TWord($80000000)) then
+        if (w = TWord(SIGN32)) then
             ovfl := True
         else
-            FRegisters[PSW.RegisterSet, CurInst.R1] := -w;
+            w := -w;
     end;
+    FRegisters[PSW.RegisterSet, CurInst.R1] := w;
     if (ovfl) then
     begin
         PSW.CondCode := 3;
@@ -2107,119 +2495,51 @@ begin
     multiplier := Core.FetchWord(PSW.Key, GetAbsAddress(CurInst.B1, CurInst.X1, CurInst.Off1));
     rslt := multiplicand * multiplier;
     FRegisters[PSW.RegisterSet, r] := rslt shr 32;
-    FRegisters[PSW.RegisterSet, r + 1] := rslt and $ffffffff;
+    FRegisters[PSW.RegisterSet, r + 1] := rslt and LSB32;
 end;
 
 procedure TCpu.MD;
 var
     r: Integer;
-    op1, op2: Double;
+    op1, op2: TDblWord;
 begin
     r := CurInst.R1;
-    op1 := NativeToFloat(FPRegDouble[r]);
-    op2 := NativeToFloat(Core.FetchDblWord(PSW.Key, GetAbsAddress(CurInst.B1, CurInst.X1, CurInst.Off1)));
-    try
-        FPRegDouble[r] := FloatToDblWord(op1 * op2);
-    except
-      on E: EOverflow do
-      begin
-        raise EExponentOverflow.Create('MD caused exponent overflow');
-      end;
-      on E: EUnderflow do
-      begin
-        FPRegDouble[r] := 0;
-        if (PSW.FCharacteristicOvflExcp) then
-          raise EExponentUnderflow.Create('MD caused exponent underflow');
-      end;
-      else
-      begin
-        raise;
-      end;
-    end;
+    op1 := FPRegDouble[r];
+    op2 := Core.FetchDblWord(PSW.Key, GetAbsAddress(CurInst.B1, CurInst.X1, CurInst.Off1));
+    FPRegDouble[r] := MultFloat(op1, op2);
 end;
 
 procedure TCpu.MDR;
 var
     r: Integer;
-    op1, op2: Double;
+    op1, op2: TDblWord;
 begin
     r := CurInst.R1;
-    op1 := NativeToFloat(FPRegDouble[r]);
-    op2 := NativeToFloat(FPRegDouble[CurInst.R2]);
-    try
-        FPRegDouble[r] := FloatToDblWord(op1 * op2);
-    except
-      on E: EOverflow do
-      begin
-        raise EExponentOverflow.Create('MDR caused exponent overflow');
-      end;
-      on E: EUnderflow do
-      begin
-        FPRegDouble[r] := 0;
-        if (PSW.FCharacteristicOvflExcp) then
-          raise EExponentUnderflow.Create('MDR caused exponent underflow');
-      end;
-      else
-      begin
-        raise;
-      end;
-    end;
+    op1 := FPRegDouble[r];
+    op2 := FPRegDouble[CurInst.R2];
+    FPRegDouble[r] := MultFloat(op1, op2);
 end;
 
 procedure TCpu.ME;
 var
     r: Integer;
-    op1, op2: Double;
+    op1, op2: TWord;
 begin
     r := CurInst.R1;
-    op1 := NativeToFloat(FPRegSingle[r]);
-    op2 := NativeToFloat(UInt32(Core.FetchWord(PSW.Key, GetAbsAddress(CurInst.B1, CurInst.X1, CurInst.Off1))));
-    try
-        FPRegSingle[r] := FloatToWord(op1 * op2);
-    except
-      on E: EOverflow do
-      begin
-        raise EExponentOverflow.Create('ME caused exponent overflow');
-      end;
-      on E: EUnderflow do
-      begin
-        FPRegSingle[r] := 0;
-        if (PSW.FCharacteristicOvflExcp) then
-            raise EExponentUnderflow.Create('ME caused exponent underflow');
-      end;
-      else
-      begin
-        raise;
-      end;
-    end;
+    op1 := FPRegSingle[r];
+    op2 := Core.FetchWord(PSW.Key, GetAbsAddress(CurInst.B1, CurInst.X1, CurInst.Off1));
+    FPRegSingle[r] := MultFloat(op1, op2);
 end;
 
 procedure TCpu.MER;
 var
     r: Integer;
-    op1, op2: Double;
+    op1, op2: TWord;
 begin
     r := CurInst.R1;
-    op1 := NativeToFloat(FPRegSingle[r]);
-    op2 := NativeToFloat(FPRegSingle[CurInst.R2]);
-    try
-        FPRegSingle[r] := FloatToWord(op1 * op2);
-    except
-      on E: EOverflow do
-      begin
-        raise EExponentOverflow.Create('MER caused exponent overflow');
-      end;
-      on E: EUnderflow do
-      begin
-        FPRegDouble[r] := 0;
-        if (PSW.FCharacteristicOvflExcp) then
-          raise EExponentUnderflow.Create('MER caused exponent underflow');
-      end;
-      else
-      begin
-        raise;
-      end;
-    end;
+    op1 := FPRegSingle[r];
+    op2 := FPRegSingle[CurInst.R2];
+    FPRegSingle[r] := MultFloat(op1, op2);
 end;
 
 procedure TCpu.MH;
@@ -2264,7 +2584,100 @@ begin
     multiplier := FRegisters[PSW.RegisterSet, CurInst.R2];
     rslt := multiplicand * multiplier;
     FRegisters[PSW.RegisterSet, r] := rslt shr 32;
-    FRegisters[PSW.RegisterSet, r + 1] := rslt and $ffffffff;
+    FRegisters[PSW.RegisterSet, r + 1] := rslt and LSB32;
+end;
+
+function TCpu.MultFloat(op1, op2: TWord): TWord;
+begin
+    Result := TDblWord(MultFloat(TDblWord(op1) shl 32, TDblWord(op2) shl 32)) shr 32;
+end;
+
+function TCpu.MultFloat(op1, op2: TDblWord): TDblWord;
+var
+    e1, e2, sign1, sign2, i, fill: Integer;
+    rslt: TDblWord;
+    ovfl, undfl: Boolean;
+begin
+    ovfl := False;
+    undfl := False;
+    fill := 0;
+    // Isolate exponents
+    e1 := (op1 and EXP64) shr 56;
+    e2 := (op2 and EXP64) shr 56;
+    // Isolate signs
+    sign1 := (op1 and SIGN64) shr 63;
+    sign2 := (op2 and SIGN64) shr 63;
+    if (sign1 <> sign2) then
+        fill := 1;
+    // Isolate mantissas and add space for the guard digit
+    op1 := op1 and FRAC64;
+    op2 := op2 and FRAC64;
+    // Prenormalize operands
+    if (op1 <> 0) then
+    begin
+        while ((op1 and NORM64) = 0) do
+        begin
+            op1 := op1 shl 4;
+            Dec(e1);
+        end;
+    end;
+    if (op2 <> 0) then
+    begin
+        while ((op2 and NORM64) = 0) do
+        begin
+            op2 := op2 shl 4;
+            Dec(e2);
+        end;
+    end;
+    // Compute new exponent
+    e1 := e1 + e2 - 64;
+    // Do the multiply
+    rslt := 0;
+    for i := 0 to 55 do
+    begin
+        if ((op1 and 1) <> 0) then
+            rslt := rslt + op2;
+        op1 := op1 shr 1;
+        rslt := rslt shr 1;
+    end;
+    // If overflow, shift right 4 bits and adjust exponent
+    if ((rslt and $7f00000000000000) <> 0) then
+    begin
+        rslt := rslt shr 4;
+        Inc(e1);
+        if (e1 >= 128) then
+            ovfl := True;
+    end;
+    // Normalize result
+    if (rslt <> 0) then
+    begin
+        while ((rslt and NORM64) = 0) do
+        begin
+            rslt := rslt shl 4;
+            Dec(e1);
+        end;
+        if (e1 < 0) then
+        begin
+            if (PSW.CharacteristicOvflExcp) then
+                undfl := True;
+            rslt := 0;
+            e1 := 0;
+            fill := 0;
+        end;
+    end else
+    begin
+        e1 := 0;
+        fill := 0;
+    end;
+    // Return result
+    Result := (TDblWord(e1) shl 56) or rslt;
+    if (fill <> 0) then
+        Result := Result or SIGN64;
+    // Raise exceptions as appropriate
+    if (ovfl) then
+        raise EExponentOverflow.Create('Exponent overflow in MultFloat');
+    if (undfl) then
+        raise EExponentUnderflow.Create('Exponent underflow in MultFloat');
 end;
 
 procedure TCpu.MVC;
@@ -2696,147 +3109,49 @@ begin
 end;
 
 procedure TCpu.SD;
-// NOTE: Because I chose to implement floating point by converting to IEEE and using the
-//       PC floating point hardware there are a couple of points that you need to be aware
-//       of:
-//       1) It is not possible to detect signifigance exceptions.
-//       2) It it not possible to do unnormalized arithmetic. So, this routine implements
-//          both normalized and unnormalized subtraction.
 var
     r: Integer;
-    op1, op2: Double;
+    op1, op2: TDblWord;
 begin
     r := CurInst.R1;
-    op1 := NativeToFloat(FPRegDouble[r]);
-    op2 := NativeToFloat(Core.FetchDblWord(PSW.Key, GetAbsAddress(CurInst.B1, CurInst.X1, CurInst.Off1)));
-    try
-        op1 := op1 - op2;
-        FPRegDouble[r] := FloatToDblWord(op1);
-        PSW.CondCode := FloatCC(op1);
-    except
-      on E: EOverflow do
-      begin
-        raise EExponentOverflow.Create('SD caused exponent overflow');
-      end;
-      on E: EUnderflow do
-      begin
-        FPRegDouble[r] := 0;
-        if (PSW.FCharacteristicOvflExcp) then
-          raise EExponentUnderflow.Create('SD caused exponent underflow');
-      end;
-      else
-      begin
-        raise;
-      end;
-    end;
+    op1 := FPRegDouble[r];
+    op2 := Core.FetchDblWord(PSW.Key, GetAbsAddress(CurInst.B1, CurInst.X1, CurInst.Off1));
+    FPRegDouble[r] := AddFloat(op1, op2 xor SIGN64, True);
 end;
 
 procedure TCpu.SDR;
-// NOTE: Because I chose to implement floating point by converting to IEEE and using the
-//       PC floating point hardware there are a couple of points that you need to be aware
-//       of:
-//       1) It is not possible to detect signifigance exceptions.
-//       2) It it not possible to do unnormalized arithmetic. So, this routine implements
-//          both normalized and unnormalized subtraction.
 var
     r: Integer;
-    op1, op2: Double;
+    op1, op2: TDblWord;
 begin
     r := CurInst.R1;
-    op1 := NativeToFloat(FPRegDouble[r]);
-    op2 := NativeToFloat(FPRegDouble[CurInst.R2]);
-    try
-        op1 := op1 - op2;
-        FPRegDouble[r] := FloatToDblWord(op1);
-        PSW.CondCode := FloatCC(op1);
-    except
-      on E: EOverflow do
-      begin
-        raise EExponentOverflow.Create('SDR caused exponent overflow');
-      end;
-      on E: EUnderflow do
-      begin
-        FPRegDouble[r] := 0;
-        if (PSW.FCharacteristicOvflExcp) then
-          raise EExponentUnderflow.Create('SDR caused exponent underflow');
-      end;
-      else
-      begin
-        raise;
-      end;
-    end;
+    op1 := FPRegDouble[r];
+    op2 := FPRegDouble[CurInst.R2];
+    FPRegDouble[r] := AddFloat(op1, op2 xor SIGN64, True);
 end;
 
 procedure TCpu.SE;
-// NOTE: Because I chose to implement floating point by converting to IEEE and using the
-//       PC floating point hardware there are a couple of points that you need to be aware
-//       of:
-//       1) It is not possible to detect signifigance exceptions.
-//       2) It it not possible to do unnormalized arithmetic. So, this routine implements
-//          both normalized and unnormalized subtraction.
 var
     r: Integer;
-    op1, op2: Double;
+    op1, op2: TWord;
 begin
     r := CurInst.R1;
-    op1 := NativeToFloat(FPRegSingle[r]);
-    op2 := NativeToFloat(UInt32(Core.FetchWord(PSW.Key, GetAbsAddress(CurInst.B1, CurInst.X1, CurInst.Off1))));
-    try
-        op1 := op1 - op2;
-        FPRegSingle[r] := FloatToWord(op1);
-        PSW.CondCode := FloatCC(op1);
-    except
-      on E: EOverflow do
-      begin
-        raise EExponentOverflow.Create('SE caused exponent overflow');
-      end;
-      on E: EUnderflow do
-      begin
-        FPRegDouble[r] := 0;
-        if (PSW.FCharacteristicOvflExcp) then
-          raise EExponentUnderflow.Create('SE caused exponent underflow');
-      end;
-      else
-      begin
-        raise;
-      end;
-    end;
+    op1 := FPRegSingle[r];
+    op2 := Core.FetchWord(PSW.Key, GetAbsAddress(CurInst.B1, CurInst.X1, CurInst.Off1));
+    op2 := op2 xor SIGN32;
+    FPRegSingle[r] := AddFloat(op1, op2, True);
 end;
 
 procedure TCpu.SER;
-// NOTE: Because I chose to implement floating point by converting to IEEE and using the
-//       PC floating point hardware there are a couple of points that you need to be aware
-//       of:
-//       1) It is not possible to detect signifigance exceptions.
-//       2) It it not possible to do unnormalized arithmetic. So, this routine implements
-//          both normalized and unnormalized subtraction.
 var
     r: Integer;
-    op1, op2: Double;
+    op1, op2: TWord;
 begin
     r := CurInst.R1;
-    op1 := NativeToFloat(FPRegSingle[r]);
-    op2 := NativeToFloat(FPRegSingle[CurInst.R2]);
-    try
-        op1 := op1 - op2;
-        FPRegSingle[r] := FloatToWord(op1);
-        PSW.CondCode := FloatCC(op1);
-    except
-      on E: EOverflow do
-      begin
-        raise EExponentOverflow.Create('SER caused exponent overflow');
-      end;
-      on E: EUnderflow do
-      begin
-        FPRegDouble[r] := 0;
-        if (PSW.FCharacteristicOvflExcp) then
-          raise EExponentUnderflow.Create('SER caused exponent underflow');
-      end;
-      else
-      begin
-        raise;
-      end;
-    end;
+    op1 := FPRegSingle[r];
+    op2 := FPRegSingle[CurInst.R2];
+    op2 := op2 xor SIGN32;
+    FPRegSingle[r] := AddFloat(op1, op2, True);
 end;
 
 procedure TCpu.SetFPRegDouble(r: Integer; const Value: UInt64);
@@ -2850,7 +3165,7 @@ procedure TCpu.SetFPRegSingle(r: Integer; const Value: UInt32);
 begin
     if ((r and 1) = 1) then
         raise ESpecificationException.Create('FP Register must be even');
-    FFPRegisters[r shr 1] := (FFPRegisters[r shr 1] and $ffffffff) or (UInt64(Value) shl 32);
+    FFPRegisters[r shr 1] := (FFPRegisters[r shr 1] and LSB32) or (UInt64(Value) shl 32);
 end;
 
 procedure TCpu.SetRegisters(i: TRegisterSet; j: Integer; const Value: TWord);
@@ -2913,11 +3228,11 @@ begin
     ovfl := False;
     count := GetRelAddress(CurInst.B1, CurInst.Off1) and $3f;
     w := FRegisters[PSW.RegisterSet, CurInst.R1];
-    sign := w and $80000000;
+    sign := w and SIGN32;
     while (count > 0) do
     begin
         w := w shl 1;
-        if ((w and $80000000) <> sign) then
+        if ((w and SIGN32) <> sign) then
             ovfl := True;
         Dec(count);
     end;
@@ -2954,24 +3269,24 @@ begin
         raise ESpecificationException.Create('Register must be even');
     count := GetRelAddress(CurInst.B1, CurInst.Off1) and $3f;
     dw := UInt64(GetDblRegister(r));
-    sign := dw and $8000000000000000;
+    sign := dw and SIGN64;
     ovfl := False;
     while (count > 0) do
     begin
         dw := dw shl 1;
-        if ((dw and $8000000000000000) <> sign) then
+        if ((dw and SIGN64) <> sign) then
             ovfl := True;
         Dec(count);
     end;
     if (ovfl) then
     begin
         if (sign = 0) then
-            dw := dw and $7fffffffffffffff
+            dw := dw and (not SIGN64)
         else
-            dw := dw or $8000000000000000;
+            dw := dw or SIGN64;
     end;
     FRegisters[PSW.RegisterSet, r] := dw shr 32;
-    FRegisters[PSW.RegisterSet, r + 1] := dw and $ffffffff;
+    FRegisters[PSW.RegisterSet, r + 1] := dw and LSB32;
     if (ovfl) then
     begin
         PSW.CondCode := 3;
@@ -2998,7 +3313,7 @@ begin
     dw := UInt64(GetDblRegister(r));
     dw := dw shl count;
     FRegisters[PSW.RegisterSet, r] := dw shr 32;
-    FRegisters[PSW.RegisterSet, r + 1] := dw and $ffffffff;
+    FRegisters[PSW.RegisterSet, r + 1] := dw and LSB32;
 end;
 
 procedure TCpu.SLL;
@@ -3134,7 +3449,7 @@ begin
         dw := dw or sign;
     end;
     FRegisters[PSW.RegisterSet, r] := dw shr 32;
-    FRegisters[PSW.RegisterSet, r + 1] := dw and $ffffffff;
+    FRegisters[PSW.RegisterSet, r + 1] := dw and LSB32;
     if (dw = 0) then
         PSW.CondCode := 0
     else if (dw < 0) then
@@ -3156,7 +3471,7 @@ begin
     dw := UInt64(GetDblRegister(r));
     dw := dw shr count;
     FRegisters[PSW.RegisterSet, r] := dw shr 32;
-    FRegisters[PSW.RegisterSet, r + 1] := dw and $ffffffff;
+    FRegisters[PSW.RegisterSet, r + 1] := dw and LSB32;
 end;
 
 procedure TCpu.SRL;
@@ -3306,6 +3621,18 @@ begin
     end;
 end;
 
+procedure TCpu.SU;
+var
+    r: Integer;
+    op1, op2: TWord;
+begin
+    r := CurInst.R1;
+    op1 := FPRegSingle[r];
+    op2 := Core.FetchWord(PSW.Key, GetAbsAddress(CurInst.B1, CurInst.X1, CurInst.Off1));
+    op2 := op2 xor SIGN32;
+    FPRegSingle[r] := AddFloat(op1, op2, False);
+end;
+
 procedure TCpu.SumSetCondCode(op1, op2: THalfWord; var sum: THalfWord);
 // Return the sum of two half words, checking for overflow and
 // setting the condition code appropriately.
@@ -3350,7 +3677,7 @@ var
 begin
     sum := UInt64(op1) + UInt64(op2);
     carry := (sum and $100000000) <> 0;
-    sum := sum and $ffffffff;
+    sum := sum and LSB32;
     if (carry) then
     begin
         if (sum = 0) then
@@ -3385,6 +3712,18 @@ begin
         PSW.CondCode := 2;
 end;
 
+procedure TCpu.SUR;
+var
+    r: Integer;
+    op1, op2: TWord;
+begin
+    r := CurInst.R1;
+    op1 := FPRegSingle[r];
+    op2 := FPRegSingle[CurInst.R2];
+    op2 := op2 xor SIGN32;
+    FPRegSingle[r] := AddFloat(op1, op2, False);
+end;
+
 procedure TCpu.SVC;
 begin
     if (SvcTraceEnabled) then
@@ -3396,6 +3735,28 @@ begin
     PSW.AsDblWord := Core.FetchDblWord(0, SVC_NEW);
     FRelocateReg := Core.FetchRelReg(PSW.Key);
     PSW.InstAddr := PSW.InstAddr + FRelocateReg;
+end;
+
+procedure TCpu.SW;
+var
+    r: Integer;
+    op1, op2: TDblWord;
+begin
+    r := CurInst.R1;
+    op1 := FPRegDouble[r];
+    op2 := Core.FetchDblWord(PSW.Key, GetAbsAddress(CurInst.B1, CurInst.X1, CurInst.Off1));
+    FPRegDouble[r] := AddFloat(op1, op2 xor SIGN64, False);
+end;
+
+procedure TCpu.SWR;
+var
+    r: Integer;
+    op1, op2: TDblWord;
+begin
+    r := CurInst.R1;
+    op1 := FPRegDouble[r];
+    op2 := FPRegDouble[CurInst.R2];
+    FPRegDouble[r] := AddFloat(op1, op2 xor SIGN64, False);
 end;
 
 procedure TCpu.Test;
@@ -3562,7 +3923,6 @@ var
     procedure TraceStxit;
     var
         attch, typ: String;
-
     begin
         icType := (FRegisters[PSW.RegisterSet, 1] and $ff000000) shr 24;
         if ((icType and $40) = 0) then
@@ -3597,6 +3957,113 @@ var
         end;
     end;
 
+    procedure TraceComm;
+    var
+        i: Integer;
+        param: THalfWord;
+    begin
+        // Get parameter following SVC instruction
+        param := Core.FetchHalfWord(0, PSW.InstAddr);
+        case UInt16(param) of
+          $00, $05:
+          begin
+            bfr := '  *CCRCALL'#13#10;
+            SvcTraceFile.Write(PAnsiChar(bfr)^, Length(bfr));
+            addr := FRegisters[PSW.RegisterSet, 1] + FRelocateReg;  // addr of CPIOCP
+            if (addr <= Core.MaxMemory) then
+            begin
+                bfr := AnsiString(Format('  %8.8x %8.8x %8.8x %8.8x %8.8x'#13#10,
+                                         [Core.FetchWord(0, addr),
+                                          Core.FetchWord(0, addr + 4),
+                                          Core.FetchWord(0, addr + 8),
+                                          Core.FetchWord(0, addr + 12),
+                                          Core.FetchWord(0, addr + 16)]));
+                SvcTraceFile.Write(PAnsiChar(bfr)^, Length(bfr));
+                bfr := AnsiString(Format('  %8.8x %8.8x %8.8x %8.8x %8.8x'#13#10,
+                                         [Core.FetchWord(0, addr + 20),
+                                          Core.FetchWord(0, addr + 24),
+                                          Core.FetchWord(0, addr + 28),
+                                          Core.FetchWord(0, addr + 32),
+                                          Core.FetchWord(0, addr + 36)]));
+                SvcTraceFile.Write(PAnsiChar(bfr)^, Length(bfr));
+            end;
+          end;
+          $8003:
+          begin
+            bfr := '  *MREAD/MWRITE'#13#10;
+            SvcTraceFile.Write(PAnsiChar(bfr)^, Length(bfr));
+            addr := FRegisters[PSW.RegisterSet, 1] + FRelocateReg;  // addr of param list
+            bfr := AnsiString(Format('  R1 = %8.8x'#13#10, [addr]));
+            SvcTraceFile.Write(PAnsiChar(bfr)^, Length(bfr));
+            bfr := AnsiString(Format('  %8.8x %8.8x %8.8x %8.8x %8.8x'#13#10,
+                                     [Core.FetchWord(0, addr),
+                                      Core.FetchWord(0, addr + 4),
+                                      Core.FetchWord(0, addr + 8),
+                                      Core.FetchWord(0, addr + 12),
+                                      Core.FetchWord(0, addr + 16)]));
+            SvcTraceFile.Write(PAnsiChar(bfr)^, Length(bfr));
+            bfr := AnsiString(Format('  %8.8x %8.8x %8.8x %8.8x %8.8x'#13#10,
+                                     [Core.FetchWord(0, addr + 20),
+                                      Core.FetchWord(0, addr + 24),
+                                      Core.FetchWord(0, addr + 28),
+                                      Core.FetchWord(0, addr + 32),
+                                      Core.FetchWord(0, addr + 36)]));
+            SvcTraceFile.Write(PAnsiChar(bfr)^, Length(bfr));
+            bfr := AnsiString(Format('  %8.8x %8.8x %8.8x'#13#10,
+                                     [Core.FetchWord(0, addr + 40),
+                                      Core.FetchWord(0, addr + 44),
+                                      Core.FetchWord(0, addr + 52)]));
+            SvcTraceFile.Write(PAnsiChar(bfr)^, Length(bfr));
+          end;
+          $c102:
+          begin
+            bfr := '  *MOPEN'#13#10;
+            SvcTraceFile.Write(PAnsiChar(bfr)^, Length(bfr));
+            addr := FRegisters[PSW.RegisterSet, 1] + FRelocateReg;  // addr of param list
+            bfr := AnsiString(Format('  %8.8x %8.8x %8.8x %8.8x %8.8x'#13#10,
+                                     [Core.FetchWord(0, addr),
+                                      Core.FetchWord(0, addr + 4),
+                                      Core.FetchWord(0, addr + 8),
+                                      Core.FetchWord(0, addr + 12),
+                                      Core.FetchWord(0, addr + 16)]));
+            SvcTraceFile.Write(PAnsiChar(bfr)^, Length(bfr));
+          end;
+          $c104:
+          begin
+            bfr := '  *NETREL'#13#10;
+            SvcTraceFile.Write(PAnsiChar(bfr)^, Length(bfr));
+            addr := FRegisters[PSW.RegisterSet, 1] + FRelocateReg;  // addr of param list
+            bfr := AnsiString(Format('  %8.8x %8.8x'#13#10,
+                                     [Core.FetchWord(0, addr),
+                                      Core.FetchWord(0, addr + 4)]));
+            SvcTraceFile.Write(PAnsiChar(bfr)^, Length(bfr));
+          end;
+          $c105:
+          begin
+            bfr := '  *LNEREQ'#13#10;
+            SvcTraceFile.Write(PAnsiChar(bfr)^, Length(bfr));
+            bfr := AnsiString(Format('  %8.8x %8.8x'#13#10,
+                                     [Core.FetchWord(0, addr),
+                                      Core.FetchWord(0, addr + 4)]));
+            SvcTraceFile.Write(PAnsiChar(bfr)^, Length(bfr));
+          end;
+          $c106:
+          begin
+            bfr := '  *LNEREL'#13#10;
+            SvcTraceFile.Write(PAnsiChar(bfr)^, Length(bfr));
+            bfr := AnsiString(Format('  %8.8x %8.8x'#13#10,
+                                     [Core.FetchWord(0, addr),
+                                      Core.FetchWord(0, addr + 4)]));
+            SvcTraceFile.Write(PAnsiChar(bfr)^, Length(bfr));
+          end
+          else
+          begin
+            bfr := AnsiString(Format('  *Param = %4.4x'#13#10, [param]));
+            SvcTraceFile.Write(PAnsiChar(bfr)^, Length(bfr));
+          end;
+        end;
+    end;
+
 begin
     try
         svc := CurInst.ImmedOperand;
@@ -3608,13 +4075,17 @@ begin
         bfr := AnsiString(Format('Svc = %d - %s @ %6.6x'#13#10, [svc, stemp, instAddr]));
         SvcTraceFile.Write(PAnsiChar(bfr)^, Length(bfr));
         case svc of
-          0:                            // EXCP
+          0:                                    // EXCP
           begin
             TraceExcp;
           end;
-          5:                            // OPR
+          5:                                    // OPR
           begin
             TraceOpr;
+          end;
+          9:                                    // Comm
+          begin
+            TraceComm;
           end;
           15:
           begin

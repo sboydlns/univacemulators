@@ -38,7 +38,6 @@ type
     HaltBox: TCheckBox;
     ErrorBox: TCheckBox;
     Label1: TLabel;
-    RegGrid: TStringGrid;
     Label2: TLabel;
     ExceptLbl: TLabel;
     CommandEdt: TEdit;
@@ -61,6 +60,13 @@ type
     WatchesGrid: TStringGrid;
     SvcPage: TTabSheet;
     SvcGrid: TStringGrid;
+    RegPages: TPageControl;
+    RegPage: TTabSheet;
+    RegGrid: TStringGrid;
+    FPRegPage: TTabSheet;
+    FPRegSinglePage: TTabSheet;
+    FPRegGrid: TStringGrid;
+    FPRegSingleGrid: TStringGrid;
     procedure FormShow(Sender: TObject);
     procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
     procedure CommandEdtKeyPress(Sender: TObject; var Key: Char);
@@ -78,11 +84,12 @@ type
     procedure FillBrkpts;
     procedure FillForm;
     procedure FillWatches;
-    function ToHex(val: Smallint): String;
+    procedure ModifyMem(addr: TMemoryAddress; val: Integer);
     procedure ParseCommand(s: String; var cmd: String; var param1, param2: Integer);
     function Printable(val: Cardinal): String;
     procedure SetWatch(addr: TMemoryAddress; mask: Integer);
     procedure SysDump(start, fin: TMemoryAddress);
+    function ToHex(val: Smallint): String;
     procedure Wait;
   public
     constructor Create(AOwner: TComponent); override;
@@ -210,6 +217,9 @@ begin
         end else if (cmd = 'W') then
         begin
             SetWatch(TMemoryAddress(addr), addr2);
+        end else if (cmd = 'M') then
+        begin
+            ModifyMem(TMemoryAddress(addr), addr2);
         end;
         Key := #0;
         CommandEdt.Text := '';
@@ -515,6 +525,16 @@ begin
         for r := 0 to 15 do
             Cells[r mod 4, (r div 4) + 1] := Format('%8.8x', [Processor.Registers[PSW.RegisterSet, r]]);
     end;
+    with FPRegGrid do
+    begin
+        for r := 0 to 3 do
+            Cells[r, 1] := Format('%f', [Processor.NativeToFloat(Processor.FPRegDouble[r * 2])]);
+    end;
+    with FPRegSingleGrid do
+    begin
+        for r := 0 to 3 do
+            Cells[r, 1] := Format('%f', [Processor.NativeToFloat(Processor.FPRegSingle[r * 2])]);
+    end;
 
     Dump(FDumpAddr);
 end;
@@ -552,7 +572,28 @@ begin
         Cells[2, 0] := '2/6/10/14';
         Cells[3, 0] := '3/7/11/15';
     end;
+    with FPRegGrid do
+    begin
+        Cells[0, 0] := '0';
+        Cells[1, 0] := '2';
+        Cells[2, 0] := '4';
+        Cells[3, 0] := '6';
+    end;
+    with FPRegSingleGrid do
+    begin
+        Cells[0, 0] := '0';
+        Cells[1, 0] := '2';
+        Cells[2, 0] := '4';
+        Cells[3, 0] := '6';
+    end;
+    RegPages.ActivePage := RegPage;
     FillForm;
+end;
+
+procedure TDebuggerForm.ModifyMem(addr: TMemoryAddress; val: Integer);
+begin
+    Core.StoreByte(0, addr, Byte(val));
+    Dump(FDumpAddr);
 end;
 
 procedure TDebuggerForm.ParseCommand(s: String; var cmd: String; var param1, param2: Integer);
@@ -622,6 +663,7 @@ begin
     begin
         w.Address := addr;
         w.Mask := Byte(mask);
+        w.PriorValue := Core.FetchByte(0, addr);
         FWatches.Add(w);
         ExceptLbl.Caption := Format('Watch @ %6.6x added', [addr]);
     end else

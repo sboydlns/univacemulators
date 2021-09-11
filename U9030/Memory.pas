@@ -85,6 +85,7 @@ type
     procedure CheckAddressRead(key: Byte; var addr: TMemoryAddress); inline;
     procedure CheckAddressWrite(key: Byte; var addr: TMemoryAddress); inline;
     procedure CheckAlignment(addr: TMemoryAddress; align: TAlignment); inline;
+    function GetMaxMemory: Integer;
   public
     constructor Create;
     procedure Copy(src: PByte; dest: TMemoryAddress; len: Integer);
@@ -103,6 +104,7 @@ type
     procedure StorePacked(key: Byte; addr: TMemoryAddress; len: Integer; val: TBcd);
     procedure StoreStorageKey(addr: TMemoryAddress; value: Byte);
     procedure StoreWord(key: Byte; addr: TMemoryAddress; val: TWord);
+    property MaxMemory: Integer read GetMaxMemory;
   end;
 
   // I/O Status Table Control Word wrapper
@@ -138,7 +140,7 @@ type
 
 implementation
 
-uses Globals, Math,
+uses Dialogs, Globals, Math,
      Bcd;
 
 { TMemory }
@@ -212,6 +214,10 @@ end;
 function TMemory.FetchByte(key: Byte; addr: TMemoryAddress): Byte;
 begin
     CheckAddressRead(key, addr);
+    // TESTING
+//    if ((addr >= 50756) and (addr <= 50770)) then
+//        ShowMessage('ICAM buffer referenced');
+    //
     Result := FMemory[addr];
 end;
 
@@ -320,6 +326,11 @@ begin
     (b + 1)^ := FMemory[addr + 2];
     (b + 2)^ := FMemory[addr + 1];
     (b + 3)^ := FMemory[addr];
+end;
+
+function TMemory.GetMaxMemory: Integer;
+begin
+    Result := High(FMemory);
 end;
 
 procedure TMemory.StoreByte(key: Byte; addr: TMemoryAddress; val: Byte);

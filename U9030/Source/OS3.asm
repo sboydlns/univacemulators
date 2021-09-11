@@ -4364,12 +4364,12 @@
 
               USING *,R11
               
-493C:         LH    12,X'690'(,R11)
+493C:         LH    R12,X'690'(,R11)
 4940:         BALR  R13,R12                      GET CURRENT IOSTIW
-4942:         LH    15,X'0008'                   GET POINTER TO SWITCHER
+4942:         LH    R15,X'0008'                  GET POINTER TO SWITCHER
 4946:         BCR   7,R15                        NO CURRENT IOSTIW? GOTO SWITCHER
-4948:         LH    15,X'4FD0'
-494C:         L     12,SB$CHINT                  MCP CPIOCS ENTRY ADDR
+4948:         LH    R15,X'4FD0'
+494C:         L     R12,SB$CHINT                 MCP CPIOCS ENTRY ADDR
 4950:         LTR   R12,R12                      IS IT ZERO?
 4952:         BZ    X'4958'                      YES
 4956:         BALR  R13,R12                      NO, LET ICAM TRY TO PROCESS IT.

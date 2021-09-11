@@ -106,6 +106,8 @@ type
     ConfigXml: TXMLDocument;
     PrintBtn: TButton;
     ReaderStatusLbl: TLabel;
+    RdrEmptyBtn: TButton;
+    RdrAttnBtn: TButton;
     procedure TimerTimer(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure StopBtnClick(Sender: TObject);
@@ -119,6 +121,8 @@ type
     procedure PrnSaveBtnClick(Sender: TObject);
     procedure RdrLoadBtnClick(Sender: TObject);
     procedure PrintBtnClick(Sender: TObject);
+    procedure RdrEmptyBtnClick(Sender: TObject);
+    procedure RdrAttnBtnClick(Sender: TObject);
   private
     FConsoleStarted: Boolean;
     FConfigFile: String;
@@ -139,7 +143,7 @@ implementation
 {$R *.dfm}
 
 uses DebuggerFrm, U9030Types, Globals, Channels, Cpu, Memory, IDA, IPC, Console, Trace,
-     U0717, U0773, CpuTestFrm, Config, CommAdapter;
+     U0717, U0773, CpuTestFrm, Config, UniscopeAdapter;
 
 var
     Cons: TConsole;
@@ -278,8 +282,8 @@ begin
     Adapters.Channel[0].AddDevice(Reader);
     Printer := T0773.Create(2);
     Adapters.Channel[0].AddDevice(Printer);
-    // Create a generic comm adapter for testing
-    Adapters.Channel[0].AddDevice(TCommAdapter.Create(4));
+    // Create a uniscope comm adapter for testing
+    Adapters.Channel[0].AddDevice(TUniscopeAdapter.Create(4, $21));
 
     ParseCmdLine;
     if (FConfigFile = '') then
@@ -411,6 +415,16 @@ begin
     end;
     CloseHandle(pi.hProcess);
     CloseHandle(pi.hThread);
+end;
+
+procedure TU9030Form.RdrAttnBtnClick(Sender: TObject);
+begin
+    Reader.SendAttention;
+end;
+
+procedure TU9030Form.RdrEmptyBtnClick(Sender: TObject);
+begin
+    Reader.Empty;
 end;
 
 procedure TU9030Form.RdrLoadBtnClick(Sender: TObject);

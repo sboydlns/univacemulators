@@ -1,9 +1,9 @@
-object U9030ConsoleForm: TU9030ConsoleForm
+object U200TNForm: TU200TNForm
   Left = 0
   Top = 0
   BorderIcons = [biSystemMenu, biMinimize]
   BorderStyle = bsSingle
-  Caption = '90/30 Console'
+  Caption = 'U200 Emulator / Telnet'
   ClientHeight = 309
   ClientWidth = 645
   Color = clBtnFace
@@ -24,7 +24,7 @@ object U9030ConsoleForm: TU9030ConsoleForm
   object Telnet: TIdTelnet
     OnStatus = TelnetStatus
     Host = 'localhost'
-    Port = 9030
+    Port = 9034
     OnTelnetCommand = TelnetTelnetCommand
     Terminal = 'U100'
     Left = 580

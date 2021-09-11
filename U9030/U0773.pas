@@ -43,7 +43,6 @@ type
     FVFB: array [0..143] of Byte;
     FPrintBfr: AnsiString;
     FLineNum: Integer;
-    FCommand: Byte;
     FBCW: TIPCBCW;
     FPrintFile: TFileStream;
     FPrintFileName: String;
@@ -87,13 +86,13 @@ begin
     if (not FVfbLoaded) then
     begin
         FSense[1] := PRN_VFB_PARITY;
-        FChannel.QueueStatus(MakeStatus(DEVICE_END OR UNIT_CHECK, 0));
+        QueueStatus(DEVICE_END OR UNIT_CHECK, 0);
         Result := False;
     end;
     if (not FLcbLoaded) then
     begin
         FSense[1] := PRN_LCB_PARITY;
-        FChannel.QueueStatus(MakeStatus(DEVICE_END OR UNIT_CHECK, 0));
+        QueueStatus(DEVICE_END OR UNIT_CHECK, 0);
         Result := False;
     end;
 end;
@@ -127,7 +126,7 @@ end;
 
 procedure T0773.DeviceEnd;
 begin
-    FChannel.QueueStatus(MakeStatus(DEVICE_END, 0));
+    QueueStatus(DEVICE_END, 0);
 end;
 
 procedure T0773.DoAdvance;
@@ -173,7 +172,7 @@ begin
             begin
                 // skip code not found
                 FSense[1] := PRN_VFB_CHECK;
-                FChannel.QueueStatus(MakeStatus(DEVICE_END or UNIT_CHECK, 0));
+                QueueStatus(DEVICE_END or UNIT_CHECK, 0);
                 Exit;
             end;
             if (i <= FLineNum) then
@@ -209,7 +208,13 @@ begin
             end;
         end;
     end;
-    DeviceEnd;
+    // Post form overflow status from last command
+    if (FOverflow) then
+    begin
+        Overflow;
+        FOverflow := False;
+    end else
+        DeviceEnd;
 end;
 
 procedure T0773.DoDiagnose;
@@ -240,14 +245,6 @@ end;
 procedure T0773.DoLoadPrintBfr;
 begin
     ClearSense;
-    // Post form overflow status from last command
-    if (FOverflow) then
-    begin
-        Overflow;
-        FOverflow := False;
-        Exit;
-    end;
-
     if (FetchBuffer(FPrintBfr)) then
         DeviceEnd;
 end;
@@ -278,13 +275,6 @@ begin
     // Check LCB & VFB Status
     if (not CheckInit) then
         Exit;
-    // Post form overflow status from last command
-    if (FOverflow) then
-    begin
-        Overflow;
-        FOverflow := False;
-        Exit;
-    end;
 
     if (FetchBuffer(FPrintBfr)) then
     begin
@@ -371,13 +361,13 @@ begin
         end;
     except
         Result := False;
-        FChannel.QueueStatus(MakeStatus(DEVICE_END or UNIT_CHECK, INVALID_ADDRESS));
+        QueueStatus(DEVICE_END or UNIT_CHECK, INVALID_ADDRESS);
     end;
 end;
 
 procedure T0773.Overflow;
 begin
-    FChannel.QueueStatus(MakeStatus(DEVICE_END or UNIT_EXCEPTION, 0));
+    QueueStatus(DEVICE_END or UNIT_EXCEPTION, 0);
 end;
 
 procedure T0773.ProcessCommand;
@@ -412,9 +402,7 @@ begin
               else          raise Exception.Create('0773 command not implemented');
             end;
         end;
-        FCommand := 0;
     end;
-    FBusy := False;
 end;
 
 procedure T0773.SaveAs(fname: String);
@@ -458,7 +446,7 @@ begin
             Dec(len);
         except
             Result := False;
-            FChannel.QueueStatus(MakeStatus(DEVICE_END or UNIT_CHECK, INVALID_ADDRESS));
+            QueueStatus(DEVICE_END or UNIT_CHECK, INVALID_ADDRESS);
         end;
     end;
 end;
