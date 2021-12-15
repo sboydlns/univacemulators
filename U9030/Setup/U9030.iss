@@ -35,6 +35,7 @@ Source: C:\Development\Emulators\U9030\Win32\Debug\U9030DisAsm.exe; DestDir: {ap
 Source: C:\Development\Emulators\U9030\Win32\Debug\U8418Util.exe; DestDir: {app}; Flags: ignoreversion
 Source: C:\Development\Emulators\U9030\Win32\Debug\DmpRst.exe; DestDir: {app}; Flags: ignoreversion
 Source: C:\Development\Emulators\U9030\Win32\Debug\U9030.exe; DestDir: {app}; Flags: ignoreversion
+Source: ..\Win32\Debug\U200TN.exe; DestDir: {app}; Flags: ignoreversion
 Source: ..\Win32\Debug\U9030Print.exe; DestDir: {app}; Flags: ignoreversion
 Source: ..\Disks\SDIVSB.8418; DestDir: {commonappdata}\Univac 9030 Emulator\Data; Permissions: users-full
 Source: ..\Disks\VSBRES.8418; DestDir: {commonappdata}\Univac 9030 Emulator\Data; Permissions: users-full
@@ -78,6 +79,7 @@ Name: {group}\Dump Restore; Filename: {app}\DmpRst.exe; IconIndex: 0
 Name: {group}\Univac 9030 Emulator (VSB); Filename: {app}\U9030.exe; Parameters: -c VSB.cfg; IconIndex: 0
 Name: {group}\Emulator Documentatiopn; Filename: {app}\Docs\U9030.pdf
 Name: {group}\U9030 Print; Filename: {app}\U9030Print.exe; IconIndex: 0
+Name: {group}\U200 Emulator; Filename: {app}\U200TN.exe; IconIndex: 0
 
 [Run]
 Filename: {app}\{#MyAppExeName}; Description: {cm:LaunchProgram,{#MyAppName}}; Flags: nowait postinstall skipifsilent; Parameters: -c REL042.cfg

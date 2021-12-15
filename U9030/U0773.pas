@@ -208,7 +208,7 @@ begin
             end;
         end;
     end;
-    // Post form overflow status from last command
+    // Post form overflow status or device end
     if (FOverflow) then
     begin
         Overflow;

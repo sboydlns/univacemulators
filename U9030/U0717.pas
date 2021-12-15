@@ -169,7 +169,7 @@ begin
 
     TCardFileStream.ReadEbcdic(bfr, FReadStation);
     //
-    StoreBuffer(@bfr.Columns, FBCW.ActvCount);
+    StoreBuffer(@bfr.Columns, bfr.Count);
     DeviceEnd;
 end;
 

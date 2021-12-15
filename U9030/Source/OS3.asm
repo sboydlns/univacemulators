@@ -1321,7 +1321,7 @@
 1BD8:         BC    15,X'1BC4'
 1BDC:         DC    XL4'FFFF0000'
 1BE0:         SSM   X'0000',0
-1BE4:         DC    XL4'00000000'\
+1BE4:         DC    XL4'00000000'
 
      * TIMER INTERRUPT HANDLER
      
@@ -1488,8 +1488,8 @@
 1E16:         BNZ   X'1E52'                      YES
 1E1A:         TM    IP$CONT1(R8),DP$DVERR        UNIT CHECK?                                
 1E1E:         BO    X'1E7E'                      YES
-1E22:         TM    X'003'(R1),16
-1E26:         BZ    X'1E46'(,R12)
+1E22:         TM    IC$T+1(R1),BC$DIAG           DIAGNOSTIC CCB?
+1E26:         BZ    X'1E46'                      NO
 1E2A:         TM    X'003'(R1),128
 1E2E:         BC    8,X'04E'(,R12)
 1E32:         TM    X'01C'(R8),2
@@ -1497,7 +1497,7 @@
 1E3A:         TM    X'01C'(R1),3
 1E3E:         BC    8,X'04E'(,R12)
 1E42:         BC    15,X'086'(,R12)
-1E46:         TM    X1P$CONT2(R8),BP$IO2         IO 2 CONTROL?
+1E46:         TM    IP$CONT2(R8),BP$IO2          IO 2 CONTROL?
 1E4A:         BZ    X'4CA8'                      NO
 1E4E:         NI    X'01C'(R8),253
 1E52:         SR    R9,R9
@@ -4092,10 +4092,10 @@
 4554:         SR    R9,R9
 4556:         CLR   R6,R3                        END OF TABLE?
 4558:         BL    X'4560'                      NO
-455C:         LH    6,X'010'(,R8)
+455C:         LH    6,IP$QUE(,R8)                GET QUEUE ADDRESS
 4560:         BCT   5,X'45E4'                    DEC. LOOP COUNT & JUMP
 4564:         LTR   R1,R9                        PTR TO CCB TO R1
-4566:         BCR   R8,R15                       IF ZERO, RETURN
+4566:         BZR   R15                          IF ZERO, RETURN
 4568:         MVI   X'223'(R12),240
 456C:         OI    SB$ERFLG,BB$TCB?             SET TCB QUESTIONABLE
 4570:         NI    SB$ERFLG,191                 CLEAR CCB QUESTIONABLE
@@ -4520,15 +4520,15 @@
 4B62:         LH    R12,SB$IOQ
 4B66:         OR    R12,R12
 4B68:         BALR  R13,R12
-4B6A:         LTR   R0,R0
-4B6C:         BC    8,X'246'(,R11)
+4B6A:         LTR   R0,R0                        R0 = 0?
+4B6C:         BZ    X'246'(,R11)                 YES
 4B70:         CH    0,X'568'(,R11)
 4B74:         BC    11,X'246'(,R11)
 4B78:         NI    X'02B6',31
 4B7C:         LH    2,X'696'(,R11)
 4B80:         BCR   R15,R2
-4B82:         TM    X'003'(R1),16
-4B86:         BC    8,X'294'(,R11)
+4B82:         TM    IC$T+1(R1),BC$DIAG           DIAGNOSTIC CCB?
+4B86:         BZ    X'4BD0'                      NO
 4B8A:         TM    X'006'(R8),7
 4B8E:         BC    8,X'294'(,R11)
 4B92:         NI    X'01C'(R8),248
@@ -4546,15 +4546,15 @@
 4BC4:         BC    7,X'290'(,R11)
 4BC8:         LA    2,X'008'(,R2)
 4BCC:         ST    2,X'004'(,R1)
-4BD0:         TM    X'003'(R1),16
-4BD4:         BC    8,X'2AC'(,R11)
+4BD0:         TM    IC$T+1(R1),BC$DIAG           DIAGNOSTIC CCB?
+4BD4:         BZ    X'4BE8'                      NO
 4BD8:         CLI   X'027'(R1),142
 4BDC:         BC    7,X'2AC'(,R11)
 4BE0:         LR    R13,R0
 4BE2:         MVC   X'001'(2,R1),X'002'(R13)
-4BE8:         TM    X'018'(R8),64
-4BEC:         BCR   R1,R15
-4BEE:         LH    11,X'038C'
+4BE8:         TM    IP$CONT3(R8),BP$OPRSV        OPR SAVED BY AVR?
+4BEC:         BOR   R15                          YES
+4BEE:         LH    11,SB$ECOV                   EXCP PROCESSOR COVER
 4BF2:         BC    15,X'1A2'(,R11)
 4BF6:         LH    0,X'692'(,R11)
 4BFA:         MVI   X'014'(R1),255
@@ -4604,12 +4604,12 @@
 4CA2:         LH    12,IP$EPI(,R8)               GET ENTRY FOR CHANNEL INTERRUPT
 4CA6:         BCR   R15,R12
      *
-4CA8:         STC   R6,X'002'(,R1)
+4CA8:         STC   R6,IC$T(,R1)
 4CAC:         CH    0,X'4E9C'
 4CB0:         BC    13,X'428'(,R11)
 4CB4:         NI    IP$CONT2(R8),248             CLEAR IO1/2/4 FLAGS
-4CB8:         TM    X'003'(R1),16
-4CBC:         BC    1,X'3E2'(,R11)
+4CB8:         TM    IC$T+1(R1),BC$DIAG           DIAGNOSTIC CCB?
+4CBC:         BO    X'3E2'(,R11)                 YES
 4CC0:         XC    IP$CONT1(2,R8),IP$CONT1(R8)  CLEAR IP$CONT1, IP$CONT4
 4CC6:         LH    12,SB$UNLCK                  TRAP UNLOCK?
 4CCA:         LTR   R12,R12                      IS IT ZERO
@@ -4635,8 +4635,8 @@
 4D16:         TM    X'01D'(R8),64
 4D1A:         BC    1,X'3E8'(,R11)
 4D1E:         XC    IP$CCB(4,R8),IP$CCB(R8)      CLEAR CCB ADDR.
-4D24:         TM    X'003'(R1),16
-4D28:         BZ    X'4D5C'
+4D24:         TM    IC$T+1(R1),BC$DIAG           DIAGNOSTIC CCB?
+4D28:         BZ    X'4D5C'                      NO
 4D2C:         CLI   X'01B'(R1),0
 4D30:         BC    7,X'408'(,R11)
 4D34:         TM    X'01A'(R1),2
@@ -4650,9 +4650,9 @@
 4D58:         BC    15,X'428'(,R11)
 4D5C:         NI    IP$CONT2(R8),248             CLEAR IO1/2/4 CONTROL
 4D60:         MVI   IP$CONT1(R8),0               CLEAR IP$CONT1
-4D64:         OI    X'002'(R1),128
-4D68:         TM    X'000'(R1),4
-4D6C:         BC    8,X'438'(,R11)
+4D64:         OI    IC$T(R1),BC$TRAFF            SET TRAFFIC BIT
+4D68:         TM    IC$CTL(R1),BC$WAIT           WAIT BIT SET?
+4D6C:         BZ    X'438'(,R11)                 NO
 4D70:         NI    JT$WAIT+1(R14),251           CLEAR WAIT BIT             
 4D74:         AI    JT$IOC(R14),255              DEC OUTSTANDING I/O COUNT
 4D78:         BNZ   X'4B5C'                      NOT ZERO, SKIP NEXT

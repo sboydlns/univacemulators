@@ -29,17 +29,21 @@ type
     procedure SetReplCount(const Value: THalfWord);
     function GetF: Boolean;
     procedure SetActvTerm(const Value: Boolean);
+    procedure SetF(const Value: Boolean);
+    procedure SetActvChain(const Value: Boolean);
+    procedure SetActvKey(const Value: Byte);
+    procedure SetReplChain(const Value: Boolean);
   public
     constructor Create(bcw: TMemoryAddress);
     property ActvAddress: TMemoryAddress read GetActvAddress write SetActvAddress;
-    property ActvChain:  Boolean read GetActvChain;
+    property ActvChain:  Boolean read GetActvChain write SetActvChain;
     property ActvCount: THalfWord read GetActvCount write SetActvCount;
-    property ActvKey: Byte read GetActvKey;
+    property ActvKey: Byte read GetActvKey write SetActvKey;
     property ActvTerm:  Boolean read GetActvTerm write SetActvTerm;
     property Command: Byte read GetCommand;
-    property F: Boolean read GetF;
+    property F: Boolean read GetF write SetF;
     property ReplAddress: TMemoryAddress read GetReplAddress write SetReplAddress;
-    property ReplChain:  Boolean read GetReplChain;
+    property ReplChain:  Boolean read GetReplChain write SetReplChain;
     property ReplCount: THalfWord read GetReplCount write SetReplCount;
     property ReplKey: Byte read GetReplKey;
     property ReplTerm:  Boolean read GetReplTerm;
@@ -136,12 +140,31 @@ begin
     Core.StoreWord(0, FBCWAddress, (w and (not $7ffff)) or (TWord(Value) and $7ffff));
 end;
 
+procedure TIPCBCW.SetActvChain(const Value: Boolean);
+var
+    b: Byte;
+begin
+    b :=Core.FetchByte(0, FBCWAddress + 6) and $7f;
+    if (Value) then
+        b := b or $80;
+    Core.StoreByte(0, FBCWAddress + 6, b);
+end;
+
 procedure TIPCBCW.SetActvCount(const Value: THalfWord);
 var
     hw: THalfWord;
 begin
     hw := Core.FetchHalfWord(0, FBCWAddress + 6);
     Core.StoreHalfWord(0, FBCWAddress + 6, (hw and (not $3ff)) or (Value and $3ff));
+end;
+
+procedure TIPCBCW.SetActvKey(const Value: Byte);
+var
+    b: Byte;
+begin
+    b := Core.FetchByte(0, FBCWAddress + 1) and $4f;
+    b := b or (Value shl 4);
+    Core.StoreByte(0, FBCWAddress + 1, b);
 end;
 
 procedure TIPCBCW.SetActvTerm(const Value: Boolean);
@@ -156,12 +179,32 @@ begin
     Core.StoreByte(0, FBCWAddress + 6, b);
 end;
 
+procedure TIPCBCW.SetF(const Value: Boolean);
+var
+    b: Byte;
+begin
+    b := Core.FetchByte(0, FBCWAddress + 8) and $7f;
+    if (Value) then
+        b := b or $80;
+    Core.StoreByte(0, FBCWAddress + 8, b);
+end;
+
 procedure TIPCBCW.SetReplAddress(const Value: TMemoryAddress);
 var
     w: TWord;
 begin
     w := Core.FetchWord(0, FBCWAddress + 8);
     Core.StoreWord(0, FBCWAddress + 8, (w and (not $7ffff)) or (TWord(Value) and $7ffff));
+end;
+
+procedure TIPCBCW.SetReplChain(const Value: Boolean);
+var
+    b: Byte;
+begin
+    b := Core.FetchByte(0, FBCWAddress + 4) and $7f;
+    if (Value) then
+        b := b or $80;
+    Core.StoreByte(0, FBCWAddress + 4, b);
 end;
 
 procedure TIPCBCW.SetReplCount(const Value: THalfWord);

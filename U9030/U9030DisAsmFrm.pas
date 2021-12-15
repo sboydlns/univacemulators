@@ -348,9 +348,12 @@ begin
                         begin
                             p.CommaText := s;
                             SetLength(FParams, Length(FParams) + 1);
+                            FParams[High(FParams)].StartAddr := 0;
+                            FParams[High(FParams)].EndAddr := 0;
                             if (not TryStrToInt(p[0], FParams[High(FParams)].StartAddr)) then
                                 FParams[High(FParams)].StartAddr := 0;
-                            if (not TryStrToInt(p[1], FParams[High(FParams)].EndAddr)) then
+                            if ((p.Count > 1) and
+                                (not TryStrToInt(p[1], FParams[High(FParams)].EndAddr))) then
                                 FParams[High(FParams)].EndAddr := 0;
                             s := '';
                         end;
@@ -451,6 +454,8 @@ begin
                 Inc(FParamIndex);
             end;
         end;
+        if (FState = dasConst) then
+            EmitConst;
     finally
         fin.Free;
         FreeMem(bfr);

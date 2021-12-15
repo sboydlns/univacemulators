@@ -15,6 +15,7 @@ object U200TNForm: TU200TNForm
   KeyPreview = True
   OldCreateOrder = False
   OnDestroy = FormDestroy
+  OnKeyDown = FormKeyDown
   OnKeyPress = FormKeyPress
   OnKeyUp = FormKeyUp
   OnPaint = FormPaint
@@ -36,5 +37,11 @@ object U200TNForm: TU200TNForm
     OnTimer = TimerTimer
     Left = 546
     Top = 248
+  end
+  object KeyTimer: TTimer
+    Interval = 50
+    OnTimer = KeyTimerTimer
+    Left = 494
+    Top = 250
   end
 end

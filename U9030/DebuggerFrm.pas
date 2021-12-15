@@ -67,9 +67,14 @@ type
     FPRegSinglePage: TTabSheet;
     FPRegGrid: TStringGrid;
     FPRegSingleGrid: TStringGrid;
+    SibPage: TTabSheet;
+    SibMemo: TMemo;
+    TcbPage: TTabSheet;
+    TcbMemo: TMemo;
     procedure FormShow(Sender: TObject);
     procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
     procedure CommandEdtKeyPress(Sender: TObject; var Key: Char);
+    procedure PagesChange(Sender: TObject);
   private
     FCommand: String;
     FState: TDebuggerState;
@@ -80,7 +85,7 @@ type
     FWaiting: Boolean;
     FDumpAddr: TMemoryAddress;
     procedure CheckWatches;
-    procedure Dump(start: TMemoryAddress);
+    procedure Dump(start: TMemoryAddress; len: Integer; memo: TMemo; clr: Boolean = True);
     procedure FillBrkpts;
     procedure FillForm;
     procedure FillWatches;
@@ -207,7 +212,7 @@ begin
                 FDumpAddr := addr + Processor.RelocateReg;
                 if ((addr2 >= 0) and (addr2 <= 15)) then
                     FDumpAddr := FDumpAddr + Processor.Registers[PSW.RegisterSet, addr2];
-                Dump(FDumpAddr);
+                Dump(FDumpAddr, 4096, DumpMemo);
                 CommandEdt.Clear;
             end else
                 raise Exception.Create('Command invalid');
@@ -298,7 +303,7 @@ begin
     end;
 end;
 
-procedure TDebuggerForm.Dump(start: TMemoryAddress);
+procedure TDebuggerForm.Dump(start: TMemoryAddress; len: Integer; memo: TMemo; clr: Boolean);
 var
     hex, text: String;
     stop: TMemoryAddress;
@@ -317,10 +322,12 @@ var
     end;
 
 begin
-    DumpMemo.Lines.BeginUpdate;
+    memo.Lines.BeginUpdate;
     try
-        DumpMemo.Lines.Clear;
-        stop := start + 4096;
+        if (clr) then
+            memo.Lines.Clear;
+        start := start and $ffffff;
+        stop := start + len;
         count := 0;
         hex := Format('%6.6x * ', [start]);
         text := '';
@@ -333,16 +340,16 @@ begin
             Inc(count);
             if ((count mod 4) = 0) then
             begin
-                DumpMemo.Lines.Add(hex + text);
+                memo.Lines.Add(hex + text);
                 hex := Format('%6.6x * ', [start]);
                 text := '';
             end;
         end;
-        DumpMemo.SelStart := DumpMemo.Perform(EM_LINEINDEX, 0, 0);
-        DumpMemo.Perform(EM_SCROLLCARET, 0, 0);
-        DumpMemo.Lines.EndUpdate;
+        memo.SelStart := memo.Perform(EM_LINEINDEX, 0, 0);
+        memo.Perform(EM_SCROLLCARET, 0, 0);
+        memo.Lines.EndUpdate;
     except
-        DumpMemo.Lines.EndUpdate;
+        memo.Lines.EndUpdate;
     end;
 end;
 
@@ -536,7 +543,7 @@ begin
             Cells[r, 1] := Format('%f', [Processor.NativeToFloat(Processor.FPRegSingle[r * 2])]);
     end;
 
-    Dump(FDumpAddr);
+    Dump(FDumpAddr, 4096, DumpMemo);
 end;
 
 procedure TDebuggerForm.FillWatches;
@@ -593,7 +600,45 @@ end;
 procedure TDebuggerForm.ModifyMem(addr: TMemoryAddress; val: Integer);
 begin
     Core.StoreByte(0, addr, Byte(val));
-    Dump(FDumpAddr);
+    Dump(FDumpAddr, 4096, DumpMemo);
+end;
+
+procedure TDebuggerForm.PagesChange(Sender: TObject);
+var
+    sib, switchList, tcb, start: TMemoryAddress;
+    tcbLen: THalfWord;
+    pri: Integer;
+begin
+    sib := Core.FetchHalfWord(0, $6);
+    if (Pages.ActivePage = SibPage) then
+    begin
+        Dump(sib, $120, SibMemo);
+    end else if (Pages.ActivePage = TcbPage) then
+    begin
+        pri := 0;
+        switchList := Core.FetchHalfWord(0, sib + $88);
+        tcbLen := Core.FetchHalfWord(0, sib + $9e);
+        TcbMemo.Lines.Clear;
+        tcb := Core.FetchWord(0, switchList);
+        while ((tcb and $ffff0000) <> $ffff0000) do
+        begin
+            TcbMemo.Lines.Add(Format('**Priority %d', [pri]));
+            if (tcb <> 0) then
+            begin
+                start := tcb;
+                repeat
+                    TcbMemo.Lines.Add(Format('**Task at %6.6x', [tcb]));
+                    TcbMemo.Lines.Add('');
+                    Dump(tcb, tcbLen, TcbMemo, False);
+                    TcbMemo.Lines.Add('');
+                    tcb := Core.FetchWord(0, tcb) and $ffffff;
+                until (tcb = start);
+            end;
+            Inc(switchList, 4);
+            Inc(pri, 1);
+            tcb := Core.FetchWord(0, switchList);
+        end;
+    end;
 end;
 
 procedure TDebuggerForm.ParseCommand(s: String; var cmd: String; var param1, param2: Integer);

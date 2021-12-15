@@ -35,6 +35,11 @@ type
     FProtected: Boolean;
     FRid: Byte;
     FSid: Byte;
+    FIACSeen: Boolean;
+    FRidSeen: Boolean;
+    FSidSeen: Boolean;
+    FStxSeen: Boolean;
+    FBuffer: AnsiString;
     function GetCanvas: TCanvas;
     procedure SetBackColour(const Value: TColor);
     procedure SetTextColour(const Value: TColor);
@@ -56,10 +61,13 @@ type
     FSize: TUniscopeSize;
     FPrntrFile: TFileStream;
     procedure BackSpace;
+    procedure CarriageReturn;
     procedure ClearBuffer;
     procedure CursorHome;
     procedure CursorPosition(row, col: Byte);
     procedure DecCursor;
+    procedure DeleteInDisplay;
+    procedure DeleteInLine;
     procedure DeleteLine;
     procedure DoAcknowledge;
     procedure DoBell;
@@ -71,24 +79,36 @@ type
     procedure DrawStatus;
     procedure EndProtected;
     procedure EraseDisplay(prot: Boolean);
+    procedure EraseLine;
+    function FindEndProtect(start: Integer): Integer;
     procedure FindSOE(var row, col: Integer);
     function GetCharacter: Char;
     procedure HideCursor;
     procedure Home;
     procedure IncCursor;
+    procedure InsertInDisplay;
+    procedure InsertInLine;
+    procedure InsertLine;
     function IsProtected(row, col: Integer): Boolean;
     procedure Left;
     procedure MsgWait;
     procedure OpenPrntrFile;
     procedure Print;
     procedure PrintTransparent;
+    procedure ProcessBuffer;
     procedure Refresh;
     procedure Right;
+    procedure ScanDown;
+    procedure ScanLeft;
+    procedure ScanRight;
+    procedure ScanUp;
     procedure SetArrayLengths;
     procedure SetCharacter(c: Char);
+    procedure ShowCursor;
     procedure SkipProtectBackward;
     procedure SkipProtectForward;
     procedure StartProtected;
+    procedure Tab(Shift: TShiftState);
     procedure TelnetConnected(Sender: TObject);
     procedure TelnetDataAvailable(Sender: TIdTelnet; const Buffer: TIdBytes);
     procedure TelnetDisconnected(Sender: TObject);
@@ -134,6 +154,7 @@ const
   START_BLINK_CHAR = '«';
   END_BLINK_CHAR = '»';
   CURSOR_CHAR = '█';
+  BEL_CHAR = ' ';
 
 { TUniscope }
 
@@ -148,6 +169,21 @@ end;
 procedure TUniscope.CharOut(c: Byte; incr: Boolean);
 begin
     CharOut(Char(AnsiChar(c)), incr);
+end;
+
+procedure TUniscope.CarriageReturn;
+begin
+    HideCursor;
+    try
+        FCol := 0;
+        Inc(FRow);
+        if (FRow >= FMaxRow) then
+            FRow := 0;
+        SkipProtectForward
+    finally
+        ShowCursor;
+    end;
+    DrawStatus;
 end;
 
 procedure TUniscope.CharOut(c: Char; incr: Boolean);
@@ -223,6 +259,45 @@ begin
     SkipProtectBackward;
 end;
 
+
+procedure TUniscope.DeleteInDisplay;
+var
+    i, j, eod: Integer;
+begin
+    i := (FRow * FMaxCol) + FCol;
+    eod := High(FCharacters);
+    if (tProtected in FAttributes[i]) then
+        Exit;
+    j := i + 1;
+    while ((j <= eod) and (not (tProtected in FAttributes[j]))) do
+    begin
+        FCharacters[i] := FCharacters[j];
+        Inc(i);
+        Inc(j);
+    end;
+    FCharacters[(FMaxRow * FMaxCol) - 1] := ' ';
+    Inc(i);
+    Refresh;
+end;
+
+procedure TUniscope.DeleteInLine;
+var
+    i, j, eol: Integer;
+begin
+    i := (FRow * FMaxCol) + FCol;
+    eol := ((FRow + 1) * FMaxCol) - 1;
+    if (tProtected in FAttributes[i]) then
+        Exit;
+    j := i + 1;
+    while ((j <= eol) and (not (tProtected in FAttributes[j]))) do
+    begin
+        FCharacters[i] := FCharacters[j];
+        Inc(i);
+        Inc(j);
+    end;
+    FCharacters[((FRow + 1) * FMaxCol) - 1] := ' ';
+    Refresh;
+end;
 
 procedure TUniscope.DeleteLine;
 var
@@ -336,6 +411,7 @@ begin
     if (FRow < FMaxRow) then
         Inc(FRow);
     SkipProtectForward;
+    ShowCursor;
     DrawStatus;
 end;
 
@@ -389,6 +465,36 @@ begin
         Inc(i);
     end;
     Refresh;
+end;
+
+procedure TUniscope.EraseLine;
+var
+    i, eol: Integer;
+begin
+    i := (FRow * FMaxCol) + FCol;
+    eol := ((FRow + 1) * FMaxCol) - 1;
+    while (i <= eol) do
+    begin
+        if (not (tProtected in FAttributes[i])) then
+        begin
+            FCharacters[i] := ' ';
+            FAttributes[i] := [];
+        end else
+            Break;
+        Inc(i);
+    end;
+    Refresh;
+end;
+
+function TUniscope.FindEndProtect(start: Integer): Integer;
+begin
+    while (start <= High(FAttributes)) do
+    begin
+        if (tProtected in FAttributes[start]) then
+            Break;
+        Inc(start);
+    end;
+    Result := start - 1;
 end;
 
 procedure TUniscope.FindSOE(var row, col: Integer);
@@ -466,6 +572,7 @@ end;
 
 procedure TUniscope.HideCursor;
 begin
+    FCursorOn := False;
     FCanvas.TextOut(FCol * FCharSize.cx, FRow * FCharSize.cy, GetCharacter);
 end;
 
@@ -475,6 +582,7 @@ begin
     FRow := 0;
     FCol := 0;
     SkipProtectForward;
+    ShowCursor;
     DrawStatus;
 end;
 
@@ -489,6 +597,71 @@ begin
             FRow := 0;
     end;
     SkipProtectForward;
+end;
+
+procedure TUniscope.InsertInDisplay;
+var
+    i, j, eod: Integer;
+begin
+    i := (FRow * FMaxCol) + FCol;
+    if (tProtected in FAttributes[i]) then
+        Exit;
+    eod := FindEndProtect(i);
+    j := eod;
+    while (j > i) do
+    begin
+        FCharacters[j] := FCharacters[j - 1];
+        Dec(j);
+    end;
+    FCharacters[i] := ' ';
+    Refresh;
+end;
+
+procedure TUniscope.InsertInLine;
+var
+    i, j, eol: Integer;
+begin
+    i := (FRow * FMaxCol) + FCol;
+    if (tProtected in FAttributes[i]) then
+        Exit;
+    eol := ((FRow + 1) * FMaxCol) - 1;
+    j := FindEndProtect(i);
+    if (j < eol) then
+        eol := j;
+    j := eol;
+    while (j > i) do
+    begin
+        FCharacters[j] := FCharacters[j - 1];
+        Dec(j);
+    end;
+    FCharacters[i] := ' ';
+    Refresh;
+end;
+
+procedure TUniscope.InsertLine;
+var
+    dest, src, count: Integer;
+begin
+    if (FRow < (FMaxRow - 1)) then
+    begin
+        dest := (FMaxRow - 1) * FMaxCol;
+        src := (FMaxRow - 2) * FMaxCol;
+        for count := 1 to (FMaxRow - FRow - 1) * FMaxCol do
+        begin
+            FCharacters[dest] := FCharacters[src];
+            FAttributes[dest] := FAttributes[src];
+            Dec(dest);
+            Dec(src);
+        end;
+    end;
+    dest := FRow * FMaxCol;
+    for count := 1 to FMaxCol do
+    begin
+        FCharacters[dest] := ' ';
+        FAttributes[dest] := [];
+        Inc(dest);
+    end;
+    Refresh;
 end;
 
 function TUniscope.IsProtected(row, col: Integer): Boolean;
@@ -509,6 +682,10 @@ begin
       begin
         BackSpace;
       end;
+      #13:
+      begin
+        CarriageReturn;
+      end;
       else
       begin
         if ((Key >= ' ') and (Key <= '~')) then
@@ -524,7 +701,15 @@ end;
 
 procedure TUniscope.KeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
+    if ((Key = VK_F12) and (ssShift in Shift)) then
+        FKbdLocked := False;
+    if (FKbdLocked) then
+        Exit;
+
     case Key of
+      VK_F5:        CharOut(SOE_CHAR);
+      VK_F6:        EraseDisplay(ssShift in Shift);
+      VK_F7:        EraseLine;
       VK_F11:       MsgWait;
       VK_F12:       Transmit;
       VK_HOME:      Home;
@@ -532,6 +717,15 @@ begin
       VK_RIGHT:     Right;
       VK_UP:        Up;
       VK_DOWN:      Down;
+      VK_TAB:       Tab(Shift);
+      VK_DELETE:    if (ssShift in Shift) then
+                        DeleteInDisplay
+                    else
+                        DeleteInLine;
+      VK_INSERT:    if (ssShift in Shift) then
+                        InsertInDisplay
+                    else
+                        InsertInLine;
     end;
 end;
 
@@ -539,6 +733,7 @@ procedure TUniscope.Left;
 begin
     HideCursor;
     DecCursor;
+    ShowCursor;
     DrawStatus;
 end;
 
@@ -593,6 +788,198 @@ begin
     { TODO : Implement print functions }
 end;
 
+procedure TUniscope.ProcessBuffer;
+var
+    i: Integer;
+    b: Byte;
+
+    procedure DoEscape;
+    var
+        x, y: Integer;
+        shiftIn: Byte;
+    begin
+        if (i >= Length(FBuffer)) then
+            Exit;
+        b := Ord(FBuffer[i + 1]);
+        case b of
+          HT:
+          begin
+            CharOut(TAB_CHAR);
+            IncCursor;
+            Inc(i);
+          end;
+          VT:
+          begin
+              Inc(i, 2);
+              if (i > Length(FBuffer) - 2) then
+                Exit;
+              y := Ord(FBuffer[i]);
+              x := Ord(FBuffer[i + 1]);
+              shiftIn := Ord(FBuffer[i + 2]);
+              CursorPosition(y - Ord(' '), x - Ord(' '));
+              Inc(i, 2);
+          end;
+          DC2:
+          begin
+            PrintTransparent;
+          end;
+          BEL:
+          begin
+            CharOut(BEL_CHAR);
+            IncCursor;
+            Inc(i);
+          end;
+          Ord('a'):
+          begin
+            EraseDisplay(False);
+            Inc(i);
+          end;
+          Ord('b'):
+          begin
+            EraseLine;
+            Inc(i);
+          end;
+          Ord('C'):
+          begin
+            DeleteInDisplay;
+            Inc(i);
+          end;
+          Ord('c'):
+          begin
+            DeleteInLine;
+            Inc(i);
+          end;
+          Ord('D'):
+          begin
+            InsertInDisplay;
+            Inc(i);
+          end;
+          Ord('d'):
+          begin
+            InsertInLine;
+            Inc(i);
+          end;
+          Ord('e'):
+          begin
+            CursorHome;
+            Inc(i);
+          end;
+          Ord('f'):
+          begin
+            ScanUp;
+            Inc(i);
+          end;
+          Ord('g'):
+          begin
+            ScanLeft;
+            Inc(i);
+          end;
+          Ord('h'):
+          begin
+            ScanRight;
+            Inc(i);
+          end;
+          Ord('i'):
+          begin
+            ScanDown;
+            Inc(i);
+          end;
+          Ord('j'):
+          begin
+            InsertLine;
+            Inc(i);
+          end;
+          Ord('k'):
+          begin
+            DeleteLine;
+            Inc(i);
+          end;
+          Ord('M'):
+          begin
+            EraseDisplay(True);
+            Inc(i);
+          end;
+          else
+          begin
+            ShowMessageFmt('Unimplemented escape code %2.2x-%s', [Ord(b), b]);
+          end;
+        end;
+    end;
+
+begin
+    i := 1;
+    while (i <= Length(FBuffer)) do
+    begin    
+        b := Ord(FBuffer[i]);
+        begin
+            case b of
+              NUL:
+                ;
+              LF:
+                ;
+              CR:
+              begin
+                FCol := 0;
+                Inc(FRow);
+                if (FRow >= FMaxRow) then
+                    FRow := 0;
+                DrawStatus;
+              end;
+              STX:
+              begin
+                FKbdLocked := True;
+                FLockKbd := False;
+                FProtected := False;
+              end;
+              ETX:
+              begin
+                FKbdLocked := FLockKbd;
+                FLockKbd := False;
+                DrawStatus;
+              end;
+              SO:
+              begin
+                StartProtected;
+              end;
+              SI:
+              begin
+                EndProtected;
+              end;
+              ESC:
+              begin
+                DoEscape;
+              end;
+              FS:
+              begin
+                CharOut(START_BLINK_CHAR);
+              end;
+              GS:
+              begin
+                CharOut(END_BLINK_CHAR);
+              end;
+              RS:
+              begin
+                CharOut(SOE_CHAR);
+              end;
+              DC2:
+              begin
+                Print;
+              end;
+              DC4:
+              begin
+                FLockKbd := True;
+              end;
+              else
+                if (b >= SPACE) then
+                    CharOut(b);
+            end;
+        end;
+        Inc(i);
+    end;
+    FBuffer := '';
+    DrawStatus;
+end;
+
 procedure TUniscope.Repaint;
 begin
     inherited Repaint;
@@ -603,6 +990,7 @@ procedure TUniscope.Right;
 begin
     HideCursor;
     IncCursor;
+    SHowCursor;
     DrawStatus;
 end;
 
@@ -622,6 +1010,51 @@ begin
             col := 0;
         end;
     end;
+    DrawStatus;
+end;
+
+procedure TUniscope.ScanDown;
+begin
+    if (FRow < FMaxRow) then
+        Inc(FRow);
+    DrawStatus;
+end;
+
+procedure TUniscope.ScanLeft;
+begin
+    Dec(FCol);
+    if (FCol < 0) then
+    begin
+        Dec(FRow);
+        FCol := FMaxCol - 1;
+        if (FRow < 0) then
+        begin
+            FRow := 0;
+            FCol := 0;
+        end;
+    end;
+end;
+
+procedure TUniscope.ScanRight;
+begin
+    Inc(FCol);
+    if (FCol >= FMaxCol) then
+    begin
+        FCol := 0;
+        Inc(FRow);
+        if (FRow >= FMaxRow) then
+        begin
+            FRow := FMaxRow - 1;
+            FCol := FMaxCol - 1;
+        end;
+    end;
+    DrawStatus;
+end;
+
+procedure TUniscope.ScanUp;
+begin
+    if (FRow > 0) then
+        Dec(FRow);
     DrawStatus;
 end;
 
@@ -683,6 +1116,12 @@ begin
     FCanvas.Font.Color := Value;
 end;
 
+procedure TUniscope.ShowCursor;
+begin
+    FCursorOn := True;
+    FCanvas.TextOut(FCol * FCharSize.cx, FRow * FCharSize.cy, CURSOR_CHAR);
+end;
+
 procedure TUniscope.SkipProtectBackward;
 var
     i, fin, origRow, origCol: Integer;
@@ -742,6 +1181,33 @@ begin
     FProtected := True;
 end;
 
+procedure TUniscope.Tab(Shift: TShiftState);
+// if ssShift set tab, otherwise tab forward.
+var
+    i: Integer;
+begin
+    i := (FRow * FMaxCol) + FCol;
+    if (ssShift in Shift) then
+    begin
+        if (not (tProtected in FAttributes[i])) then
+            FCharacters[i] := TAB_CHAR;
+        IncCursor;
+        Refresh;
+    end else
+    begin
+        while ((i < (FMaxRow * FMaxCol)) and (FCharacters[i] <> TAB_CHAR)) do
+            Inc(i);
+        Inc(i);
+        if (i < (FMaxRow * FMaxCol)) then
+        begin
+            FRow := i div FMaxCol;
+            FCol := i mod FMaxCol;
+            SkipProtectForward;
+            DrawStatus;
+        end;
+    end;
+end;
+
 procedure TUniscope.TelnetConnected(Sender: TObject);
 begin
     Clear;
@@ -749,162 +1215,8 @@ end;
 
 procedure TUniscope.TelnetDataAvailable(Sender: TIdTelnet; const Buffer: TIdBytes);
 var
-    b, x, y, shiftIn: Byte;
-    rid, sid, did: Byte;
+    b: Byte;
     i: Integer;
-    mtype: TMessageType;
-
-    procedure SkipToEtx;
-    // Skip to first character past ETX.
-    begin
-        while ((i <= High(Buffer)) and (Buffer[i] <> ETX)) do
-            Inc(i);
-        Inc(i);
-    end;
-
-    procedure DoHeader;
-    // Process a Uniscope protocol header.
-    begin
-        rid := $20;
-        sid := $50;
-        did := $70;
-        mtype := [];
-        Inc(i);
-        if (i <= High(Buffer)) then
-            rid := Buffer[i];
-        Inc(i);
-        if (i <= High(Buffer)) then
-            sid := Buffer[i];
-        Inc(i);
-        if (i <= High(Buffer)) then
-            did := Buffer[i];
-        Inc(i);
-        { TODO :
-This stuff is probably not needed because we won't be receiving polls
-and acknowledgements here. }
-        while ((i <= High(Buffer)) and (Buffer[i] <> ETX)) do
-        begin
-            b := Buffer[i];
-            case b of
-              STX:
-              begin
-                mtype := [mtText];
-                Dec(i);
-                Break;
-              end;
-              BEL:
-              begin
-                mtype := [mtMsgWait];
-                Inc(i);
-                Break;
-              end;
-              ENQ:
-              begin
-                mtype := mtype + [mtStatusPoll];
-                Inc(i);
-              end;
-              DLE:
-              begin
-                Inc(i);
-                if (i <= High(Buffer)) then
-                begin
-                    b := Buffer[i];
-                    case b of
-                      Ord('1'):
-                      begin
-                        mtype := mtype + [mtAck];
-                        Inc(i);
-                      end;
-                      NAK:
-                      begin
-                        mtype := [mtRetransmitReq];
-                        Inc(i);
-                        Break;
-                      end;
-                    end;
-                end;
-              end;
-            end;
-        end;
-        // Ignore messages not intended for us
-        if (((rid <> $20) and (rid <> FRid)) or
-            ((sid <> $50) and (sid <> FSid))) then
-        begin
-            SkipToEtx;
-            Exit;
-        end;
-        //
-        if (mtText in mtype) then
-            Exit
-        else if (mtMsgWait in mtype) then
-            DoBell
-        else if (mtRetransmitReq in mtype) then
-            DoRetransmit
-        else
-        begin
-            if (mtype = []) then
-                DoTrafficPoll;
-            if (mtStatusPoll in mtype) then
-                DoStatus;
-            if (mtAck in mtype) then
-                DoAcknowledge;
-        end;
-        SkipToEtx;
-    end;
-
-    procedure DoEscape;
-    begin
-        if (i >= High(Buffer)) then
-            Exit;
-        b := Buffer[i + 1];
-        case b of
-          HT:
-          begin
-            CharOut(TAB_CHAR);
-            IncCursor;
-            Inc(i);
-          end;
-          VT:
-          begin
-              Inc(i, 2);
-              if (i > High(Buffer) - 2) then
-                Exit;
-              y := Buffer[i];
-              x := Buffer[i + 1];
-              shiftIn := Buffer[i + 2];
-              CursorPosition(y - Ord(' '), x - Ord(' '));
-              Inc(i, 2);
-          end;
-          DC2:
-          begin
-            PrintTransparent;
-          end;
-          Ord('a'):
-          begin
-            EraseDisplay(False);
-            Inc(i);
-          end;
-          Ord('e'):
-          begin
-            CursorHome;
-            Inc(i);
-          end;
-          Ord('k'):
-          begin
-            DeleteLine;
-            Inc(i);
-          end;
-          Ord('M'):
-          begin
-            EraseDisplay(True);
-            Inc(i);
-          end;
-//          else
-//          begin
-//            ShowMessageFmt('Unimplemented escape code %2.2x-%s', [Ord(b), b]);
-//          end;
-        end;
-    end;
 
     procedure TraceBuffer;
     var
@@ -942,88 +1254,39 @@ begin
         while(i <= High(Buffer)) do
         begin
             b := Buffer[i];
-            case b of
-              NUL:
-                ;
-              LF:
-                ;
-              TNC_IAC:                              // Get RID/SID assigned by 90/30 emulator
-              begin
-                if (FModel <> umConsole) then
+            if (FIACSeen) then
+            begin
+                if (not FRidSeen) then
                 begin
-                    Inc(i);
-                    if (i <= High(Buffer)) then
-                        FRid := Buffer[i];
-                    Inc(i);
-                    if (i <= High(Buffer)) then
-                        FSid := Buffer[i];
-                    DrawStatus;
+                    FRid := b;
+                    FRidSeen := True;
+                end else
+                begin
+                    FSid := b;
+                    FSidSeen := True;
+                    FIACSeen := False;
                 end;
-              end;
-              CR:
-              begin
-                FCol := 0;
-                Inc(FRow);
-                if (FRow >= FMaxRow) then
-                    FRow := 0;
                 DrawStatus;
-              end;
-              SOH:
-              begin
-                DoHeader;
-              end;
-              STX:
-              begin
-                FKbdLocked := True;
-                FLockKbd := False;
-                FProtected := False;
-              end;
-              ETX:
-              begin
-                FKbdLocked := FLockKbd;
-                FLockKbd := False;
-                DrawStatus;
-              end;
-              SO:
-              begin
-                StartProtected;
-              end;
-              SI:
-              begin
-                EndProtected;
-              end;
-              ESC:
-              begin
-                DoEscape;
-              end;
-              FS:
-              begin
-                CharOut(START_BLINK_CHAR);
-              end;
-              GS:
-              begin
-                CharOut(END_BLINK_CHAR);
-              end;
-              RS:
-              begin
-                CharOut(SOE_CHAR);
-              end;
-              DC2:
-              begin
-                Print;
-              end;
-              DC4:
-              begin
-                FLockKbd := True;
-              end;
-              $fe:
-              begin
+            end else if (FStxSeen) then
+            begin
+                FBuffer := FBuffer + AnsiChar(b);
+                if (b = ETX) then
+                begin
+                    ProcessBuffer;
+                    FStxSeen := False;
+                end;
+            end else if (b = STX) then
+            begin
+                FIACSeen := False;
+                FBuffer := FBuffer + AnsiChar(b);
+                FStxSeen := True;
+            end else if (b = TNC_IAC) then
+            begin
+                FIACSeen := True;
+            end else if (b = $fe) then
+            begin
                 PostMessage(Application.MainFormHandle, WM_CLOSE, 0, 0);
                 Exit;
-              end;
-              else
-                if (b >= SPACE) then
-                    CharOut(b);
             end;
             Inc(i);
         end;
@@ -1114,6 +1377,7 @@ begin
     bfr := Chr(STX) + bfr + Chr(ETX);
     FTelnet.SendString(bfr);
     FKbdLocked := True;
+    DrawStatus;
 end;
 
 procedure TUniscope.Up;
@@ -1122,6 +1386,7 @@ begin
     if (FRow > 0) then
         Dec(FRow);
     SkipProtectBackward;
+    ShowCursor;
     DrawStatus;
 end;
 

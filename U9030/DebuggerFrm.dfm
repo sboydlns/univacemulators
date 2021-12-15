@@ -164,9 +164,10 @@ object DebuggerForm: TDebuggerForm
     Top = 284
     Width = 424
     Height = 306
-    ActivePage = SvcPage
+    ActivePage = TcbPage
     Anchors = [akLeft, akTop, akBottom]
     TabOrder = 7
+    OnChange = PagesChange
     object TracePage: TTabSheet
       Caption = 'Trace'
       object TraceGrid: TStringGrid
@@ -240,6 +241,46 @@ object DebuggerForm: TDebuggerForm
         ColWidths = (
           45
           327)
+      end
+    end
+    object SibPage: TTabSheet
+      Caption = 'SIB'
+      ImageIndex = 4
+      object SibMemo: TMemo
+        Left = 0
+        Top = 0
+        Width = 416
+        Height = 278
+        Align = alClient
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = clWindowText
+        Font.Height = -12
+        Font.Name = 'Courier New'
+        Font.Style = []
+        ParentFont = False
+        ScrollBars = ssBoth
+        TabOrder = 0
+        WordWrap = False
+      end
+    end
+    object TcbPage: TTabSheet
+      Caption = 'Tasks'
+      ImageIndex = 5
+      object TcbMemo: TMemo
+        Left = 0
+        Top = 0
+        Width = 416
+        Height = 278
+        Align = alClient
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = clWindowText
+        Font.Height = -12
+        Font.Name = 'Courier New'
+        Font.Style = []
+        ParentFont = False
+        ScrollBars = ssBoth
+        TabOrder = 0
+        WordWrap = False
       end
     end
   end

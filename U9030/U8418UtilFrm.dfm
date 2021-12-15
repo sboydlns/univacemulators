@@ -29,7 +29,7 @@ object U8418UtilForm: TU8418UtilForm
     Top = 0
     Width = 930
     Height = 460
-    ActivePage = DiskPage
+    ActivePage = LibsPage
     Anchors = [akLeft, akTop, akRight, akBottom]
     TabOrder = 0
     OnChange = PagesChange

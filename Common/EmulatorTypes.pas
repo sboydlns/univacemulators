@@ -84,7 +84,28 @@ type
       property lpi: Byte read FLPI write SetLPI;
   end;
 
-const
+  TTextFileStream = class(TFileStream)
+  private
+    Fbfr: array [0 .. 1023] of AnsiChar;
+    FbfrLen: Integer; // # bytes in buffer
+    FbfrOffset: Integer; // offset to 1st unused byte
+    Feof: Boolean;
+    FWinEol: Boolean; // use <CR><LF> as EOL if true
+  protected
+  public
+    constructor Create(const fName: String; mode: Word); virtual;
+    function GetC: AnsiChar;
+    procedure GetS(var bfr: AnsiString); overload; virtual;
+    procedure GetS(var bfr: String); overload; virtual;
+    procedure PutS(const bfr: AnsiString); overload; virtual;
+    procedure PutS(const bfr: String); overload; virtual;
+    function Seek(Offset: Longint; Origin: Word): Longint; override;
+
+    property Eof: Boolean read Feof;
+    property WinEol: Boolean read FWinEol write FWinEol;
+  end;
+
+  const
     // Excess 3 character codes
     X3_SPACE = $00;
     X3_RIGHT_SQUARE = $01;
@@ -1479,4 +1500,144 @@ begin
     FLock.Leave;
     Canvas.Unlock;
 end;
+
+constructor TTextFileStream.Create(const fName: String; mode: Word);
+begin
+    inherited;
+    FbfrLen := 0;
+    FbfrOffset := Sizeof(Fbfr);
+    Feof := False;
+    FWinEol := True;
+end;
+
+function TTextFileStream.Seek(Offset: Longint; Origin: Word): Longint;
+// Reset the buffer pointer to force a read following the Seek
+begin
+    Result := inherited Seek(Offset, Origin);
+    FbfrOffset := Sizeof(Fbfr);
+    Feof := False;
+end;
+
+function TTextFileStream.GetC: AnsiChar;
+// Read 1 character from the stream in buffered mode
+begin
+    if (FbfrOffset >= FbfrLen) then
+    begin
+        FbfrLen := Read(Fbfr, Sizeof(Fbfr));
+        if (FbfrLen < 1) then
+        begin
+            Feof := True;
+            Result := Chr(0);
+            Exit;
+        end;
+        FbfrOffset := 0;
+    end;
+    Result := Fbfr[FbfrOffset];
+    Inc(FbfrOffset);
+end;
+
+procedure TTextFileStream.GetS(var bfr: String);
+var
+    stemp: AnsiString;
+begin
+    GetS(stemp);
+    bfr := stemp;
+end;
+
+procedure TTextFileStream.GetS(var bfr: AnsiString);
+// Read 1 line from the stream.  Lines are terminated by <CR><LF>
+const
+    BFR_SIZE = 1024;
+var
+    c: AnsiChar;
+    c1: AnsiChar;
+    done: Boolean;
+    cbfr: PAnsiChar;
+    cbfrLen: Integer;
+    cbfrOffset: Integer;
+begin
+    cbfr := AllocMem(BFR_SIZE);
+    if (not Assigned(cbfr)) then
+        raise Exception.Create('Insufficent memory for memory buffer.');
+    cbfrLen := BFR_SIZE;
+    cbfrOffset := 0;
+    done := False;
+
+    c := GetC;
+    while ((not Feof) and (not done)) do
+    begin
+        if (c = #13) then
+        begin
+            c1 := GetC;
+            if (c1 = #10) then
+            begin
+                done := True;
+                Continue;
+            end
+            else
+            begin
+                cbfr[cbfrOffset] := c;
+                Inc(cbfrOffset);
+                c := c1;
+                Continue;
+            end;
+        end
+        else
+        begin
+            if (c = #10) then
+            begin
+                done := True;
+                Continue;
+            end
+            else
+            begin
+                cbfr[cbfrOffset] := c;
+                Inc(cbfrOffset);
+            end;
+        end;
+        c := GetC;
+        if (cbfrOffset >= cbfrLen) then
+        begin
+            ReallocMem(cbfr, cbfrLen + BFR_SIZE);
+            if (not Assigned(cbfr)) then
+                raise Exception.Create('Insufficent memory for memory buffer.');
+            Inc(cbfrLen, BFR_SIZE);
+        end;
+    end;
+    cbfr[cbfrOffset] := #0;
+    SetString(bfr, cbfr, StrLen(cbfr));
+    FreeMem(cbfr);
+    // Reset the EOF flag if we actually got some data.  EOF will be reported
+    // on the next read.
+    if (bfr <> '') then
+        Feof := False;
+end;
+
+procedure TTextFileStream.PutS(const bfr: AnsiString);
+// Write 1 line to the stream with terminating <NL>
+var
+    pbfr: PAnsiChar;
+    nl: array [0 .. 2] of AnsiChar;
+begin
+    pbfr := PAnsiChar(bfr);
+    Write(pbfr^, Length(bfr));
+    if (FWinEol) then
+    begin
+        nl[0] := #13;
+        nl[1] := #10;
+        nl[2] := #0;
+    end
+    else
+    begin
+        nl[0] := #10;
+        nl[1] := #0;
+    end;
+    Write(nl, StrLen(nl));
+end;
+
+procedure TTextFileStream.PutS(const bfr: String);
+begin
+    PutS(AnsiString(bfr));
+end;
+
 end.

@@ -215,8 +215,8 @@ function TMemory.FetchByte(key: Byte; addr: TMemoryAddress): Byte;
 begin
     CheckAddressRead(key, addr);
     // TESTING
-//    if ((addr >= 50756) and (addr <= 50770)) then
-//        ShowMessage('ICAM buffer referenced');
+//    if (addr = 55940) then
+//        ShowMessage('GOTCHA!!');
     //
     Result := FMemory[addr];
 end;
@@ -309,6 +309,10 @@ var
 begin
     CheckAddressRead(key, addr);
     CheckAlignment(addr, aWord);
+    // TESTING
+//    if (addr = 55936) then
+//        ShowMessage('GOTCHA!!');
+    //
     b := PByte(@Result);
     b^ := FMemory[addr + 3];
     (b + 1)^ := FMemory[addr + 2];

@@ -1501,12 +1501,20 @@ var
             end;
         end else if (offset = 0) then
         begin
-            // Having the island code override bit ($8000) forces a TCB to be executable
-            // if none of the absolute wait bits (JT$WAIT + 2) are set.
-            j1 := Core.FetchWord(PSW.Key, tcb + 4);
-            Result := (j1 = 0) or ((j1 and $FF00) = $8000);
-//            Result := (j1 and (not $8000)) = 0;
-//            Result := (j1 = 0);
+            // Match = $3xx seems to indicate that we are looking for a TCB with a key (TCB + 0)
+            // matching the value in xx. I suspect that we also need to have a
+            // non-zero preamble address (TCB +$14).
+            if ((match and $300) = $300) then
+            begin
+                Result := (((match and $f0) = (Core.FetchByte(0, tcb) and $f0)) and
+                           (Core.FetchWord(0, tcb + $14) <> 0));
+            end else
+            begin
+                // Having the island code override bit ($8000) forces a TCB to be executable
+                // if none of the absolute wait bits (JT$WAIT + 2) are set.
+                j1 := Core.FetchWord(PSW.Key, tcb + 4);
+                Result := (j1 = 0) or ((j1 and $FF00) = $8000);
+            end;
         end else
         begin
             Result := (Core.FetchByte(PSW.Key, tcb + offset) and match) <> 0;
@@ -1999,6 +2007,10 @@ begin
     Result := off + FRelocateReg;
     if (b <> 0) then
         Result := UInt32(FRegisters[PSW.RegisterSet, b]) + Result;
+    // TESTING
+//    if (Result = 55940) then
+//        ShowMessageFmt('GOTCHA!! @ %6.6d', [PSW.InstAddr]);
+    //
 end;
 
 function TCpu.GetAbsAddress(b, x: Byte; off: UInt16): TMemoryAddress;
@@ -2008,6 +2020,10 @@ begin
         Result := UInt32(FRegisters[PSW.RegisterSet, b]) + Result;
     if (x <> 0) then
         Result := UInt32(FRegisters[PSW.RegisterSet, x]) + Result;
+    // TESTING
+//    if (Result = 55940) then
+//        ShowMessageFmt('GOTCHA!! @ %6.6d', [PSW.InstAddr]);
+    //
 end;
 
 function TCpu.GetDblRegister(r: Integer): TDblWord;
@@ -3832,6 +3848,7 @@ var
     svc, b: Byte;
     stemp, bfr: AnsiString;
     msgNum: THalfWord;
+    hr, mn, sc, ms: Word;
 
     function PhaseName: AnsiString;
     var
@@ -3925,7 +3942,9 @@ var
         attch, typ: String;
     begin
         icType := (FRegisters[PSW.RegisterSet, 1] and $ff000000) shr 24;
-        if ((icType and $40) = 0) then
+        if ((ictype and $80) <> 0) then
+            attch := 'Exit'
+        else if ((icType and $40) = 0) then
             attch := 'Detach'
         else
             attch := 'Attach';
@@ -3965,7 +3984,12 @@ var
         // Get parameter following SVC instruction
         param := Core.FetchHalfWord(0, PSW.InstAddr);
         case UInt16(param) of
-          $00, $05:
+          $00:
+          begin
+            bfr := '  *CYIELD'#13#10;
+            SvcTraceFile.Write(PAnsiChar(bfr)^, Length(bfr));
+          end;
+          $05:
           begin
             bfr := '  *CCRCALL'#13#10;
             SvcTraceFile.Write(PAnsiChar(bfr)^, Length(bfr));
@@ -3988,11 +4012,19 @@ var
                 SvcTraceFile.Write(PAnsiChar(bfr)^, Length(bfr));
             end;
           end;
+          $06:
+          begin
+            bfr := '  *CAWAKE'#13#10;
+            SvcTraceFile.Write(PAnsiChar(bfr)^, Length(bfr));
+          end;
           $8003:
           begin
-            bfr := '  *MREAD/MWRITE'#13#10;
-            SvcTraceFile.Write(PAnsiChar(bfr)^, Length(bfr));
             addr := FRegisters[PSW.RegisterSet, 1] + FRelocateReg;  // addr of param list
+            if ((addr shr 24) = 1) then
+                bfr := '  *MREAD'#13#10
+            else
+                bfr := '  *MWRITE'#13#10;
+            SvcTraceFile.Write(PAnsiChar(bfr)^, Length(bfr));
             bfr := AnsiString(Format('  R1 = %8.8x'#13#10, [addr]));
             SvcTraceFile.Write(PAnsiChar(bfr)^, Length(bfr));
             bfr := AnsiString(Format('  %8.8x %8.8x %8.8x %8.8x %8.8x'#13#10,
@@ -4020,12 +4052,45 @@ var
             bfr := '  *MOPEN'#13#10;
             SvcTraceFile.Write(PAnsiChar(bfr)^, Length(bfr));
             addr := FRegisters[PSW.RegisterSet, 1] + FRelocateReg;  // addr of param list
-            bfr := AnsiString(Format('  %8.8x %8.8x %8.8x %8.8x %8.8x'#13#10,
+            bfr := '   Param List'#13#10;
+            SvcTraceFile.Write(PAnsiChar(bfr)^, Length(bfr));
+            bfr := AnsiString(Format('   %8.8x %8.8x %8.8x %8.8x %8.8x'#13#10,
                                      [Core.FetchWord(0, addr),
                                       Core.FetchWord(0, addr + 4),
                                       Core.FetchWord(0, addr + 8),
                                       Core.FetchWord(0, addr + 12),
                                       Core.FetchWord(0, addr + 16)]));
+            SvcTraceFile.Write(PAnsiChar(bfr)^, Length(bfr));
+            addr := Core.FetchWord(0, addr) + FRelocateReg;
+            bfr := AnsiString(Format('   MTABLE @ %6.6x'#13#10, [addr and $ffffff]));
+            SvcTraceFile.Write(PAnsiChar(bfr)^, Length(bfr));
+            bfr := AnsiString(Format('   %8.8x %8.8x %8.8x %8.8x %8.8x'#13#10,
+                                     [Core.FetchWord(0, addr),
+                                      Core.FetchWord(0, addr + 4),
+                                      Core.FetchWord(0, addr + 8),
+                                      Core.FetchWord(0, addr + 12),
+                                      Core.FetchWord(0, addr + 16)]));
+            SvcTraceFile.Write(PAnsiChar(bfr)^, Length(bfr));
+            bfr := AnsiString(Format('   %8.8x %8.8x %8.8x %8.8x %8.8x'#13#10,
+                                     [Core.FetchWord(0, addr + 20),
+                                      Core.FetchWord(0, addr + 24),
+                                      Core.FetchWord(0, addr + 28),
+                                      Core.FetchWord(0, addr + 32),
+                                      Core.FetchWord(0, addr + 36)]));
+            SvcTraceFile.Write(PAnsiChar(bfr)^, Length(bfr));
+            bfr := AnsiString(Format('   %8.8x %8.8x %8.8x %8.8x %8.8x'#13#10,
+                                     [Core.FetchWord(0, addr + 40),
+                                      Core.FetchWord(0, addr + 44),
+                                      Core.FetchWord(0, addr + 48),
+                                      Core.FetchWord(0, addr + 52),
+                                      Core.FetchWord(0, addr + 56)]));
+            SvcTraceFile.Write(PAnsiChar(bfr)^, Length(bfr));
+            bfr := AnsiString(Format('   %8.8x %8.8x %8.8x %8.8x %8.8x'#13#10,
+                                     [Core.FetchWord(0, addr + 60),
+                                      Core.FetchWord(0, addr + 64),
+                                      Core.FetchWord(0, addr + 68),
+                                      Core.FetchWord(0, addr + 72),
+                                      Core.FetchWord(0, addr + 76)]));
             SvcTraceFile.Write(PAnsiChar(bfr)^, Length(bfr));
           end;
           $c104:
@@ -4064,15 +4129,35 @@ var
         end;
     end;
 
+    procedure TraceSetime;
+    var
+        intv, opt: TWord;
+        sms, wait: String;
+    begin
+        opt := Registers[PSW.RegisterSet, 0];
+        intv := Registers[PSW.RegisterSet, 1];
+        if ((opt and 2) = 0)then
+            sms := 'MS'
+        else
+            sms := 'S';
+        if ((opt and 1) = 0) then
+            wait := 'NOWAIT'
+        else
+            wait := 'WAIT';
+        bfr := AnsiString(Format('  %d%s %s'#13#10, [intv, sms, wait]));
+        SvcTraceFile.Write(PAnsiChar(bfr)^, Length(bfr));
+    end;
+
 begin
     try
+        DecodeTime(Time, hr, mn, sc, ms);
         svc := CurInst.ImmedOperand;
         if (svc <= High(svcs)) then
             stemp := svcs[svc]
         else
             stemp := '';
         instAddr := PSW.InstAddr - (PSW.InstLength * 2);
-        bfr := AnsiString(Format('Svc = %d - %s @ %6.6x'#13#10, [svc, stemp, instAddr]));
+        bfr := AnsiString(Format('%d:%d:%d.%d Svc = %d - %s @ %6.6x'#13#10, [hr, mn, sc, ms, svc, stemp, instAddr]));
         SvcTraceFile.Write(PAnsiChar(bfr)^, Length(bfr));
         case svc of
           0:                                    // EXCP
@@ -4082,6 +4167,10 @@ begin
           5:                                    // OPR
           begin
             TraceOpr;
+          end;
+          6:                                    // SETIME
+          begin
+            TraceSetime;
           end;
           9:                                    // Comm
           begin

@@ -2,7 +2,7 @@ unit UniscopeAdapter;
 
 interface
 
-uses SysUtils, Classes, IdContext, IdTelnet,
+uses SysUtils, Classes, SyncObjs, IdContext, IdTelnet,
      CommAdapter;
 
 type
@@ -11,31 +11,36 @@ type
   TMessageType = set of TMessageTypes;
 
   TUniscopeTerminal = class(TTerminal)
+  private
+    FBufferLock: TCriticalSection;
   public
     Rid: Byte;
     Sid: Byte;
-    AckPending: Boolean;                // Processor is owed an ACK
     LastPoll: TMessageType;
-    { TODO :
-This is going to need to have state information so that the TUnsicopeAdapter
-class can respond to polls without having to actually send the pools to the
-terminal. This means that the terminal must transmit text & status data to
-TUniscopeAdapter as events occur at the terminal. This data must be cached
-here for use in contructing responses to polls. }
+    DataPending: Boolean;
+    AckPending: Boolean;
+    Buffer: AnsiString;
+    constructor Create;
+    destructor Destroy; override;
+    procedure LockBuffer;
+    procedure UnlockBuffer;
   end;
 
-  // A class to emulate an 8609 terminal multiplexor. Terminal sessions connect
+  // A class to simulate an 8609 terminal multiplexor. Terminal sessions connect
   // using Telnet. Terminal addresses are assigned from the 31 SIDs ($51 thru $6f)
-  // available for the line adapters RID.
+  // available for the line adapters RID. Multi-drop lines are not supported nor should
+  // they be necessary.
   TUniscopeAdapter = class(TCommAdapter)
   private
     FRid: Byte;
+    FStxSeen: Boolean;
   protected
     procedure DoRead; override;
     procedure DoWrite; override;
     function NewSid: Byte;
     function NewTerminal: TTerminal; override;
     procedure TelnetConnect(AContext: TIdContext); override;
+    procedure TelnetExecute(AContext: TIdContext); override;
   public
     constructor Create(num, rid: Byte); reintroduce;
   end;
@@ -55,12 +60,14 @@ end;
 procedure TUniscopeAdapter.DoRead;
 // Loop through the currently connected terminals looking for pending input
 var
-    i: Integer;
+    i, bytesStored, actvCount: Integer;
     term: TUniscopeTerminal;
     bfr: array of Byte;
     tbfr: AnsiString;
     c: Byte;
     ackSent: Boolean;
+    statSent: Boolean;
+    textSent: Boolean;
 
     procedure AppendAck;
     begin
@@ -69,6 +76,26 @@ var
         bfr[High(bfr) - 1] := DLE;
         bfr[High(bfr)] := Ord('1');
     end;
+
+    procedure AppendTraffic;
+    begin
+        bfr[2] := term.Sid;
+        SetLength(bfr, Length(bfr) + 2);
+        bfr[High(bfr) - 1] := DLE;
+        bfr[High(bfr)] := Ord('0');
+    end;
+
+    procedure AppendText;
+    var
+        j, k: Integer;
+    begin
+        bfr[2] := term.Sid;
+        j := High(bfr);
+        SetLength(bfr, Length(bfr) + Length(term.Buffer));
+        for k := 1 to Length(term.Buffer) do
+            bfr[j + k] := Byte(term.Buffer[k]);
+    end;
+
 begin
     // Initialize buffer to hold any input that may be found
     SetLength(bfr, 4);
@@ -76,21 +103,61 @@ begin
     bfr[1] := FRid;
     bfr[2] := $50;
     bfr[3] := $70;
-    //
+    // Append any outstanding acknowledgement
     ackSent := False;
     for i := 0 to FTerminals.Count - 1 do
     begin
         term := TUniscopeTerminal(FTerminals[i]);
         if (([mtTrafficPoll, mtStatusPoll] * term.LastPoll) <> []) then
         begin
-            if ((not ackSent) and term.AckPending) then
+            if ((not ackSent) and (term.AckPending)) then
             begin
                 AppendAck;
                 ackSent := True;
                 term.AckPending := False;
+                term.LastPoll := [];
             end;
         end;
-        term.LastPoll := [];
+    end;
+    // Append any outstanding status replies
+    statSent := False;
+    for i := 0 to FTerminals.Count - 1 do
+    begin
+        term := TUniscopeTerminal(FTerminals[i]);
+        if (([mtStatusPoll] * term.LastPoll) <> []) then
+        begin
+            if ((not statSent) and term.DataPending) then
+            begin
+                AppendTraffic;
+                statSent := True;
+                term.LastPoll := [];
+            end;
+        end;
+    end;
+    // Append any data waiting to be sent
+    if (not statSent) then
+    begin
+        textSent := False;
+        for i := 0 to FTerminals.Count - 1 do
+        begin
+            term := TUniscopeTerminal(FTerminals[i]);
+            if (([mtTrafficPoll] * term.LastPoll) <> []) then
+            begin
+                term.LockBuffer;
+                try
+                    if ((not textSent) and term.DataPending) then
+                    begin
+                        AppendText;
+                        textSent := True;
+                        term.DataPending := False;
+                        term.Buffer := '';
+                        term.LastPoll := [];
+                    end;
+                finally
+                    term.UnlockBuffer;
+                end;
+            end;
+        end;
     end;
     //
     if (Length(bfr) = 4) then
@@ -120,8 +187,44 @@ begin
         tbfr := tbfr + #13#10;
         IOTraceFile.Write(PAnsiChar(tbfr)^, Length(tbfr));
     end;
-    if (StoreBuffer(@bfr[0], Length(bfr))) then
-        QueueStatus(DEVICE_END, 0);
+    bytesStored := 0;
+    while (bytesStored < Length(bfr)) do
+    begin
+        actvCount := FBCW.ActvCount;
+        if (actvCount = 0) then
+            actvCount := 1024;
+        if (StoreBuffer(@bfr[bytesStored], Length(bfr) - bytesStored)) then
+        begin
+            Inc(bytesStored, actvCount);
+            if ((FBCW.ActvCount = 0) and FBCW.ActvChain) then
+            begin
+                Sleep(10);                      // give the CPU a chance to catch up
+                if (FBCW.F) then
+                begin
+                    FBCW.ActvAddress := FBCW.ReplAddress;
+                    FBCW.ActvChain := FBCW.ReplChain;
+                    FBCW.ActvCount := FBCW.ReplCount;
+                    FBCW.ActvKey := FBCW.ReplKey;
+                    FBCW.F := False;
+                    if (FBCW.ReplChain) then
+                    begin
+                        QueueStatus(0, BUFFER_TERMINATE);
+                        Sleep(10);              // short pause to allow CPU to process status
+                    end;
+                end else
+                begin
+                    FBCW.ActvChain := False;
+                    FBCW.ReplChain := False;
+                    bytesStored := Length(bfr);
+                end;
+            end else
+            begin
+                bytesStored := Length(bfr);
+            end;
+        end;
+    end;
+    Sleep(10);
+    QueueStatus(DEVICE_END, 0);
 end;
 
 procedure TUniscopeAdapter.DoWrite;
@@ -130,9 +233,10 @@ var
     bfr, tbfr: AnsiString;
     c: AnsiChar;
     gotSOH, gotSTX, gotDLE: Boolean;
-    i: Integer;
+    i, len: Integer;
     term: TUniscopeTerminal;
     mtype: TMessageType;
+    done: Boolean;
 //    ms: Integer;
 begin
     bfr := '';
@@ -144,74 +248,105 @@ begin
     did := 0;
     mtype := [];
 
-    if (FBCW.ActvChain) then
-        raise Exception.Create('Data chaining not supported');
-    if (FBCW.ActvCount = 0) then
-        FBCW.ActvCount := 1024;
-
-    while (FBCW.ActvCount > 0) do
+    done := False;
+    while (not done) do
     begin
-        try
-            b := Core.FetchByte(FBCW.ActvKey, FBCW.ActvAddress);
-        except
-            b := 0;
-            QueueStatus(DEVICE_END or UNIT_CHECK, INVALID_ADDRESS);
-            Exit;
-        end;
-        if (gotSOH) then
+        len := FBCW.ActvCount;
+        if (len = 0) then
+            len := 1024;
+        while (len > 0) do
         begin
-            // Parse the message header to see what kind of message we have
-            if (rid = 0) then
-                rid := b
-            else if (sid = 0) then
-                sid := b
-            else if (did = 0) then
-                did := b
-            else if (b = STX) then
+            try
+                b := Core.FetchByte(FBCW.ActvKey, FBCW.ActvAddress);
+            except
+                b := 0;
+                QueueStatus(DEVICE_END or UNIT_CHECK, INVALID_ADDRESS);
+                Exit;
+            end;
+            if (gotSOH) then
             begin
-                gotSTX := True;
-                mtype := [mtText];
-            end else if (not gotSTX) then
-            begin
-                case b of
-                 ETX:
-                 begin
-                    mtype := mtype + [mtTrafficPoll];
-                 end;
-                 BEL:
-                 begin
-                    mtype := mtype + [mtMsgWait];
-                 end;
-                 ENQ:
-                 begin
-                   mtype := mtype + [mtStatusPoll];
-                 end;
-                 DLE:
-                 begin
-                   gotDLE := True;
-                 end;
-                 NAK:
-                 begin
-                   if (gotDLE) then
-                       mtype := mtype + [mtRetransmitReq];
-                   gotDLE := False;
-                 end;
-                 Ord('1'):
-                 begin
-                    if (gotDLE) then
-                        mtype := mtype + [mtAck];
-                    gotDLE := False;
-                 end;
+                // Parse the message header to see what kind of message we have
+                if (rid = 0) then
+                    rid := b
+                else if (sid = 0) then
+                    sid := b
+                else if (did = 0) then
+                    did := b
+                else if (b = STX) then
+                begin
+                    gotSTX := True;
+                    mtype := [mtText];
+                end else if (not gotSTX) then
+                begin
+                    case b of
+                     ETX:
+                     begin
+                        mtype := mtype + [mtTrafficPoll];
+                     end;
+                     BEL:
+                     begin
+                        mtype := mtype + [mtMsgWait];
+                     end;
+                     ENQ:
+                     begin
+                       mtype := mtype + [mtStatusPoll];
+                     end;
+                     DLE:
+                     begin
+                       gotDLE := True;
+                     end;
+                     NAK:
+                     begin
+                       if (gotDLE) then
+                           mtype := mtype + [mtRetransmitReq];
+                       gotDLE := False;
+                     end;
+                     Ord('1'):
+                     begin
+                        if (gotDLE) then
+                            mtype := mtype + [mtAck];
+                        gotDLE := False;
+                     end;
+                    end;
                 end;
+            end else
+            begin
+                if (b = SOH) then
+                    gotSOH := True;
+            end;
+            bfr := bfr + AnsiChar(b);
+            FBCW.ActvAddress := FBCW.ActvAddress + 1;
+            Dec(len);
+        end;
+
+        FBCW.ActvCount := len;
+        FBCW.ActvTerm := True;
+
+        if (FBCW.ActvChain) then
+        begin
+            Sleep(10);                      // give the CPU a chance to catch up
+            if (FBCW.F) then
+            begin
+                FBCW.ActvAddress := FBCW.ReplAddress;
+                FBCW.ActvChain := FBCW.ReplChain;
+                FBCW.ActvCount := FBCW.ReplCount;
+                FBCW.ActvKey := FBCW.ReplKey;
+                FBCW.F := False;
+                if (FBCW.ReplChain) then
+                begin
+                    QueueStatus(0, BUFFER_TERMINATE);
+                    Sleep(10);              // short pause to allow CPU to process status
+                end;
+            end else
+            begin
+                FBCW.ActvChain := False;
+                FBCW.ReplChain := False;
+                done := True;
             end;
         end else
         begin
-            if (b = SOH) then
-                gotSOH := True;
+            done := True;
         end;
-        bfr := bfr + AnsiChar(b);
-        FBCW.ActvAddress := FBCW.ActvAddress + 1;
-        FBCW.ActvCount := FBCW.ActvCount - 1;
     end;
     //
     if (IOTraceEnabled) then
@@ -254,8 +389,6 @@ begin
             IOTraceFile.Write(PAnsiChar(tbfr)^, Length(tbfr));
         end;
     end;
-
-    FBCW.ActvTerm := True;
     // Either send the message to the appropriate terminal(s) or set the state as required
     for i := 0 to FTerminals.Count - 1 do
     begin
@@ -267,6 +400,13 @@ begin
             begin
                 term.Context.Connection.IOHandler.Write(TIdBytes(bfr));
                 term.AckPending := True;
+                term.LockBuffer;
+                try
+                    term.DataPending := False;
+                    term.Buffer := '';
+                finally
+                    term.UnlockBuffer;
+                end;
             end;
             term.LastPoll := mtype;
         end;
@@ -276,6 +416,7 @@ begin
 //    Sleep(ms);
     // testing
     //
+    Sleep(10);
     QueueStatus(DEVICE_END, 0);
 end;
 
@@ -344,6 +485,90 @@ begin
         AContext.Connection.IOHandler.Write(TUniscopeTerminal(FTerminals[i]).Rid);
         AContext.Connection.IOHandler.Write(TUniscopeTerminal(FTerminals[i]).Sid);
     end;
+end;
+
+procedure TUniscopeAdapter.TelnetExecute(AContext: TIdContext);
+var
+    bfr: TIdBytes;
+    i: Integer;
+    etxSeen: Boolean;
+    term: TUniscopeTerminal;
+begin
+    i := FTerminals.IndexOf(AContext);
+    if (i = -1) then
+        Exit;
+    term := TUniscopeTerminal(FTerminals[i]);
+
+    AContext.Connection.IOHandler.ReadTimeout := 10;
+    AContext.Connection.IOHandler.ReadBytes(bfr, -1, False);
+    if (Length(bfr) = 0) then
+        Exit;
+
+
+    etxSeen := False;
+    i := Low(bfr);
+    while ((not FStxSeen) and (i <= High(bfr))) do
+    begin
+        FStxSeen := ((bfr[i] = STX) or (bfr[i] = BEL));
+        if (FStxSeen) then
+        begin
+            term.LockBuffer;
+            try
+                term.DataPending := False;
+                term.Buffer := AnsiChar(bfr[i]);
+            finally
+                term.UnlockBuffer;
+            end;
+        end;
+        Inc(i);
+    end;
+    if (FStxSeen) then
+    begin
+        while ((not etxSeen) and (i <= High(bfr))) do
+        begin
+            if (bfr[i] = ETX) then
+            begin
+                etxSeen := True;
+            end else
+            begin
+                term.Buffer := term.Buffer + AnsiChar(bfr[i]);
+                Inc(i);
+            end;
+        end;
+    end;
+    if (etxSeen and (Length(term.Buffer) > 0)) then
+    begin
+        term.LockBuffer;
+        try
+            term.DataPending := True;
+        finally
+            term.UnlockBuffer;
+        end;
+    end;
+end;
+
+{ TUniscopeTerminal }
+
+constructor TUniscopeTerminal.Create;
+begin
+    inherited;
+    FBufferLock := TCriticalSection.Create;
+end;
+
+destructor TUniscopeTerminal.Destroy;
+begin
+    FreeAndNil(FBufferLock);
+    inherited;
+end;
+
+procedure TUniscopeTerminal.LockBuffer;
+begin
+    FBufferLock.Acquire;
+end;
+
+procedure TUniscopeTerminal.UnlockBuffer;
+begin
+    FBufferLock.Release;
 end;
 
 end.

@@ -44,7 +44,7 @@ type
                                    var AAuthenticated: Boolean);
     procedure TelnetConnect(AContext: TIdContext); virtual;
     procedure TelnetDisconnect(AContext: TIdContext);
-    procedure TelnetExecute(AContext: TIdContext);
+    procedure TelnetExecute(AContext: TIdContext); virtual;
     procedure TelnetListenException(AThread: TIdListenerThread; AException: Exception);
   public
     constructor Create(num: Byte); override;
@@ -312,7 +312,6 @@ begin
     FBCW.ActvCount := count;
     FBCW.ActvAddress := addr;
     FBCW.ActvTerm := True;
-    { TODO : need to do something here to support data chaining }
 end;
 
 procedure TCommAdapter.TelnetAuthentication(AContext: TIdContext; const AUsername, APassword: string;
@@ -354,7 +353,7 @@ end;
 
 procedure TCommAdapter.TelnetExecute(AContext: TIdContext);
 begin
-
+    // This procedure is override for each protocol
 end;
 
 procedure TCommAdapter.TelnetListenException(AThread: TIdListenerThread; AException: Exception);

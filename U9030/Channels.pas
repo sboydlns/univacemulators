@@ -30,6 +30,7 @@ const
   INVALID_ADDRESS = $10;
   DATA_CHECK = $08;
   CONTROL_CHECK = $02;
+  BUFFER_TERMINATE = $01;
 
 type
   TChannel = class;
