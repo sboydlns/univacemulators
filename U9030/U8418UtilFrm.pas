@@ -345,6 +345,7 @@ var
             { TODO : It looks like CU$3REL contains embedded object code. }
             Exit;
         LibsMemo.Lines.Add('   ' + String(dir.Name));
+        { TODO : Change to ask for folder }
         fname := Format('c:\tmp\%s', [LibsList.Items[listIdx]]);
         ForceDirectories(fname);
         fname := Format('%s\%s.txt', [fname, TrimRight(String(dir.Name))]);

@@ -39,6 +39,7 @@ type
     procedure DeviceEnd;
     procedure DoAttention;
     procedure DoRead;
+    procedure DoReset; override;
     procedure DoSense;
     procedure DoWrite;
     procedure NotConnected;
@@ -134,21 +135,34 @@ begin
 
     translate := (FCommand and CONS_TRANSLATE) = 0;
     // Wait for any input from the console process
-    while ((not Terminated) and (FInputBfr.Count = 0)) do
+    while ((not Terminated) and (not FReset) and (FInputBfr.Count = 0)) do
         Sleep(10);
 
     FInputBfrLock.Acquire;
     try
-        s := AnsiString(FInputBfr[0]);
-        FInputBfr.Delete(0);
+        if (FReset) then
+        begin
+            while (FInputBfr.Count > 0) do
+                FInputBfr.Delete(0);
+        end else
+        begin
+            s := AnsiString(FInputBfr[0]);
+            FInputBfr.Delete(0);
+            if (translate) then
+                s := TCodeTranslator.AsciiToEbcdic(s);
+            //
+            if (StoreBuffer(PByte(PAnsiString(s)), Length(s))) then
+                DeviceEnd;
+        end;
     finally
         FInputBfrLock.Release;
     end;
-    if (translate) then
-        s := TCodeTranslator.AsciiToEbcdic(s);
-    //
-    if (StoreBuffer(PByte(PAnsiString(s)), Length(s))) then
-        DeviceEnd;
+end;
+
+procedure TConsole.DoReset;
+begin
+    Sleep(20);                  // Wait for any pending READ command to terminate
+    inherited;
 end;
 
 procedure TConsole.DoSense;
@@ -248,6 +262,7 @@ procedure TConsole.QueueStatus(dstat, cstat: Byte);
 var
     stat: TStatus;
 begin
+//    Sleep(1);
     stat := MakeStatus(dstat, cstat);
     FBusy := False;
     FCommand := 255;

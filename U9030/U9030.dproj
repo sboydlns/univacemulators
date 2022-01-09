@@ -69,7 +69,7 @@
 			<VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
 			<VerInfo_Locale>1033</VerInfo_Locale>
 			<Icon_MainIcon>U9030_Icon.ico</Icon_MainIcon>
-			<Debugger_RunParams>-c rel042.cfg</Debugger_RunParams>
+			<Debugger_RunParams>-c lns.notrace.cfg</Debugger_RunParams>
 			<Debugger_CWD>C:\Development\Emulators\U9030\Win32\Debug</Debugger_CWD>
 			<DCC_RemoteDebug>false</DCC_RemoteDebug>
 		</PropertyGroup>

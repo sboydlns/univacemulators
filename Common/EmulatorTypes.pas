@@ -1467,6 +1467,7 @@ begin
     Lock;
     try
         { TODO : Don't know why this is needed but it is or nothing prints. }
+        { TODO : Send this to the system TEMP folder, not c:\temp }
         SaveToFile(Format('c:\temp\u92printer_%d.bmp', [FPageNumber]));
         Inc(FPageNumber);
         Printer.Orientation := poLandscape;

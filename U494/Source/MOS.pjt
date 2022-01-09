@@ -24,17 +24,17 @@ C:\DEVELOPMENT\EMULATORS\U494\PROCS\misc.proc
 C:\DEVELOPMENT\EMULATORS\U494\PROCS\Tasks.proc
 
 [State]
-SysSetCwd='C:\Development\Emulators\U9030\Source'
+SysSetCwd='C:\Development\Emulators\U9030'
 SrchSetFlags=0x4410600b
 FileSortMode=0x0
-StateWindowFrame=0,0,1120,1087,0x63097f08
-_StateWindow=26,26,639,542,0x00100010,'C:\Development\Emulators\U9030\Source\netims6.jcl',208,31,212,4,20,12,46,26,126,176,8,4294967295,4294967295,1,10,'',12,255,48,72,10,467,0,0,721,252,249,9,46,400,0,212,214,210,220,721,721,720,729,217,80,0,223,224,14,1,1,208,1,6
-_StateBuffer='C:\Development\Emulators\U9030\Source\netims6.jcl',0x0400048a,9,46,25,'6 12 17 22 27 32 37 41','',0x1,'',1,72,1
-_StateHistory=FILELIST,'C:\Development\Emulators\U9030\Source\IMS.jcl','C:\Development\Emulators\U9030\Source\IMSVSB.jcl','C:\Development\Emulators\U9030\Source\vsb028.jcl','C:\Development\Emulators\U9030\Source\IMSVSB.PRN','C:\Development\Emulators\U9030\Source\NETIMS6.txt','C:\Development\Emulators\U9030\Source\imsconf.jcl','C:\Development\Emulators\U9030\Source\icam.asc','C:\Development\Emulators\U9030\Source\ims#cca.jcl','C:\Development\Emulators\U9030\Source\netims6.jcl'
-_StateHistory=SEARCH,'CC38:','10060:','114B0:','10104:','108A0:','FFC6:','10034:','CE8C:','D174:','CC28:'
+StateWindowFrame=0,0,959,1087,0x63097f08
+_StateWindow=156,156,478,561,0x00100010,'C:\Development\Emulators\U9030\VSB.cfg.release',208,31,212,4,20,12,46,26,126,176,8,4294967295,4294967295,1,10,'',12,255,48,72,10,467,0,0,721,252,249,3,16,400,0,212,214,210,220,721,721,720,729,217,80,0,223,224,14,1,1,208,1,6
+_StateBuffer='C:\Development\Emulators\U9030\VSB.cfg.release',0x0400048a,3,16,25,'6 12 17 22 27 32 37 41','',0x1,'',1,72,1
+_StateHistory=FILELIST,'C:\Development\Emulators\U9030\Source\OS3.asm','C:\Development\Emulators\U9030\Source\boot2.asm','C:\Development\Emulators\U9030\Source\boot.asm','C:\Development\Emulators\U9030\LNS.notrace.cfg','C:\Development\Emulators\U9030\REL042.cfg','C:\Development\Emulators\U9030\REL042.cfg.release','C:\Development\Emulators\U9030\REL042.notrace.cfg','C:\Development\Emulators\U9030\VSB.cfg','C:\Development\Emulators\U9030\VSB.cfg.release'
+_StateHistory=SEARCH,'fig831','fig325','1.5.3','<b','</','HPR','18A','18E:','186:','186'
 _StateHistory=REPLACE,'.'
 _StateHistory=XSYMBOL,'OUTPUT','ERROR','INPUT','FILE'
-_StateHistory=EDITFILE,'C:\Development\Emulators\U9030\Source\icamu200.asm.new','C:\Development\Emulators\U9030\Source\IMS.jcl','C:\Development\Emulators\U9030\Source\IMSVSB.jcl','C:\Development\Emulators\U9030\Source\vsb028.jcl','C:\Development\Emulators\U9030\Source\IMSVSB.PRN','C:\Development\Emulators\U9030\Source\NETIMS6.txt','C:\Development\Emulators\U9030\Source\imsconf.jcl','C:\Development\Emulators\U9030\Source\IMSVSB.jcl','C:\Development\Emulators\U9030\Source\icam.asc','C:\Development\Emulators\U9030\Source\netims6.jcl'
+_StateHistory=EDITFILE,'C:\Development\Emulators\U9030\Source\netims6.jcl','C:\Development\Emulators\U9030\Source\OS3.asm','C:\Development\Emulators\U9030\Source\boot2.asm','C:\Development\Emulators\U9030\Source\boot.asm','C:\Development\Emulators\U9030\LNS.notrace.cfg','C:\Development\Emulators\U9030\REL042.cfg','C:\Development\Emulators\U9030\REL042.cfg.release','C:\Development\Emulators\U9030\REL042.notrace.cfg','C:\Development\Emulators\U9030\VSB.cfg','C:\Development\Emulators\U9030\VSB.cfg.release'
 _StateHistory=DIRECTORY,'c:\tmp\$Y$MAC','C:\tmp\$Y$SRC','C:\tmp\$Y$GEN','C:\TMP','C:\tmp\$Y$MAC'
 _StateHistory=GOTOMARK,'1','2','1'
 

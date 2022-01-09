@@ -219,8 +219,9 @@ begin
     inherited Create(AOwner);
     Self.Model := model;
     Self.Size := size;
-    if (model = umConsole) then
-        FTraceFile := TFileStream.Create('c:\temp\uniscope.trc', fmCreate);
+    // Uncomment following lines if tracing required!!!!!
+//    if (model = umConsole) then
+//        FTraceFile := TFileStream.Create('c:\temp\uniscope.trc', fmCreate);
     FCanvas := TControlCanvas.Create;
     FCanvas.Control := Self;
     FTimer := TTimer.Create(AOwner);
@@ -701,9 +702,13 @@ end;
 
 procedure TUniscope.KeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
-    if ((Key = VK_F12) and (ssShift in Shift)) then
+    if ((Key = VK_F12) and (ssShift in Shift) and (FModel <> umConsole)) then
+    begin
         FKbdLocked := False;
-    if (FKbdLocked) then
+        DrawStatus;
+        Exit;
+    end;
+    if (FKbdLocked and (Key <> VK_F11)) then
         Exit;
 
     case Key of
@@ -1224,28 +1229,30 @@ var
         hex: AnsiString;
         i: Integer;
     begin
-        FTraceFile.Write(PAnsiChar(AnsiString(#13#10#13#10))^, 4);
-        word := 0;
-        for i := Low(Buffer) to High(Buffer) do
+        if (Assigned(FTraceFile)) then
         begin
-            if ((i <> 0) and ((i mod 4) = 0)) then
+            FTraceFile.Write(PAnsiChar(AnsiString(#13#10#13#10))^, 4);
+            word := 0;
+            for i := Low(Buffer) to High(Buffer) do
+            begin
+                if ((i <> 0) and ((i mod 4) = 0)) then
+                begin
+                    hex := AnsiString(Format('%8.8x ', [word]));
+                    FTraceFile.Write(PAnsiChar(hex)^, 9);
+                    word := 0;
+                end;
+                word := (word shl 8) or Buffer[i];
+            end;
+            if (word <> 0) then
             begin
                 hex := AnsiString(Format('%8.8x ', [word]));
                 FTraceFile.Write(PAnsiChar(hex)^, 9);
-                word := 0;
             end;
-            word := (word shl 8) or Buffer[i];
-        end;
-        if (word <> 0) then
-        begin
-            hex := AnsiString(Format('%8.8x ', [word]));
-            FTraceFile.Write(PAnsiChar(hex)^, 9);
         end;
     end;
 
 begin
-    if (Assigned(FTraceFile)) then
-        TraceBuffer;
+    TraceBuffer;
 
     FHostControl := True;
     HideCursor;

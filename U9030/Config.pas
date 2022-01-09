@@ -19,6 +19,7 @@ type
   TConfig = class(TObject)
   public
     Disks: array of TConfigDisk;
+    IODelay: Integer;
     IOTraceEnabled: Boolean;
     SvcTraceEnabled: Boolean;
     procedure Load(xml: TXmlDocument);
@@ -35,8 +36,14 @@ var
     disk: TConfigDisk;
 begin
     SetLength(Disks, 0);
+    IODelay := 1;
     IOTraceEnabled := False;
     SvcTraceEnabled := False;
+
+    node := xml.DocumentElement.ChildNodes.FindNode('iodelay');
+    if (Assigned(node)) then
+        if (not TryStrToInt(node.Text, IODelay)) then
+            IODelay := 1;
 
     node := xml.DocumentElement.ChildNodes.FindNode('iotrace');
     if (Assigned(node)) then

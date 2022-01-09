@@ -469,6 +469,7 @@ end;
 procedure TDevice.DoReset;
 begin
     FReset := False;
+    FBusy := False;
     FCmdRecvd.ResetEvent;
     FResetDone.SetEvent;
 end;
@@ -533,6 +534,10 @@ procedure TDevice.QueueStatus(dstat, cstat: Byte);
 var
     stat: TStatus;
 begin
+    // Yield the task to allow the processor some time to get ahead of the
+    // interrupt that is to come. If interrupts fire too soon after the SIO
+    // strange things can happen to OS/3.
+    Sleep(IODelay);
     stat := MakeStatus(dstat, cstat);
     FBusy := False;
     FCommand := 0;
@@ -544,6 +549,8 @@ begin
     FReset := True;
     FCmdRecvd.SetEvent;
     FResetDone.WaitFor(100);
+//    if (FResetDone.WaitFor(100) <> wrSignaled) then
+//        ShowMessage('ResetDone timeout');
 end;
 
 procedure TDevice.SaveAs(fname: String);

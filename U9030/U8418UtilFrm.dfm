@@ -35,6 +35,10 @@ object U8418UtilForm: TU8418UtilForm
     OnChange = PagesChange
     object VTOCPage: TTabSheet
       Caption = 'VTOC'
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       DesignSize = (
         922
         432)
@@ -66,6 +70,10 @@ object U8418UtilForm: TU8418UtilForm
     object LibsPage: TTabSheet
       Caption = 'Libs'
       ImageIndex = 1
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       DesignSize = (
         922
         432)
@@ -174,6 +182,10 @@ object U8418UtilForm: TU8418UtilForm
     object DiskPage: TTabSheet
       Caption = 'Disk'
       ImageIndex = 2
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       DesignSize = (
         922
         432)

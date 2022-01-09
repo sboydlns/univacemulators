@@ -68,6 +68,12 @@ Source: ..\Tests\Logical.tst; DestDir: {app}\Tests
 Source: ..\Tests\Character.tst; DestDir: {app}\Tests
 Source: ..\Tests\Compare.tst; DestDir: {app}\Tests
 Source: ..\Docs\U9030.pdf; DestDir: {app}\Docs
+Source: ..\Source\icam.asc; DestDir: {app}\Source
+Source: ..\Source\IMS.jcl; DestDir: {app}\Source
+Source: ..\Source\IMSVSB.jcl; DestDir: {app}\Source
+Source: ..\Source\netims6.jcl; DestDir: {app}\Source
+Source: ..\Source\supgen.asc; DestDir: {app}\Source
+Source: ..\Source\PREP18.jcl; DestDir: {app}\Source
 
 [Icons]
 Name: {group}\Univac 9030 Emulator; Filename: {app}\U9030.exe; Parameters: -c REL042.cfg; IconIndex: 0
@@ -90,3 +96,4 @@ Name: {app}\Manuals
 Name: {app}\VSB Data
 Name: {app}\Tests
 Name: {app}\Docs
+Name: {app}\Source

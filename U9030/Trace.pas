@@ -15,6 +15,7 @@ type
   end;
 
 var
+  IODelay: Integer;
   IOTraceFile: TTraceFile;
   IOTraceEnabled: Boolean;
   SvcTraceFile: TTraceFile;

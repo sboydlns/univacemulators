@@ -151,7 +151,7 @@ object DebuggerForm: TDebuggerForm
     TabOrder = 5
   end
   object CommandEdt: TEdit
-    Left = 7
+    Left = 8
     Top = 596
     Width = 401
     Height = 21

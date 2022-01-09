@@ -310,6 +310,7 @@ begin
         ConfigXml.LoadFromFile(fname);
         ConfigXml.Active;
         Configuration.Load(ConfigXml);
+        IODelay := Configuration.IODelay;
         IOTraceEnabled := Configuration.IOTraceEnabled;
         SvcTraceEnabled := Configuration.SvcTraceEnabled;
         for disk in Configuration.Disks do
