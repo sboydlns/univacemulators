@@ -3,7 +3,7 @@ object U9030Form: TU9030Form
   Top = 0
   Caption = 'Sperry*Univac 90/30 Emulator'
   ClientHeight = 527
-  ClientWidth = 556
+  ClientWidth = 575
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -14,39 +14,40 @@ object U9030Form: TU9030Form
   OnCloseQuery = FormCloseQuery
   OnShow = FormShow
   DesignSize = (
-    556
+    575
     527)
   PixelsPerInch = 96
   TextHeight = 14
   object StepBtn: TButton
-    Left = 273
+    Left = 345
     Top = 501
     Width = 75
     Height = 25
     Anchors = [akLeft, akBottom]
     Caption = 'Step'
-    TabOrder = 6
+    TabOrder = 7
     OnClick = StepBtnClick
   end
   object StopBtn: TButton
-    Left = 199
+    Left = 271
     Top = 501
     Width = 75
     Height = 25
     Anchors = [akLeft, akBottom]
     Caption = 'Stop'
-    TabOrder = 4
+    TabOrder = 5
     OnClick = StopBtnClick
   end
   object Panel: TPanel
     Left = 0
     Top = 0
-    Width = 556
+    Width = 575
     Height = 456
     Align = alTop
     TabOrder = 1
+    ExplicitTop = 2
     DesignSize = (
-      556
+      575
       456)
     object Label1: TLabel
       Left = 12
@@ -70,13 +71,22 @@ object U9030Form: TU9030Form
       Caption = 'INST'
     end
     object StateLbl: TLabel
-      Left = 336
-      Top = 439
-      Width = 217
+      Left = 12
+      Top = 434
+      Width = 334
       Height = 14
       Anchors = [akLeft, akRight, akBottom]
       AutoSize = False
       Caption = 'StateLbl'
+      Color = clBtnFace
+      Font.Charset = DEFAULT_CHARSET
+      Font.Color = clRed
+      Font.Height = -16
+      Font.Name = 'Courier New'
+      Font.Style = []
+      ParentColor = False
+      ParentFont = False
+      ExplicitWidth = 315
     end
     object Label4: TLabel
       Left = 362
@@ -327,7 +337,7 @@ object U9030Form: TU9030Form
       Left = 12
       Top = 114
       Width = 307
-      Height = 49
+      Height = 68
       Shape = bsFrame
     end
     object Label39: TLabel
@@ -340,14 +350,14 @@ object U9030Form: TU9030Form
     end
     object Bevel2: TBevel
       Left = 12
-      Top = 177
+      Top = 208
       Width = 307
       Height = 68
       Shape = bsFrame
     end
     object Label40: TLabel
       Left = 18
-      Top = 169
+      Top = 200
       Width = 42
       Height = 14
       Caption = 'READER'
@@ -355,7 +365,16 @@ object U9030Form: TU9030Form
     end
     object ReaderStatusLbl: TLabel
       Left = 16
-      Top = 220
+      Top = 251
+      Width = 297
+      Height = 14
+      Alignment = taCenter
+      AutoSize = False
+      Caption = 'ReaderStatusLbl'
+    end
+    object PrinterStatusLbl: TLabel
+      Left = 16
+      Top = 158
       Width = 297
       Height = 14
       Alignment = taCenter
@@ -618,7 +637,7 @@ object U9030Form: TU9030Form
     end
     object RdrLoadBtn: TButton
       Left = 26
-      Top = 190
+      Top = 221
       Width = 75
       Height = 25
       Caption = 'Load'
@@ -636,7 +655,7 @@ object U9030Form: TU9030Form
     end
     object RdrEmptyBtn: TButton
       Left = 100
-      Top = 190
+      Top = 221
       Width = 75
       Height = 25
       Caption = 'Empty'
@@ -645,7 +664,7 @@ object U9030Form: TU9030Form
     end
     object RdrAttnBtn: TButton
       Left = 174
-      Top = 190
+      Top = 221
       Width = 75
       Height = 25
       Caption = 'Attention'
@@ -654,7 +673,7 @@ object U9030Form: TU9030Form
     end
   end
   object CpuTestBtn: TButton
-    Left = 421
+    Left = 493
     Top = 501
     Width = 75
     Height = 25
@@ -683,23 +702,23 @@ object U9030Form: TU9030Form
     Text = '300'
   end
   object RunBtn: TButton
-    Left = 125
+    Left = 197
     Top = 501
     Width = 75
     Height = 25
     Anchors = [akLeft, akBottom]
     Caption = 'Run'
-    TabOrder = 5
+    TabOrder = 6
     OnClick = RunBtnClick
   end
   object DebugBtn: TButton
-    Left = 347
+    Left = 419
     Top = 501
     Width = 75
     Height = 25
     Anchors = [akLeft, akBottom]
     Caption = 'Debug'
-    TabOrder = 7
+    TabOrder = 8
     OnClick = DebugBtnClick
   end
   object DisableTimerBox: TCheckBox
@@ -708,8 +727,17 @@ object U9030Form: TU9030Form
     Width = 115
     Height = 17
     Caption = 'Inhibit Timer'
-    TabOrder = 8
+    TabOrder = 9
     OnClick = DisableTimerBoxClick
+  end
+  object ResetBtn: TButton
+    Left = 124
+    Top = 501
+    Width = 75
+    Height = 25
+    Caption = 'Reset'
+    TabOrder = 4
+    OnClick = ResetBtnClick
   end
   object Timer: TTimer
     Enabled = False

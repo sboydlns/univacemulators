@@ -71,6 +71,7 @@ type
     procedure ProcessCommand; override;
     procedure SaveAs(fname: String); override;
     procedure SIO; override;
+    property PrintFile: TFileStream read FPrintFile;
   end;
 
 implementation

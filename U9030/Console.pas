@@ -63,7 +63,7 @@ type
 
 implementation
 
-uses EmulatorTypes, U9030Types, Globals, Memory;
+uses EmulatorTypes, U9030Types, Globals, Memory, Trace;
 
 { TConsole }
 
@@ -262,7 +262,7 @@ procedure TConsole.QueueStatus(dstat, cstat: Byte);
 var
     stat: TStatus;
 begin
-//    Sleep(1);
+    Sleep(IODelay);
     stat := MakeStatus(dstat, cstat);
     FBusy := False;
     FCommand := 255;

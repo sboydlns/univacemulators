@@ -25,17 +25,17 @@ C:\DEVELOPMENT\EMULATORS\U494\PROCS\Tasks.proc
 
 [State]
 SysSetCwd='C:\Development\Emulators\U9030'
-SrchSetFlags=0x4410600b
+SrchSetFlags=0x4418600b
 FileSortMode=0x0
 StateWindowFrame=0,0,959,1087,0x63097f08
-_StateWindow=156,156,478,561,0x00100010,'C:\Development\Emulators\U9030\VSB.cfg.release',208,31,212,4,20,12,46,26,126,176,8,4294967295,4294967295,1,10,'',12,255,48,72,10,467,0,0,721,252,249,3,16,400,0,212,214,210,220,721,721,720,729,217,80,0,223,224,14,1,1,208,1,6
+_StateWindow=234,234,478,561,0x00100010,'C:\Development\Emulators\U9030\VSB.cfg.release',208,31,212,4,20,12,46,26,126,176,8,4294967295,4294967295,1,10,'',12,255,48,72,10,467,0,0,721,252,249,3,16,400,0,212,214,210,220,721,721,720,729,217,80,0,223,224,14,1,1,208,1,6
 _StateBuffer='C:\Development\Emulators\U9030\VSB.cfg.release',0x0400048a,3,16,25,'6 12 17 22 27 32 37 41','',0x1,'',1,72,1
-_StateHistory=FILELIST,'C:\Development\Emulators\U9030\Source\OS3.asm','C:\Development\Emulators\U9030\Source\boot2.asm','C:\Development\Emulators\U9030\Source\boot.asm','C:\Development\Emulators\U9030\LNS.notrace.cfg','C:\Development\Emulators\U9030\REL042.cfg','C:\Development\Emulators\U9030\REL042.cfg.release','C:\Development\Emulators\U9030\REL042.notrace.cfg','C:\Development\Emulators\U9030\VSB.cfg','C:\Development\Emulators\U9030\VSB.cfg.release'
-_StateHistory=SEARCH,'fig831','fig325','1.5.3','<b','</','HPR','18A','18E:','186:','186'
+_StateHistory=FILELIST,'C:\Development\Emulators\U9030\Source\OS3.asm','C:\Development\Emulators\U9030\Source\LibTest.asm','C:\Development\Emulators\U9030\Source\SavePrep18.jcl','C:\Development\Emulators\U9030\Source\SavePack.jcl','C:\Development\Emulators\U9030\REL042.cfg','C:\Development\Emulators\U9030\REL042.cfg.release','C:\Development\Emulators\U9030\REL042.notrace.cfg','C:\Development\Emulators\U9030\VSB.cfg','C:\Development\Emulators\U9030\VSB.cfg.release'
+_StateHistory=SEARCH,'R15','R10','r14','r7','L\'L$BLK','L$SAVE1','SH','L$DLEN','L$DOFST','L$DBLK'
 _StateHistory=REPLACE,'.'
 _StateHistory=XSYMBOL,'OUTPUT','ERROR','INPUT','FILE'
-_StateHistory=EDITFILE,'C:\Development\Emulators\U9030\Source\netims6.jcl','C:\Development\Emulators\U9030\Source\OS3.asm','C:\Development\Emulators\U9030\Source\boot2.asm','C:\Development\Emulators\U9030\Source\boot.asm','C:\Development\Emulators\U9030\LNS.notrace.cfg','C:\Development\Emulators\U9030\REL042.cfg','C:\Development\Emulators\U9030\REL042.cfg.release','C:\Development\Emulators\U9030\REL042.notrace.cfg','C:\Development\Emulators\U9030\VSB.cfg','C:\Development\Emulators\U9030\VSB.cfg.release'
-_StateHistory=DIRECTORY,'c:\tmp\$Y$MAC','C:\tmp\$Y$SRC','C:\tmp\$Y$GEN','C:\TMP','C:\tmp\$Y$MAC'
+_StateHistory=EDITFILE,'C:\Development\Emulators\U9030\Source\LibTest.jcl','C:\Development\Emulators\U9030\Source\SaveAsm.jcl','C:\Development\Emulators\U9030\Source\OS3.asm','C:\Development\Emulators\U9030\Source\LibTest.asm','C:\Development\Emulators\U9030\Source\SavePrep18.jcl','C:\Development\Emulators\U9030\REL042.cfg','C:\Development\Emulators\U9030\REL042.cfg.release','C:\Development\Emulators\U9030\REL042.notrace.cfg','C:\Development\Emulators\U9030\VSB.cfg','C:\Development\Emulators\U9030\VSB.cfg.release'
+_StateHistory=DIRECTORY,'c:\tmp\$Y$MAC','C:\tmp\$Y$SRC','C:\tmp\$Y$GEN','C:\TMP','C:\TMP\$Y$MAC','C:\tmp','C:\tmp\$Y$MAC'
 _StateHistory=GOTOMARK,'1','2','1'
 
 [Editor]

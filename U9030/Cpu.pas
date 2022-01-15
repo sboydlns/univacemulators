@@ -1576,6 +1576,10 @@ var
 begin
     code := CurInst.ImmedOperand;
     case code of
+      0:
+      begin                             // Diagnose is meaningless to emulator. no-op.
+        ;
+      end;
       14:
       begin
         FRegisters[PSW.RegisterSet, CurInst.B1] := 0;

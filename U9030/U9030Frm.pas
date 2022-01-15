@@ -108,6 +108,8 @@ type
     ReaderStatusLbl: TLabel;
     RdrEmptyBtn: TButton;
     RdrAttnBtn: TButton;
+    ResetBtn: TButton;
+    PrinterStatusLbl: TLabel;
     procedure TimerTimer(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure StopBtnClick(Sender: TObject);
@@ -123,6 +125,7 @@ type
     procedure PrintBtnClick(Sender: TObject);
     procedure RdrEmptyBtnClick(Sender: TObject);
     procedure RdrAttnBtnClick(Sender: TObject);
+    procedure ResetBtnClick(Sender: TObject);
   private
     FConsoleStarted: Boolean;
     FConfigFile: String;
@@ -142,7 +145,7 @@ implementation
 
 {$R *.dfm}
 
-uses DebuggerFrm, U9030Types, Globals, Channels, Cpu, Memory, IDA, IPC, Console, Trace,
+uses Winapi.MMSystem, DebuggerFrm, U9030Types, Globals, Channels, Cpu, Memory, IDA, IPC, Console, Trace,
      U0717, U0773, CpuTestFrm, Config, UniscopeAdapter;
 
 var
@@ -190,8 +193,14 @@ begin
 end;
 
 constructor TU9030Form.Create(AOwner: TComponent);
+var
+    tc: TIMECAPS;
 begin
-        inherited;
+    inherited;
+    // This is needed to make Sleep(1) closer to 1MS than it would
+    // be using the default clock tick interval which is closer to 15MS.
+    timeGetDevCaps(@tc, SizeOf(tc));
+    timeBeginPeriod(tc.wPeriodMin);
 end;
 
 procedure TU9030Form.DebugBtnClick(Sender: TObject);
@@ -201,7 +210,12 @@ begin
 end;
 
 destructor TU9030Form.Destroy;
+var
+    tc: TIMECAPS;
 begin
+    // Be sure to undo the timeBeginPeriod that was done in Create.
+    timeGetDevCaps(@tc, SizeOf(tc));
+    timeEndPeriod(tc.wPeriodMin);
     try
         // This might barf if the user closes the console window
         // before we get here.
@@ -446,6 +460,11 @@ begin
         Reader.AddFile(fname);
 end;
 
+procedure TU9030Form.ResetBtnClick(Sender: TObject);
+begin
+    Processor.Reset;
+end;
+
 procedure TU9030Form.RunBtnClick(Sender: TObject);
 begin
     if ((Processor.State = []) or ((Processor.State * [psHalted, psError]) <> [])) then
@@ -546,6 +565,14 @@ begin
     end else
     begin
         ReaderStatusLbl.Caption := 'Empty';
+    end;
+    if (Assigned(Printer.PrintFile)) then
+    begin
+        PrinterStatusLbl.Caption :=
+            Format('%dKB', [Round(Printer.PrintFile.Size / 1000)]);
+    end else
+    begin
+        PrinterStatusLbl.Caption := 'Empty';
     end;
 end;
 
