@@ -170,6 +170,10 @@ object DebuggerForm: TDebuggerForm
     OnChange = PagesChange
     object TracePage: TTabSheet
       Caption = 'Trace'
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       object TraceGrid: TStringGrid
         Left = 0
         Top = 0
@@ -189,6 +193,10 @@ object DebuggerForm: TDebuggerForm
     object BrkptPage: TTabSheet
       Caption = 'Brkpts'
       ImageIndex = 1
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       object BrkptGrid: TStringGrid
         Left = 0
         Top = 0
@@ -208,6 +216,10 @@ object DebuggerForm: TDebuggerForm
     object WatchesPage: TTabSheet
       Caption = 'Watches'
       ImageIndex = 2
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       object WatchesGrid: TStringGrid
         Left = 0
         Top = 0
@@ -227,6 +239,10 @@ object DebuggerForm: TDebuggerForm
     object SvcPage: TTabSheet
       Caption = 'Svc Trace'
       ImageIndex = 3
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       object SvcGrid: TStringGrid
         Left = 0
         Top = 0
@@ -246,6 +262,10 @@ object DebuggerForm: TDebuggerForm
     object SibPage: TTabSheet
       Caption = 'SIB'
       ImageIndex = 4
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       object SibMemo: TMemo
         Left = 0
         Top = 0
@@ -342,6 +362,10 @@ object DebuggerForm: TDebuggerForm
     object FPRegPage: TTabSheet
       Caption = 'FP Double'
       ImageIndex = 1
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       object FPRegGrid: TStringGrid
         Left = 0
         Top = 0
@@ -360,6 +384,10 @@ object DebuggerForm: TDebuggerForm
     object FPRegSinglePage: TTabSheet
       Caption = 'FP Single'
       ImageIndex = 2
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       object FPRegSingleGrid: TStringGrid
         Left = 0
         Top = 0

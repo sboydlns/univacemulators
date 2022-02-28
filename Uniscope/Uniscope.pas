@@ -1290,6 +1290,7 @@ begin
             end else if (b = TNC_IAC) then
             begin
                 FIACSeen := True;
+                FRidSeen := False;
             end else if (b = $fe) then
             begin
                 PostMessage(Application.MainFormHandle, WM_CLOSE, 0, 0);

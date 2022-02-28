@@ -1616,30 +1616,31 @@
        *
        * I/O interrupt handler
        *
-00C57E:         LR    R9,R0
-00C580:         CLI   X'000'(R9),0
-00C584:         BCR   R7,R13
-00C586:         CLI   X'001'(R9),3
-00C58A:         BCR   R13,R13
-00C58C:         STM   R11,R15,X'35E'(,R12)
-00C590:         MVC   X'372'(4,R12),X'000'(R9)
-00C596:         L     R15,X'342'(,R12)
-00C59A:         L     R3,X'5AC'(,R15)
+00C57E:         LR    R9,R0                      POINT TO IOSTIW
+00C580:         CLI   X'000'(R9),0               CHAN # = 0?
+00C584:         BNER  R13                        NO, RETURN
+00C586:         CLI   X'001'(R9),3               CHAN # > 3?
+00C58A:         BNHR  R13                        NO, RETURN
+00C58C:         STM   R11,R15,X'35E'(,R12)       SAVE IMPORTANT REGISTERS
+00C590:         MVC   X'372'(4,R12),X'000'(R9)   SAVE IOSTIW
+00C596:         L     R15,X'342'(,R12)           LOAD COVER REGISTER
+00C59A:         L     R3,X'5AC'(,R15)            COVER GENERAL INFO TABLE.
 00C59E:         LA    R14,X'55E'(,R15)
-00C5A2:         CLC   X'001'(1,R9),X'07D'(R3)
-00C5A8:         BCR   R2,R14
-00C5AA:         CLC   X'001'(1,R9),X'07C'(R3)
-00C5B0:         BCR   R4,R14
-00C5B2:         CLI   X'001'(R9),16
-00C5B6:         BC    4,X'2A8'(,R15)
-00C5BA:         CLI   X'001'(R9),20
-00C5BE:         BCR   R4,R14
-00C5C0:         LH    R7,X'000'(,R9)
-00C5C4:         BAL   R13,X'63C'(,R15)
-00C5C8:         L     R1,X'000'(,R6)
-00C5CC:         BAL   R13,X'846'(,R15)
-00C5D0:         LTR   R1,R1
-00C5D2:         BC    7,X'2DA'(,R15)
+00C5A2:         CLC   X'001'(1,R9),TN#GLPN(R3)   DVC # <= LAST PORT OF 1ST LINE IN LLT?
+00C5A8:         BHR   R14                        NO
+00C5AA:         CLC   X'001'(1,R9),TN#GFPN(R3)   DVC # >= 1ST PORT OF 1ST LINE IN LLT?
+00C5B0:         BLR   R14                        NO
+00C5B2:         CLI   X'001'(R9),16              DVC # >= 16?
+00C5B6:         BL    X'C5C0'                    NO
+00C5BA:         CLI   X'001'(R9),20              DVC # >= 20?
+00C5BE:         BLR   R14                        NO
+       *
+00C5C0:         LH    R7,X'000'(,R9)             GET CHN & DVC #S
+00C5C4:         BAL   R13,X'C954'                CALC BCW ADDR TO R7 & LLR ADDR TO R6
+00C5C8:         L     R1,TN#PHEAD(,R6)           GET CRNT PKT ADDR
+00C5CC:         BAL   R13,XCB5E'
+00C5D0:         LTR   R1,R1                      R1 = 0?
+00C5D2:         BNZ   X'C5F2'                    NO
 00C5D6:         MVC   X'014'(4,R6),X'000'(R9)
 00C5DC:         AI    X'018'(R6),1
 00C5E0:         TM    X'002'(R9),2
@@ -1647,8 +1648,9 @@
 00C5E6:         OI    X'01C'(R6),8
 00C5EA:         MVC   X'01E'(1,R6),X'001'(R9)
 00C5F0:         BCR   R15,R14
-00C5F2:         CLC   X'003'(1,R1),X'001'(R9)
-00C5F8:         BC    8,X'302'(,R15)
+       *
+00C5F2:         CLC   X'003'(1,R1),X'001'(R9)    PKT DVC = STATUS DVC? 
+00C5F8:         BE    X'C61A'                    YES
 00C5FC:         TM    X'002'(R9),2
 00C600:         BCR   R14,R14
 00C602:         MVC   X'01E'(1,R6),X'001'(R9)
@@ -1657,19 +1659,19 @@
 00C610:         LH    R10,X'00E'(,R6)
 00C614:         AR    R10,R6
 00C616:         L     R7,X'030'(,R10)
-00C61A:         MVC   X'00E'(2,R1),X'002'(R9)
+00C61A:         MVC   X'00E'(2,R1),X'002'(R9)    SAVE STATUS BYTES TO PKT
 00C620:         L     R5,X'5B4'(,R15)
-00C624:         LTR   R5,R5
-00C626:         BC    8,X'314'(,R15)
+00C624:         LTR   R5,R5                      R5 = 0?
+00C626:         BE    X'C62C'                    YES
 00C62A:         BALR  R13,R5
 00C62C:         MVI   X'00C'(R1),1
 00C630:         TM    X'00E'(R1),255
 00C634:         BC    8,X'498'(,R15)
-00C638:         BAL   R13,X'850'(,R15)
+00C638:         BAL   R13,X'CB68'
 00C63C:         CLI   X'01E'(R6),0
 00C640:         BC    7,X'7EC'(,R15)
-00C644:         TM    X'006'(R7),128
-00C648:         BC    1,X'340'(,R15)
+00C644:         TM    X'006'(R7),128             C(A) SET IN BCW?
+00C648:         BO    X'C560'                    YES
 00C64C:         TM    X'001'(R1),64
 00C650:         BC    1,X'340'(,R15)
 00C654:         MVI   X'00D'(R1),16
@@ -1866,7 +1868,7 @@
        
 00C954:         LR    R6,R7                      R6 = PORT/CHANNEL 
 00C956:         SRL   R6,X'0008'                 ISOLATE PORT #
-00C95A:         IC    R6,X'084'(R6, )
+00C95A:         IC    R6,X'084'(R6,R3)
 00C95E:         N     R7,X'5B8'(,R15)            ISOLATE THE CHANNEL #
 00C962:         CH    R7,X'60C'(,R15)            CHANNEL < 16?
 00C966:         BL    X'C96E'                    YES
@@ -1967,14 +1969,14 @@
 00CACC:         MVC   X'000'(2,R5),X'01A'(R8)    BFR LENGTH TO BCW
 00CAD2:         CLC   X'01A'(2,R8),X'60A'(R15)
 00CAD8:         BNE   X'CAE2'
-00CADC:         MVC   X'000'(2,R5),TN#GZRO(R3)
-00CAE2:         OI    X'000'(R9),128
+00CADC:         MVC   X'000'(2,R5),TN#GZRO(R3)   CLEAR BFR LENGTH IN BCW
+00CAE2:         OI    X'000'(R9),128             SET F BIT IN BCW
 00CAE6:         TM    X'001'(R8),64
 00CAEA:         BC    14,X'7DA'(,R15)
 00CAEE:         CLR   R9,R7                      R9 = R7?
 00CAF0:         BER   R13                        YES, RETURN
        *
-00CAF2:         OI    X'000'(R5),128
+00CAF2:         OI    X'000'(R5),128             SET REPL CHAIN BIT IN BCW
 00CAF6:         BCR   R15,R13
 00CAF8:         LA    R5,X'006'(,R9)
 00CAFC:         OI    X'01C'(R6),64
@@ -2008,11 +2010,11 @@
 00CB64:         BZR   R13                        YES, RETURN
 00CB66:         BCR   R15,R5
        *
-00CB68:         MVC   X'5EE'(2,R15),X'006'(R7)
-00CB6E:         NI    X'5EE'(R15),3
-00CB72:         LH    R10,X'5EE'(,R15)
-00CB76:         CLC   X'01A'(2,R1),X'008'(R3)
-00CB7C:         BC    7,X'876'(,R15)
+00CB68:         MVC   X'5EE'(2,R15),X'006'(R7)   SAVE ACTV COUNT FROM BCW
+00CB6E:         NI    X'5EE'(R15),3              CLEAR ALL BUT LS 2 BITS
+00CB72:         LH    R10,X'5EE'(,R15)           PUT IN R10
+00CB76:         CLC   X'01A'(2,R1),TN#GZRO(R3)   
+00CB7C:         BNE   X'CB8E'
 00CB80:         CLC   X'015'(3,R1),X'001'(R7)
 00CB86:         BC    7,X'876'(,R15)
 00CB8A:         AH    R10,X'60A'(,R15)
@@ -2020,7 +2022,7 @@
 00CB92:         BCR   R1,R13
 00CB94:         STH   R10,X'012'(,R1)
 00CB98:         CLI   X'002'(R1),7
-00CB9C:         BC    7,X'8A0'(,R15)
+00CB9C:         BC    7,X'CBB8'
 00CBA0:         LH    R9,X'01A'(,R1)
 00CBA4:         LTR   R9,R9
 00CBA6:         BC    7,X'896'(,R15)

@@ -16,9 +16,19 @@ type
     procedure Clear;
   end;
 
+  TConfigPortType = ( cptNone, cptUniscope );
+
+  TConfigPort = record
+    PortType: TConfigPortType;
+    DeviceNum: Integer;
+    Rid: Integer;
+    procedure Clear;
+  end;
+
   TConfig = class(TObject)
   public
     Disks: array of TConfigDisk;
+    Ports: array of TConfigPort;
     IODelay: Integer;
     IOTraceEnabled: Boolean;
     SvcTraceEnabled: Boolean;
@@ -34,6 +44,7 @@ var
     s: String;
     node: IXmlNode;
     disk: TConfigDisk;
+    port: TConfigPort;
 begin
     SetLength(Disks, 0);
     IODelay := 1;
@@ -70,12 +81,38 @@ begin
                 raise Exception.CreateFmt('Invalid disk type (%s)', [s]);
             s := node.Attributes['addr'];
             if (not TryStrToInt(s, disk.DeviceNum)) then
-                raise Exception.CreateFmt('Invalid device address (%s)', [s]);
+                raise Exception.CreateFmt('Invalid disk address (%s)', [s]);
             if ((disk.DeviceNum < 0) or (disk.DeviceNum > 7)) then
-                raise Exception.CreateFmt('Invalid device address (%s)', [s]);
+                raise Exception.CreateFmt('Invalid disk address (%s)', [s]);
             disk.DiskFile := node.Attributes['file'];
             SetLength(Disks, Length(Disks) + 1);
             Disks[High(Disks)] := disk;
+            node := node.NextSibling;
+        end;
+    end;
+
+    node := xml.DocumentElement.ChildNodes.FindNode('ipc');
+    if (Assigned(node) and (node.ChildNodes.Count > 0)) then
+    begin
+        node := node.ChildNodes[0];
+        while (Assigned(node) and (node.NodeName = 'commport')) do
+        begin
+            port.Clear;
+            s := node.Attributes['type'];
+            if (s = 'uniscope') then
+                port.PortType := cptUniscope
+            else
+                raise Exception.CreateFmt('Invalid comm port type (%s)', [s]);
+            s := node.Attributes['addr'];
+            if (not TryStrToInt(s, port.DeviceNum)) then
+                raise Exception.CreateFmt('Invalid comm port address (%s)', [s]);
+            if ((port.DeviceNum < 4) or (disk.DeviceNum > 15)) then
+                raise Exception.CreateFmt('Invalid comm port address (%s)', [s]);
+            s := node.Attributes['rid'];
+            if ((s <> '') and (not TryStrToInt(s, port.Rid))) then
+                raise Exception.CreateFmt('Invalid RID (%s)', [s]);
+            SetLength(Ports, Length(Ports) + 1);
+            Ports[High(Ports)] := port;
             node := node.NextSibling;
         end;
     end;
@@ -87,7 +124,17 @@ procedure TConfigDisk.Clear;
 begin
     DiskType := cdtNone;
     ChannelNum := 0;
+    DeviceNum := -1;
     DiskFile := '';
+end;
+
+{ TConfigPort }
+
+procedure TConfigPort.Clear;
+begin
+    PortType := cptNone;
+    DeviceNum := -1;
+    Rid := $21;
 end;
 
 end.

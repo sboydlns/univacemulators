@@ -566,6 +566,7 @@ end;
 procedure TDebuggerForm.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
 begin
     FWaiting := False;
+    Processor.OnDebug := nil;
     CanClose := True;
 end;
 

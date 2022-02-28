@@ -1417,7 +1417,7 @@ var
             begin
                 if ((i < 8) and (n[i + 1] = AnsiChar($e2))) then
                     isSym := True;
-                n := Copy(n, 1, i - 1) + StringOfChar(AnsiChar(' '), 9 - i);
+                n := Copy(n, 1, i - 1) + StringOfChar(AnsiChar($40), 9 - i);
                 Break;
             end;
         end;

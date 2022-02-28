@@ -503,12 +503,13 @@ begin
             Inc(src, l + 2);
             Dec(rlen, l + 2);
         end;
-    end else if ((dh.RecordType = 0) or (dh.RecordType = $a1)) then
+    end else { if ((dh.RecordType = 0) or (dh.RecordType = $a1)) then }
     begin
         FEof := True;
-    end else
-        raise Exception.CreateFmt('LIBS read error. Bad header type #. Expected 24 or 25 got %x',
-                                  [dh.RecordType]);
+    end;
+//    end else
+//        raise Exception.CreateFmt('LIBS read error. Bad header type #. Expected 24 or 25 got %x',
+//                                  [dh.RecordType]);
     Inc(FLastDataOffset, dh.RecordLength + 2);
 end;
 

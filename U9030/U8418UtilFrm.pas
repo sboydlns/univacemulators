@@ -4,7 +4,7 @@ interface
 
 uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
-  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.ComCtrls, U8418, Vcl.ExtCtrls,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.ComCtrls, U8418, Vcl.ExtCtrls, Vcl.FileCtrl,
   OS3Files;
 
 type
@@ -333,6 +333,7 @@ end;
 procedure TU8418UtilForm.LibsExportBtnClick(Sender: TObject);
 var
     listIdx: Integer;
+    exportRoot, exportDir: String;
     dir: TLibsDirEntry;
 
     procedure ExportSource;
@@ -346,7 +347,7 @@ var
             Exit;
         LibsMemo.Lines.Add('   ' + String(dir.Name));
         { TODO : Change to ask for folder }
-        fname := Format('c:\tmp\%s', [LibsList.Items[listIdx]]);
+        fname := Format('%s\%s', [exportDir, LibsList.Items[listIdx]]);
         ForceDirectories(fname);
         fname := Format('%s\%s.txt', [fname, TrimRight(String(dir.Name))]);
         fil := TFileStream.Create(fname, fmCreate);
@@ -365,6 +366,12 @@ var
     end;
 
 begin
+    exportRoot := '';
+    exportDir := '';
+    if (not SelectDirectory('Select Export Folder', exportRoot, exportDir,
+                            [sdNewFolder, sdShowShares, sdValidateDir], Self)) then
+        Exit;
+
     LibsMemo.Clear;
     for listIdx := 0 to LibsList.Items.Count - 1 do
     begin

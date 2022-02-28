@@ -45,7 +45,6 @@ object U9030Form: TU9030Form
     Height = 456
     Align = alTop
     TabOrder = 1
-    ExplicitTop = 2
     DesignSize = (
       575
       456)

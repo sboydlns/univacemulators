@@ -32,6 +32,8 @@ type
     FCurKey: Word;
     FCurShift: TShiftState;
     FKeyDelay: Integer;
+    FTelnetPort: Integer;
+    procedure ParseCmdLine;
     procedure StartMsg(var Message: TMessage); message START_MSG;
   public
     constructor Create(AOwner: TComponent); override;
@@ -56,6 +58,7 @@ begin
     FDisplay.Telnet := Telnet;
     ClientHeight := FDisplay.DisplaySize.cy;
     ClientWidth := FDisplay.DisplaySize.cx;
+    FTelnetPort := 9034;
 end;
 
 procedure TU200TNForm.FormDestroy(Sender: TObject);
@@ -114,8 +117,22 @@ begin
     end;
 end;
 
+procedure TU200TNForm.ParseCmdLine;
+var
+    i: Integer;
+begin
+    for i := 0 to ParamCount do
+    begin
+        if (ParamStr(i) = '-p') then
+            if (not TryStrToInt(ParamStr(i + 1), FTelnetPort)) then
+                FTelnetPort := 9034;
+    end;
+end;
+
 procedure TU200TNForm.StartMsg(var Message: TMessage);
 begin
+    ParseCmdLine;
+    Telnet.Port := FTelnetPort;
     Timer.Enabled := True;
 end;
 

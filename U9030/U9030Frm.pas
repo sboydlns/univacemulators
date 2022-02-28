@@ -273,6 +273,7 @@ procedure TU9030Form.Initialize;
 var
     fname: String;
     disk: TConfigDisk;
+    port: TConfigPort;
     dtype: TIDAType;
     idaDisk: TIDADisk;
 begin
@@ -297,7 +298,7 @@ begin
     Printer := T0773.Create(2);
     Adapters.Channel[0].AddDevice(Printer);
     // Create a uniscope comm adapter for testing
-    Adapters.Channel[0].AddDevice(TUniscopeAdapter.Create(4, $21));
+//    Adapters.Channel[0].AddDevice(TUniscopeAdapter.Create(4, $21));
 
     ParseCmdLine;
     if (FConfigFile = '') then
@@ -338,6 +339,21 @@ begin
             Adapters.Channel[disk.ChannelNum].AddDevice(idaDisk);
             if (not idaDisk.HasFile) then
                 raise Exception.CreateFmt('Could not open file for disk %d%2.2d', [disk.ChannelNum, disk.DeviceNum]);
+        end;
+        if (Length(Configuration.Ports) = 0) then
+        begin
+            // Add a default comm port
+            Adapters.Channel[0].AddDevice(TUniscopeAdapter.Create(4, $21));
+        end else
+        begin
+            for port in Configuration.Ports do
+            begin
+                if (port.PortType = cptUniscope) then
+                begin
+                    Adapters.Channel[0].AddDevice(TUniscopeAdapter.Create(port.DeviceNum, port.Rid));
+                end else
+                    raise Exception.Create('Invalid comm port type');
+            end;
         end;
     end;
     //

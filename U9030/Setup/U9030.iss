@@ -73,7 +73,7 @@ Source: ..\Source\IMS.jcl; DestDir: {app}\Source
 Source: ..\Source\IMSVSB.jcl; DestDir: {app}\Source
 Source: ..\Source\netims6.jcl; DestDir: {app}\Source
 Source: ..\Source\supgen.asc; DestDir: {app}\Source
-Source: ..\Source\PREP18.jcl; DestDir: {app}\Source
+Source: ..\Source\PrepLns001.jcl; DestDir: {app}\Source; DestName: Prep18.jcl
 
 [Icons]
 Name: {group}\Univac 9030 Emulator; Filename: {app}\U9030.exe; Parameters: -c REL042.cfg; IconIndex: 0
