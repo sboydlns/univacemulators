@@ -28,13 +28,13 @@ SysSetCwd='C:\Development\Emulators\U9030\Source'
 SrchSetFlags=0x4418600b
 FileSortMode=0x0
 StateWindowFrame=12,0,959,1087,0x63097f08
-_StateWindow=26,26,478,561,0x00100010,'C:\Development\Emulators\U9030\Source\BemFstatus.asm',208,31,212,4,20,12,46,26,126,176,8,4294967295,4294967295,1,10,'',12,255,48,72,10,467,0,0,721,252,249,169,34,400,0,212,214,210,220,721,721,720,729,217,80,0,223,224,14,124,1,208,1,6
-_StateBuffer='C:\Development\Emulators\U9030\Source\BemFstatus.asm',0x0400048a,169,34,25,'10 16 40 50 60 72','',0x1,'',1,72,1
-_StateHistory=FILELIST,'C:\Development\Emulators\U9030\Source\SaveCopin.jcl','C:\Development\Emulators\U9030\Source\BemSimulator.jcl','C:\Development\Emulators\U9030\Source\BemVtoc.asm','C:\Development\Emulators\U9030\Source\BemHlp.asm','C:\Development\Emulators\U9030\Source\BemLib.asm','C:\Development\Emulators\U9030\Source\BemSimulator.asm','C:\Development\Emulators\U9030\Source\BemFstatus.asm','C:\Development\Emulators\U9030\Source\LibTest.asm','C:\Development\Emulators\U9030\Source\SaveBemDsects.jcl'
-_StateHistory=SEARCH,'4(R14)','NOT','EOJ','=h22','dx','LBH$SIZE','LINTMPLT','LINTPLT','LINSTRT','X\'25\''
+_StateWindow=104,104,478,561,0x00100010,'C:\Development\Emulators\U9030\Source\icam3.asc',208,31,212,4,20,12,46,26,126,176,8,4294967295,4294967295,1,10,'',12,255,48,72,10,467,0,0,721,252,249,2,29,400,0,212,214,210,220,721,721,720,729,217,80,0,223,224,14,1,1,208,1,6
+_StateBuffer='C:\Development\Emulators\U9030\Source\icam3.asc',0x0400048a,2,29,25,'6 12 17 22 27 32 37 41','',0x1,'',1,72,1
+_StateHistory=FILELIST,'C:\Development\Emulators\U9030\Source\SaveBemDsects.jcl','C:\Development\Emulators\U9030\Source\BadCmd.asm','C:\Development\Emulators\U9030\Source\BemDelete.asm','C:\Development\Emulators\U9030\Source\BemSimulator.asm','C:\Development\Emulators\U9030\Source\BemDisplay.asm','C:\Development\Emulators\U9030\Source\BemFstatus.asm','C:\Development\Emulators\U9030\LNS.notrace.cfg','C:\Development\Emulators\U9030\Source\icam3.asc','C:\Development\Emulators\U9030\Source\icam.asc'
+_StateHistory=SEARCH,'ALIASES','JTIMASK','PCNTKN','PC3','DOHALT','EOJMSG','INIT','RETURN','INVCMD','PC$'
 _StateHistory=REPLACE,'.'
 _StateHistory=XSYMBOL,'OUTPUT','ERROR','INPUT','FILE'
-_StateHistory=EDITFILE,'C:\Development\Emulators\U9030\Source\BemSimulator.jcl','C:\Development\Emulators\U9030\Source\BemVtoc.asm','C:\Development\Emulators\U9030\Source\BemHlp.asm','C:\Development\Emulators\U9030\Source\BemLib.asm','C:\Development\Emulators\U9030\Source\SaveBemDsects.jcl','C:\Development\Emulators\U9030\Source\LibTest.asm','C:\Development\Emulators\U9030\Source\BemSimulator.asm','C:\Development\Emulators\U9030\Source\BemFstatus.asm','C:\Development\Emulators\U9030\Source\LibTest.asm','C:\Development\Emulators\U9030\Source\SaveBemDsects.jcl'
+_StateHistory=EDITFILE,'C:\Development\Emulators\U9030\Source\BadCmd.asm','C:\Development\Emulators\U9030\Source\BemDelete.asm','C:\Development\Emulators\U9030\Source\BemSimulator.asm','C:\Development\Emulators\U9030\Source\BemDisplay.asm','C:\Development\Emulators\U9030\Source\BemFstatus.asm','C:\Development\Emulators\U9030\Source\icam.asc','C:\Development\Emulators\U9030\Source\icam3.asc','C:\Development\Emulators\U9030\LNS.notrace.cfg','C:\Development\Emulators\U9030\Source\icam3.asc','C:\Development\Emulators\U9030\Source\icam.asc'
 _StateHistory=DIRECTORY,'c:\tmp\$Y$MAC','C:\tmp\$Y$SRC','C:\TMP','C:\tmp','C:\tmp\$Y$GEN','C:\TMP\$Y$MAC','C:\tmp\$Y$MAC'
 _StateHistory=GOTOMARK,'2','1','2','1','2','1','2','1','2','1'
 

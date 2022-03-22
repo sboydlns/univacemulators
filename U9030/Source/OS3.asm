@@ -962,7 +962,7 @@
 1744:         BCR   R15,R3                       RETURN
      *
 1746:         DC    X'042E'                      ADDRESS OF SAVE USER REGS. RTN.
-     * SUPERVISOR ENTRY POINT AFTER IPL.  (IDLE LOOP???)
+     * SUPERVISOR ENTRY POINT AFTER IPL. SWITCHER!!
               USING *,R15
               USING JT$TCB,R14
               USING SB$SIB,0

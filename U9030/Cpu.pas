@@ -1436,6 +1436,9 @@ var
         n: AnsiString;
         isSym: Boolean;
     begin
+        i := match and $f00;
+        if ((i <> 0) and (i <> $100) and (i <> $300)) then
+            raise ESpecificationException.Create('Unsupported DIAG option');
         if (match = $100) then
         begin
             // This shit makes no sense to me. I have implemented this based on what I
@@ -1560,7 +1563,7 @@ var
                             psw.CondCode := 0;
                             FRegisters[PSW.RegisterSet, r] := switchList - FRelocateReg;
                             FRegisters[PSW.RegisterSet, r + 1] := TWord(tcb - FRelocateReg);
-                            Break;
+                            Exit;
                         end;
                     end else if (skipUntil = tcb) then
                         skipUntil := 0;

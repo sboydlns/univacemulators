@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "Univac 90/30 Emulator"
-#define MyAppVerName "Univac 90/30 Emulator Univac 90/30 Emulator1.0"
+#define MyAppVerName "Univac 90/30 Emulator 1.0"
 #define MyAppPublisher "LNS Software Systems"
 #define MyAppExeName "U9030.exe"
 
@@ -39,7 +39,8 @@ Source: ..\Win32\Debug\U200TN.exe; DestDir: {app}; Flags: ignoreversion
 Source: ..\Win32\Debug\U9030Print.exe; DestDir: {app}; Flags: ignoreversion
 Source: ..\Disks\SDIVSB.8418; DestDir: {commonappdata}\Univac 9030 Emulator\Data; Permissions: users-full
 Source: ..\Disks\VSBRES.8418; DestDir: {commonappdata}\Univac 9030 Emulator\Data; Permissions: users-full
-Source: ..\Disks\REL042.8418; DestDir: {commonappdata}\Univac 9030 Emulator\Data; Permissions: users-full
+Source: ..\Disks\LNSREL.8418; DestDir: {commonappdata}\Univac 9030 Emulator\Data; Permissions: users-full; DestName: REL042.8418
+Source: ..\Disks\LNS001.8418; DestDir: {commonappdata}\Univac 9030 Emulator\Data; Permissions: users-full
 Source: C:\Development\Emulators\U9030\REL042.cfg.release; DestDir: {app}; DestName: REL042.cfg
 Source: C:\Development\Emulators\U9030\VSB.cfg.release; DestDir: {app}; DestName: VSB.cfg
 Source: ..\Manuals\Univac_90_30_System_Brochure_Mar74.pdf; DestDir: {app}\Manuals
@@ -76,16 +77,17 @@ Source: ..\Source\supgen.asc; DestDir: {app}\Source
 Source: ..\Source\PrepLns001.jcl; DestDir: {app}\Source; DestName: Prep18.jcl
 
 [Icons]
-Name: {group}\Univac 9030 Emulator; Filename: {app}\U9030.exe; Parameters: -c REL042.cfg; IconIndex: 0
-Name: {commondesktop}\Univac 9030 Emulator; Filename: {app}\U9030.exe; Tasks: desktopicon; Parameters: -c REL042.cfg; IconIndex: 0
+Name: {group}\Univac 9030 Emulator (IMS - BEM); Filename: {app}\U9030.exe; Parameters: -c REL042.cfg; IconIndex: 0
+Name: {commondesktop}\Univac 9030 Emulator (IMS - BEM); Filename: {app}\U9030.exe; Tasks: desktopicon; Parameters: -c REL042.cfg; IconIndex: 0
 Name: {group}\U8418 Utilities; Filename: {app}\U8418Util.exe; IconIndex: 0
 Name: {group}\U9030 Disassembler; Filename: {app}\U9030DisAsm.exe; IconIndex: 0
 Name: {group}\U9030 Console; Filename: {app}\U9030Console.exe; IconIndex: 0
 Name: {group}\Dump Restore; Filename: {app}\DmpRst.exe; IconIndex: 0
 Name: {group}\Univac 9030 Emulator (VSB); Filename: {app}\U9030.exe; Parameters: -c VSB.cfg; IconIndex: 0
-Name: {group}\Emulator Documentatiopn; Filename: {app}\Docs\U9030.pdf
+Name: {group}\Emulator Documentation; Filename: {app}\Docs\U9030.pdf
 Name: {group}\U9030 Print; Filename: {app}\U9030Print.exe; IconIndex: 0
-Name: {group}\U200 Emulator; Filename: {app}\U200TN.exe; IconIndex: 0
+Name: {group}\U200 Emulator (IMS); Filename: {app}\U200TN.exe; Parameters: -p 9036
+Name: {group}\U200 Emulator (BEM); Filename: {app}\U200TN.exe; Parameters: -p 9034
 
 [Run]
 Filename: {app}\{#MyAppExeName}; Description: {cm:LaunchProgram,{#MyAppName}}; Flags: nowait postinstall skipifsilent; Parameters: -c REL042.cfg
